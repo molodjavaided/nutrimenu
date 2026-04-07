@@ -20,12 +20,20 @@ export interface Category {
 export interface VariantOption {
   id: string
   label: string
+  required: boolean
+  options: VariantChoice[]
+}
+
+export interface VariantChoice {
+  id: string
+  ingredientRefId?: string  // ← добавить это поле
+  label: string
+  weight: number
+  weightUnit: 'г' | 'мл'
   calories: number
   protein: number
   fat: number
   carbs: number
-  weight: number
-  weightUnit: 'г' | 'мл'
 }
 
 export interface VariantGroup {
@@ -33,19 +41,21 @@ export interface VariantGroup {
   label: string
   required: boolean
   options: VariantOption[]
+  replacesIngredientRefId?: string  // ингредиент из состава, который заменяют все опции группы
 }
 
 export interface Modifier {
   id: string
   label: string
-  // Либо ручной ввод, либо ссылка на справочник
-  ingredientRefId?: string   // ← ссылка на IngredientRef
+  ingredientRefId?: string
   calories: number
   protein: number
   fat: number
   carbs: number
   weight: number
   weightUnit: 'г' | 'мл'
+  allowPortions?: boolean  // гость может выбрать количество порций
+  maxPortions?: number     // максимум порций (по умолчанию 10)
   subOptions?: ModifierSubOption[]
 }
 
@@ -88,6 +98,7 @@ export interface MenuItem {
   categoryId: string
   venueId: string
   isAvailable: boolean
+  composition?: CompositionRow[]
   variantGroups?: VariantGroup[]
   modifierGroups?: ModifierGroup[]
 }
@@ -97,7 +108,7 @@ export interface SelectedVariants {
 }
 
 export interface SelectedModifiers {
-  [modifierId: string]: string | true
+  [modifierId: string]: string | true | number  // number = количество порций для allowPortions
 }
 
 export interface TrackerItem {
@@ -124,13 +135,14 @@ export interface NutriTotal {
 // Один объём/размер блюда со своими КБЖУ
 export interface SizeOption {
   id: string
+  name?: string
   weight: number
   weightUnit: 'г' | 'мл'
   calories: number
   protein: number
   fat: number
   carbs: number
-  // Количество каждого ингредиента для этого объёма
+  composition: CompositionRow[]
   ingredientAmounts: Record<string, { amount: number; unit: 'г' | 'мл' }>
 }
 
@@ -181,6 +193,7 @@ export interface CompositionRow {
 // Один объём/размер блюда
 export interface SizeOption {
   id: string
+  name?: string
   weight: number
   weightUnit: 'г' | 'мл'
   calories: number

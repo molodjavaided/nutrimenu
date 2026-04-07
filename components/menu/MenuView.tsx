@@ -39,7 +39,12 @@ export default function MenuView({ venue, categories }: Props) {
       .filter((cat) => cat.items.length > 0)
   }, [categories, activeCategory, search])
 
-  const nutri = useMemo(() => calcNutriTotal(trackerItems), [trackerItems])
+  const nutri = useMemo(() => {
+  console.log('trackerItems:', trackerItems)
+  const result = calcNutriTotal(trackerItems)
+  console.log('Рассчитанный nutri:', result)
+  return result
+}, [trackerItems])
 
   function handleAddToTracker(
   item: MenuItem,
@@ -48,8 +53,61 @@ export default function MenuView({ venue, categories }: Props) {
   selectedModifiers: SelectedModifiers = {},
   variantLabel: string = ''
 ) {
-  const resolved = resolveNutri(item, selectedVariants, selectedModifiers)
-  const trackerId = `${item.id}-${variantLabel}`
+  // Ручной расчёт КБЖУ с учётом вариантов
+  let totalCalories = item.calories
+  let totalProtein = item.protein
+  let totalFat = item.fat
+  let totalCarbs = item.carbs
+
+  // Добавляем КБЖУ выбранных вариантов
+  for (const group of item.variantGroups ?? []) {
+    const selectedId = selectedVariants[group.id]
+    const option = group.options.find(o => o.id === selectedId)
+    if (option) {
+      totalCalories += option.calories
+      totalProtein += option.protein
+      totalFat += option.fat
+      totalCarbs += option.carbs
+    }
+  }
+
+  // Добавляем КБЖУ выбранных добавок (если нужно)
+  for (const group of item.modifierGroups ?? []) {
+    const selectedId = selectedModifiers[group.id]
+    if (!selectedId) continue
+
+    if (group.multi && Array.isArray(selectedId)) {
+      for (const id of selectedId) {
+        const modifier = group.modifiers.find(m => m.id === id)
+        if (modifier) {
+          totalCalories += modifier.calories
+          totalProtein += modifier.protein
+          totalFat += modifier.fat
+          totalCarbs += modifier.carbs
+        }
+      }
+    } else if (typeof selectedId === 'string') {
+      const modifier = group.modifiers.find(m => m.id === selectedId)
+      if (modifier) {
+        totalCalories += modifier.calories
+        totalProtein += modifier.protein
+        totalFat += modifier.fat
+        totalCarbs += modifier.carbs
+      }
+    }
+  }
+
+  // Умножаем на количество
+const resolved = {
+  calories: totalCalories * quantity,
+  protein: Math.round((totalProtein * quantity) * 10) / 10,
+  fat: Math.round((totalFat * quantity) * 10) / 10,
+  carbs: Math.round((totalCarbs * quantity) * 10) / 10,
+  weight: item.weight,
+  weightUnit: item.weightUnit,
+}
+
+console.log('Добавляем в трекер:', { resolved, variantLabel }) // ← добавить
 
   setTrackerItems((prev) => {
     const existing = prev.find((t) => t.menuItem.id === item.id && t.variantLabel === variantLabel)
@@ -96,9 +154,12 @@ export default function MenuView({ venue, categories }: Props) {
 }
 
   function handleOpenDish(item: MenuItem) {
-    setSelectedDish(item)
-    setSheetOpen(true)
-  }
+  console.log('Открыто блюдо:', item)
+  console.log('КБЖУ блюда:', item.calories, item.protein, item.fat, item.carbs)
+  console.log('Варианты:', item.variantGroups)
+  setSelectedDish(item)
+  setSheetOpen(true)
+}
 
   return (
     <div className="min-h-screen" style={{ background: '#FEFEF2' }}>

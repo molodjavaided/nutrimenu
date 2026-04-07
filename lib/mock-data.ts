@@ -1,4 +1,4 @@
-import { Category, Venue } from '@/types'
+import { Category, IngredientRef, Venue } from '@/types'
 
 export const mockVenue: Venue = {
   id: '1',
@@ -633,5 +633,18 @@ export const mockCategories: Category[] = [
       { id: 'croissant-choc', name: 'Круассан шоколадный', description: 'Delifrance', weight: 80, weightUnit: 'г', calories: 246, protein: 5.4, fat: 2.7, carbs: 33.2, categoryId: 'sweets', venueId: '1', isAvailable: true },
       { id: 'eclair', name: 'Эклер', description: 'Ромбуле', weight: 80, weightUnit: 'г', calories: 278, protein: 4, fat: 14, carbs: 33, categoryId: 'sweets', venueId: '1', isAvailable: true },
     ],
+  },
+]
+
+export const mockIngredients: IngredientRef[] = [
+  {
+    id: 'ing-buckwheat-cooked',
+    name: 'Гречка варёная',
+    unit: 'г',
+    caloriesPer100: 110,
+    proteinPer100: 4.2,
+    fatPer100: 1.1,
+    carbsPer100: 21.3,
+    category: 'Крупа',
   },
 ]

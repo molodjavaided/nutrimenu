@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Category, IngredientRef, SizeOption } from '@/types'
-import { getCategories, saveCategories, getItemById, getIngredients } from '@/lib/store'
+import { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
+import { getCategories, saveCategories, getItemById, getAllIngredients, getLibraries, initLibraries } from '@/lib/store'
+import { systemLibraries } from '@/lib/mock-data'
+import IngredientPickerModal from './IngredientPickerModal'
 
 interface IngredientItem {
   id: string
@@ -54,6 +56,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
+  const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   // Шаг 1: Ингредиенты в составе (без граммовок)
   const [ingredients, setIngredients] = useState<IngredientItem[]>([])
@@ -80,11 +84,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
   // ─── Загрузка справочников (один раз) ─────────────────────
   useEffect(() => {
-    const ingredientsData = getIngredients()
-    const categoriesData = getCategories()
-    console.log('Загружен справочник ингредиентов:', ingredientsData)
-    setIngredientRefs(ingredientsData)
-    setCategories(categoriesData)
+    const libs = initLibraries(systemLibraries)
+    setLibraries(libs)
+    setIngredientRefs(libs.flatMap(l => l.ingredients))
+    setCategories(getCategories())
     setIsReady(true)
   }, [])
 
@@ -575,22 +578,17 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               </div>
             ))}
 
-            <select
-              onChange={e => {
-                if (e.target.value) {
-                  addIngredient(e.target.value)
-                  e.target.value = ''
-                }
-              }}
-              className="w-full h-10 px-3 rounded-xl text-sm outline-none"
-              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-              value=""
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="w-full h-10 px-3 rounded-xl text-sm flex items-center gap-2"
+              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#6B6490' }}
             >
-              <option value="">+ Добавить ингредиент из справочника</option>
-              {ingredientRefs.filter(ref => !ingredients.some(i => i.ingredientRefId === ref.id)).map(ref => (
-                <option key={ref.id} value={ref.id}>{ref.name}</option>
-              ))}
-            </select>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Выбрать из справочника
+            </button>
           </div>
         </div>
 
@@ -1062,6 +1060,15 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           {isEdit ? 'Сохранить' : 'Добавить блюдо'}
         </button>
       </div>
+
+      {pickerOpen && libraries.length > 0 && (
+        <IngredientPickerModal
+          libraries={libraries}
+          alreadyAddedIds={ingredients.map(i => i.ingredientRefId)}
+          onSelect={ref => addIngredient(ref.id)}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   )
 }

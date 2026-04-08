@@ -67,8 +67,7 @@ for (const group of item.modifierGroups ?? []) {
   if (!modifier) continue
 
   if (group.type === 'replace' && group.replacesIngredientId) {
-    // Режим замены — ничего не прибавляем к базовым КБЖУ здесь,
-    // замена считается отдельно через состав (см. resolveNutriFromComposition)
+    // Режим замены через состав — считается отдельно в resolveNutriFromComposition
     continue
   }
 
@@ -85,7 +84,17 @@ for (const group of item.modifierGroups ?? []) {
       fat      += Math.round(modifier.fat      * ratio * 10) / 10
       carbs    += Math.round(modifier.carbs    * ratio * 10) / 10
     }
+  } else if (group.required) {
+    // Обязательная одиночная группа = замена ингредиента.
+    // Первый вариант в списке — эталон (уже учтён в базовом КБЖУ блюда).
+    // Применяем дельту: выбранное − эталонное.
+    const defaultMod = group.modifiers[0]
+    calories += modifier.calories - defaultMod.calories
+    protein  += modifier.protein  - defaultMod.protein
+    fat      += modifier.fat      - defaultMod.fat
+    carbs    += modifier.carbs    - defaultMod.carbs
   } else {
+    // Необязательная группа — обычная добавка
     calories += modifier.calories
     protein  += modifier.protein
     fat      += modifier.fat

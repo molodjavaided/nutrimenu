@@ -1,4 +1,4 @@
-import { Category, IngredientRef, MenuItem, Venue } from '@/types'
+import { Category, IngredientLibrary, IngredientRef, MenuItem, Venue } from '@/types'
 
 const VENUE_KEY = 'nutrimenu_venue'
 const CATEGORIES_KEY = 'nutrimenu_categories'
@@ -100,15 +100,74 @@ export function getItemById(itemId: string): { item: MenuItem; categoryId: strin
 }
 
 const INGREDIENTS_KEY = 'nutrimenu_ingredients'
+const LIBRARIES_KEY = 'nutrimenu_ingredient_libraries'
 
-export function getIngredients(): IngredientRef[] {
+export const MY_LIBRARY_ID = 'my-library'
+
+// ─── Libraries ───────────────────────────────────────────────
+
+export function getLibraries(): IngredientLibrary[] {
   if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(INGREDIENTS_KEY)
+  const raw = localStorage.getItem(LIBRARIES_KEY)
   return raw ? JSON.parse(raw) : []
 }
 
+export function saveLibraries(libraries: IngredientLibrary[]): void {
+  localStorage.setItem(LIBRARIES_KEY, JSON.stringify(libraries))
+}
+
+/**
+ * Initialise libraries on first load.
+ * - Migrates old nutrimenu_ingredients into the personal library if needed.
+ * - Seeds provided system libraries if they're not yet present.
+ */
+export function initLibraries(systemLibraries: IngredientLibrary[]): IngredientLibrary[] {
+  let libs = getLibraries()
+
+  // Seed any system library not yet stored
+  for (const sysLib of systemLibraries) {
+    if (!libs.find(l => l.id === sysLib.id)) {
+      libs = [sysLib, ...libs]
+    }
+  }
+
+  // Ensure personal library exists
+  if (!libs.find(l => l.id === MY_LIBRARY_ID)) {
+    // Migrate legacy data if present
+    const legacy = localStorage.getItem(INGREDIENTS_KEY)
+    const migratedIngredients: IngredientRef[] = legacy ? JSON.parse(legacy) : []
+    libs = [...libs, {
+      id: MY_LIBRARY_ID,
+      name: 'Мои ингредиенты',
+      isSystem: false,
+      ingredients: migratedIngredients,
+    }]
+  }
+
+  saveLibraries(libs)
+  return libs
+}
+
+/** Flat list of all ingredients across all libraries — for ItemForm / DishSheet lookups */
+export function getAllIngredients(): IngredientRef[] {
+  return getLibraries().flatMap(l => l.ingredients)
+}
+
+export function saveLibraryIngredients(libraryId: string, ingredients: IngredientRef[]): void {
+  const libs = getLibraries()
+  saveLibraries(libs.map(l => l.id === libraryId ? { ...l, ingredients } : l))
+}
+
+// ─── Legacy helpers (kept for backwards compat, operate on personal library) ──
+
+export function getIngredients(): IngredientRef[] {
+  if (typeof window === 'undefined') return []
+  const libs = getLibraries()
+  return libs.find(l => l.id === MY_LIBRARY_ID)?.ingredients ?? []
+}
+
 export function saveIngredients(ingredients: IngredientRef[]): void {
-  localStorage.setItem(INGREDIENTS_KEY, JSON.stringify(ingredients))
+  saveLibraryIngredients(MY_LIBRARY_ID, ingredients)
 }
 
 export function addIngredient(data: Omit<IngredientRef, 'id'>): IngredientRef {

@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
 import { buildVariantLabel, resolveNutri, resolveNutriFromComposition } from '@/lib/utils'
-import { getIngredients } from '@/lib/store'
+import { getAllIngredients, initLibraries } from '@/lib/store'
+import { systemLibraries } from '@/lib/mock-data'
 
 interface Props {
   item: MenuItem | null
@@ -38,9 +39,11 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
   const [modifiers, setModifiers] = useState<SelectedModifiers>({})
   const [lastItemId, setLastItemId] = useState<string | null>(null)
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
+  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
 
   useEffect(() => {
-    setIngredientRefs(getIngredients())
+    const libs = initLibraries(systemLibraries)
+    setIngredientRefs(libs.flatMap(l => l.ingredients))
   }, [])
 
   // Сброс при смене блюда
@@ -49,43 +52,80 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     setQuantity(1)
     setVariants(getDefaultVariants(item))
     setModifiers(getDefaultModifiers(item))
+    setSelectedSizeId(item.sizes?.[0]?.id ?? null)
   }
 
   // ─── РАСЧЁТ КБЖУ С УЧЁТОМ ВАРИАНТОВ ──────────────────────
   const resolvedNutri = useMemo(() => {
   if (!item) return { calories: 0, protein: 0, fat: 0, carbs: 0, weight: 0, weightUnit: 'г' as const }
 
-  console.log('Базовое КБЖУ блюда:', { calories: item.calories, protein: item.protein, fat: item.fat, carbs: item.carbs })
-  console.log('Выбранные варианты:', variants)
-  console.log('Выбранные добавки:', modifiers)
+  // Если у блюда несколько sizes — берём КБЖУ выбранного размера как базу
+  const activeSize = item.sizes && item.sizes.length > 0
+    ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
+    : null
 
   let total = {
-    calories: item.calories,
-    protein: item.protein,
-    fat: item.fat,
-    carbs: item.carbs,
+    calories: activeSize?.calories ?? item.calories,
+    protein: activeSize?.protein ?? item.protein,
+    fat: activeSize?.fat ?? item.fat,
+    carbs: activeSize?.carbs ?? item.carbs,
   }
 
   // Добавляем КБЖУ выбранных вариантов
   for (const group of item.variantGroups ?? []) {
     const selectedId = variants[group.id]
     const option = group.options.find(o => o.id === selectedId)
-    if (option) {
-      console.log(`Вариант ${group.label}: ${option.label} +${option.calories} ккал`)
-      total.calories += option.calories
-      total.protein += option.protein
-      total.fat += option.fat
-      total.carbs += option.carbs
+    if (!option) continue
+
+    if (group.replacesIngredientRefId) {
+      // Группа заменяет конкретный ингредиент в составе.
+      // Берём количество заменяемого ингредиента из ТЕКУЩЕГО размера (не фиксированное).
+      const composition = activeSize?.composition ?? []
+      const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientRefId)
+      const originalRef = ingredientRefs.find(r => r.id === group.replacesIngredientRefId)
+      // Справочник замены — для пересчёта под текущий объём
+      const replacementRef = option.ingredientRefId
+        ? ingredientRefs.find(r => r.id === option.ingredientRefId)
+        : undefined
+
+      if (originalRow && originalRow.amount > 0 && originalRef) {
+        const ratio = originalRow.amount / 100  // количество в текущем размере
+        const origCal  = Math.round(originalRef.caloriesPer100 * ratio)
+        const origProt = Math.round(originalRef.proteinPer100  * ratio * 10) / 10
+        const origFat  = Math.round(originalRef.fatPer100      * ratio * 10) / 10
+        const origCarb = Math.round(originalRef.carbsPer100    * ratio * 10) / 10
+
+        // Если знаем справочник замены — пересчитываем для текущего объёма
+        const replCal  = replacementRef ? Math.round(replacementRef.caloriesPer100 * ratio) : option.calories
+        const replProt = replacementRef ? Math.round(replacementRef.proteinPer100  * ratio * 10) / 10 : option.protein
+        const replFat  = replacementRef ? Math.round(replacementRef.fatPer100      * ratio * 10) / 10 : option.fat
+        const replCarb = replacementRef ? Math.round(replacementRef.carbsPer100    * ratio * 10) / 10 : option.carbs
+
+        total.calories += replCal  - origCal
+        total.protein  += replProt - origProt
+        total.fat      += replFat  - origFat
+        total.carbs    += replCarb - origCarb
+      } else {
+        // Нет данных по составу — добавляем как дельту (лучше чем ничего)
+        total.calories += option.calories
+        total.protein  += option.protein
+        total.fat      += option.fat
+        total.carbs    += option.carbs
+      }
+    } else if (option.calories > 0) {
+      // Обычный вариант (объём, тип): полностью заменяет базовые КБЖУ
+      total.calories = option.calories
+      total.protein  = option.protein
+      total.fat      = option.fat
+      total.carbs    = option.carbs
     }
   }
-
-  console.log('После вариантов:', total)
 
     // Добавляем КБЖУ выбранных добавок/замен
     for (const group of item.modifierGroups ?? []) {
       if (group.type === 'replace') {
-        // Для замен — пересчитываем через состав
-        const activeSize = item.sizes?.find(s => s.id === variants['size']) ?? item.sizes?.[0]
+        // Замена через состав (ingredientRef-based)
+        const activeSize = item.sizes?.find(s => s.id === selectedSizeId) ?? item.sizes?.[0]
         if (activeSize?.composition) {
           const replacedNutri = resolveNutriFromComposition(
             activeSize.composition,
@@ -98,30 +138,44 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           total.fat = replacedNutri.fat
           total.carbs = replacedNutri.carbs
         }
-      } else {
-        // Для обычных добавок
-        const selectedId = modifiers[group.id]
-        if (!selectedId) continue
+        continue
+      }
 
-        if (group.multi && Array.isArray(selectedId)) {
-          for (const id of selectedId) {
-            const modifier = group.modifiers.find(m => m.id === id)
-            if (modifier) {
-              total.calories += modifier.calories
-              total.protein += modifier.protein
-              total.fat += modifier.fat
-              total.carbs += modifier.carbs
-            }
-          }
-        } else if (typeof selectedId === 'string') {
-          const modifier = group.modifiers.find(m => m.id === selectedId)
+      if (group.multi) {
+        // Мультиселект — суммируем добавки
+        const selected = modifiers[group.id]
+        if (!Array.isArray(selected)) continue
+        for (const id of selected) {
+          const modifier = group.modifiers.find(m => m.id === id)
           if (modifier) {
             total.calories += modifier.calories
-            total.protein += modifier.protein
-            total.fat += modifier.fat
-            total.carbs += modifier.carbs
+            total.protein  += modifier.protein
+            total.fat      += modifier.fat
+            total.carbs    += modifier.carbs
           }
         }
+        continue
+      }
+
+      // Одиночная группа
+      const selectedId = modifiers[group.id]
+      if (!selectedId || typeof selectedId !== 'string') continue
+      const modifier = group.modifiers.find(m => m.id === selectedId)
+      if (!modifier) continue
+
+      if (group.required) {
+        // Обязательная = замена ингредиента: дельта от первого (эталонного) варианта
+        const defaultMod = group.modifiers[0]
+        total.calories += modifier.calories - defaultMod.calories
+        total.protein  += modifier.protein  - defaultMod.protein
+        total.fat      += modifier.fat      - defaultMod.fat
+        total.carbs    += modifier.carbs    - defaultMod.carbs
+      } else {
+        // Необязательная = обычная добавка
+        total.calories += modifier.calories
+        total.protein  += modifier.protein
+        total.fat      += modifier.fat
+        total.carbs    += modifier.carbs
       }
     }
 
@@ -131,16 +185,37 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     protein: Math.round((total.protein * quantity) * 10) / 10,
     fat: Math.round((total.fat * quantity) * 10) / 10,
     carbs: Math.round((total.carbs * quantity) * 10) / 10,
-    weight: item.weight,
-    weightUnit: item.weightUnit,
+    weight: activeSize?.weight ?? item.weight,
+    weightUnit: (activeSize?.weightUnit ?? item.weightUnit) as 'г' | 'мл',
   }
-}, [item, variants, modifiers, quantity, ingredientRefs])
+}, [item, variants, modifiers, quantity, ingredientRefs, selectedSizeId])
 
   function handleClose() {
     onClose()
   }
 
   if (!item) return null
+
+  // Активный размер — нужен и в расчёте, и в отображении кнопок
+  const activeSize = item.sizes && item.sizes.length > 0
+    ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
+    : null
+
+  // Динамические ккал опции с учётом текущего размера
+  function getOptionCalories(
+    group: { replacesIngredientRefId?: string },
+    opt: { ingredientRefId?: string; calories: number }
+  ): number {
+    if (!group.replacesIngredientRefId) return opt.calories
+    const composition = activeSize?.composition ?? []
+    const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientRefId)
+    if (!originalRow || !originalRow.amount) return opt.calories
+    const replacementRef = opt.ingredientRefId
+      ? ingredientRefs.find(r => r.id === opt.ingredientRefId)
+      : undefined
+    if (!replacementRef) return opt.calories
+    return Math.round(replacementRef.caloriesPer100 * originalRow.amount / 100)
+  }
 
   const isValid = (item.variantGroups ?? [])
   .filter(g => g.required)
@@ -188,6 +263,35 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           ))}
         </div>
 
+        {/* Выбор размера (из sizes) */}
+        {item.sizes && item.sizes.length > 1 && (
+          <div className="mb-4">
+            <p className="text-sm font-medium mb-2" style={{ color: '#2C2950' }}>Объём</p>
+            <div className="flex flex-wrap gap-2">
+              {item.sizes.map(size => {
+                const isActive = (selectedSizeId ?? item.sizes![0].id) === size.id
+                const label = size.name || `${size.weight} ${size.weightUnit}`
+                return (
+                  <button
+                    key={size.id}
+                    onClick={() => setSelectedSizeId(size.id)}
+                    className="px-3 py-1.5 rounded-full text-sm transition-all"
+                    style={isActive
+                      ? { background: '#B0A6DF', color: '#2C2950' }
+                      : { background: '#EAE7F8', color: '#6B6490' }
+                    }
+                  >
+                    {label}
+                    <span className="ml-1.5 text-xs" style={{ color: isActive ? '#534AB7' : '#9D99B8' }}>
+                      {size.calories} ккал
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Группы вариантов */}
         {item.variantGroups?.map(group => (
           <div key={group.id} className="mb-4">
@@ -214,7 +318,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                       : 'bg-[#EAE7F8] text-[#6B6490]'
                   }`}
                 >
-                  {opt.label} — {opt.calories} ккал
+                  {opt.label} — {getOptionCalories(group, opt)} ккал
                 </button>
               ))}
             </div>

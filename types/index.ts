@@ -171,6 +171,14 @@ export interface MenuItem {
   modifierGroups?: ModifierGroup[]
 }
 
+// Библиотека ингредиентов
+export interface IngredientLibrary {
+  id: string
+  name: string
+  isSystem: boolean  // системная — только чтение для владельца
+  ingredients: IngredientRef[]
+}
+
 // Справочник ингредиентов
 export interface IngredientRef {
   id: string

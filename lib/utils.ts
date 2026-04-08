@@ -137,9 +137,9 @@ export function calcNutriTotal(items: TrackerItem[]): NutriTotal {
   return items.reduce(
     (total, item) => ({
       calories: total.calories + item.resolvedCalories * item.quantity,
-      protein:  total.protein  + item.resolvedProtein  * item.quantity,
-      fat:      total.fat      + item.resolvedFat       * item.quantity,
-      carbs:    total.carbs    + item.resolvedCarbs     * item.quantity,
+      protein: total.protein + item.resolvedProtein * item.quantity,
+      fat: total.fat + item.resolvedFat * item.quantity,
+      carbs: total.carbs + item.resolvedCarbs * item.quantity,
     }),
     { calories: 0, protein: 0, fat: 0, carbs: 0 }
   )

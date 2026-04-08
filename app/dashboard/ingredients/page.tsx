@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { IngredientRef } from '@/types'
 import { getIngredients, saveIngredients } from '@/lib/store'
+import { mockIngredients } from '@/lib/mock-data'
 
 const CATEGORIES = ['Молоко', 'Крупа', 'Мясо и рыба', 'Овощи', 'Фрукты', 'Соусы', 'Выпечка', 'Прочее']
 
@@ -23,9 +24,16 @@ export default function IngredientsPage() {
   const [form, setForm] = useState({ ...EMPTY })
   const [adding, setAdding] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [isCustomCategory, setIsCustomCategory] = useState(false)
 
   useEffect(() => {
-    setIngredients(getIngredients())
+    const stored = getIngredients()
+    if (stored.length === 0) {
+      saveIngredients(mockIngredients)
+      setIngredients(mockIngredients)
+    } else {
+      setIngredients(stored)
+    }
   }, [])
 
   function save(updated: IngredientRef[]) {
@@ -39,12 +47,14 @@ export default function IngredientsPage() {
     save([...ingredients, newIng])
     setForm({ ...EMPTY })
     setAdding(false)
+    setIsCustomCategory(false)
   }
 
   function handleUpdate() {
     if (!editingId || !form.name.trim()) return
     save(ingredients.map(i => i.id === editingId ? { ...form, id: editingId } : i))
     setEditingId(null)
+    setIsCustomCategory(false)
   }
 
   function handleDelete(id: string) {
@@ -54,6 +64,8 @@ export default function IngredientsPage() {
 
   function startEdit(ing: IngredientRef) {
     setEditingId(ing.id)
+    const cat = ing.category ?? 'Прочее'
+    setIsCustomCategory(!CATEGORIES.includes(cat))
     setForm({
       name: ing.name,
       unit: ing.unit,
@@ -61,7 +73,7 @@ export default function IngredientsPage() {
       proteinPer100: ing.proteinPer100,
       fatPer100: ing.fatPer100,
       carbsPer100: ing.carbsPer100,
-      category: ing.category ?? 'Прочее',
+      category: cat,
     })
   }
 
@@ -69,8 +81,16 @@ export default function IngredientsPage() {
     i.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  // Группируем по категории
-  const grouped = CATEGORIES.reduce<Record<string, IngredientRef[]>>((acc, cat) => {
+  // Все категории: стандартные + кастомные из уже сохранённых ингредиентов
+  const allCategories = [
+    ...CATEGORIES,
+    ...Array.from(new Set(
+      ingredients.map(i => i.category ?? 'Прочее').filter(c => !CATEGORIES.includes(c))
+    )),
+  ]
+
+  // Группируем по всем категориям
+  const grouped = allCategories.reduce<Record<string, IngredientRef[]>>((acc, cat) => {
     const items = filtered.filter(i => (i.category ?? 'Прочее') === cat)
     if (items.length > 0) acc[cat] = items
     return acc
@@ -90,7 +110,7 @@ export default function IngredientsPage() {
           </p>
         </div>
         <button
-          onClick={() => { setAdding(true); setEditingId(null); setForm({ ...EMPTY }) }}
+          onClick={() => { setAdding(true); setEditingId(null); setForm({ ...EMPTY }); setIsCustomCategory(false) }}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: '#B0A6DF', color: '#2C2950' }}
         >
@@ -124,14 +144,42 @@ export default function IngredientsPage() {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: '#6B6490' }}>Категория</label>
-              <select
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="h-10 px-2 rounded-xl text-sm outline-none"
-                style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-              >
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              {isCustomCategory ? (
+                <div className="flex gap-1">
+                  <input
+                    autoFocus
+                    value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    placeholder="Название категории"
+                    className="flex-1 h-10 px-2 rounded-xl text-sm outline-none"
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  />
+                  <button
+                    onClick={() => { setIsCustomCategory(false); setForm(f => ({ ...f, category: 'Прочее' })) }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#9D99B8' }}
+                    title="Вернуться к списку"
+                  >✕</button>
+                </div>
+              ) : (
+                <select
+                  value={form.category}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setIsCustomCategory(true)
+                      setForm(f => ({ ...f, category: '' }))
+                    } else {
+                      setForm(f => ({ ...f, category: e.target.value }))
+                    }
+                  }}
+                  className="h-10 px-2 rounded-xl text-sm outline-none"
+                  style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                >
+                  {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option disabled style={{ color: '#C8C3F0' }}>──────────</option>
+                  <option value="__custom__">+ Создать категорию...</option>
+                </select>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs" style={{ color: '#6B6490' }}>Единица</label>
@@ -182,7 +230,7 @@ export default function IngredientsPage() {
               {editingId ? 'Сохранить' : 'Добавить'}
             </button>
             <button
-              onClick={() => { setAdding(false); setEditingId(null) }}
+              onClick={() => { setAdding(false); setEditingId(null); setIsCustomCategory(false) }}
               className="px-5 py-2 rounded-xl text-sm"
               style={{ background: '#FEFEF2', color: '#6B6490' }}
             >

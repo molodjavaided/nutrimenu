@@ -28,6 +28,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    borderBottom: '0.5px solid rgba(176,166,223,0.15)',
   }
 
   const hasVariants = (item.variantGroups?.length ?? 0) > 0
@@ -38,7 +39,6 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
       ref={setNodeRef}
       style={style}
       className="flex items-center gap-3 px-4 py-3"
-      css={{ borderBottom: '0.5px solid rgba(176,166,223,0.15)' }}
     >
       {/* Drag handle */}
       <button

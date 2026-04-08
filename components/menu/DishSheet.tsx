@@ -147,7 +147,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
   .every(g => variants[g.id])
 
   function handleAdd() {
-    if (!isValid) return
+    if (!isValid || !item) return
     const label = buildVariantLabel(item, variants, modifiers)
     onAdd(item, quantity, variants, modifiers, label)
   }

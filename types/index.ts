@@ -40,7 +40,7 @@ export interface VariantGroup {
   id: string
   label: string
   required: boolean
-  options: VariantOption[]
+  options: VariantChoice[]
   replacesIngredientRefId?: string  // ингредиент из состава, который заменяют все опции группы
 }
 

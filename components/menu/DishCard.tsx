@@ -18,31 +18,42 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
   return (
     <div
       className="flex gap-3 py-3"
-      style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}
+      style={{ borderBottom: '0.5px solid rgba(139,92,246,0.1)' }}
     >
-      {/* Фото */}
-      <div
-        className="w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl cursor-pointer bg-lavender-light"
+      {/* Tap area: photo + info */}
+      <button
+        className="flex gap-3 flex-1 min-w-0 text-left active:opacity-70 transition-opacity"
         onClick={onOpen}
       >
-        🍽️
-      </div>
+        {/* Фото */}
+        <div
+          className="w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl"
+          style={{
+            background: 'rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '0.5px solid rgba(255,255,255,0.5)',
+          }}
+        >
+          🍽️
+        </div>
 
-      {/* Инфо */}
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
-        <p className="text-sm font-medium mb-0.5 truncate text-text-primary">
-          {item.name}
-        </p>
-        {item.description && (
-          <p className="text-xs mb-1.5 truncate text-text-secondary">
-            {item.description}
+        {/* Инфо */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium mb-0.5 truncate text-text-primary">
+            {item.name}
           </p>
-        )}
-        <NutritionGrid nutri={item} />
-        <p className="text-xs mt-1 text-text-muted">
-          {item.weight} {item.weightUnit}
-        </p>
-      </div>
+          {item.description && (
+            <p className="text-xs mb-1.5 truncate text-text-secondary">
+              {item.description}
+            </p>
+          )}
+          <NutritionGrid nutri={item} />
+          <p className="text-xs mt-1 text-text-muted">
+            {item.weight} {item.weightUnit}
+          </p>
+        </div>
+      </button>
 
       {/* Контрол добавления */}
       <div className="flex flex-col items-center justify-center shrink-0 gap-1">
@@ -51,7 +62,8 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
         ) : (
           <button
             onClick={onAdd}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium transition-all bg-lavender text-text-primary"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-all active:scale-90"
+            style={{ background: '#8B5CF6', color: '#ffffff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
           >
             +
           </button>

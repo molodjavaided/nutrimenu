@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
-import { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
-import { getCategories, saveCategories, getItemById, getAllIngredients, getLibraries, initLibraries } from '@/lib/store'
+import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
+import { getCategories, saveCategories, getItemById, initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
+import { cn } from '@/lib/utils'
 import IngredientPickerModal from './IngredientPickerModal'
 
 interface IngredientItem {
@@ -47,6 +48,119 @@ interface VariantChoice {
   isManual?: boolean
 }
 
+// ─── Shared sub-components ───────────────────────────────────
+
+function FormField({ label, required = false, children }: {
+  label: string
+  required?: boolean
+  children: ComponentProps<'div'>['children']
+}) {
+  return (
+    <div className="mb-5">
+      <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>
+        {label}{required && ' *'}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+const inputStyle = {
+  background: 'rgba(255,255,255,0.6)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  border: '0.5px solid rgba(255,255,255,0.5)',
+  color: '#2C2950',
+  boxShadow: '0 1px 4px rgba(139,92,246,0.06)',
+}
+
+function FormInput({ className, style, ...props }: ComponentProps<'input'>) {
+  return (
+    <input
+      {...props}
+      className={cn('h-10 px-3 rounded-xl text-sm outline-none', className)}
+      style={{ ...inputStyle, ...style }}
+    />
+  )
+}
+
+function FormSelect({ className, style, children, ...props }: ComponentProps<'select'>) {
+  return (
+    <select
+      {...props}
+      className={cn('h-10 px-3 rounded-xl text-sm outline-none', className)}
+      style={{ ...inputStyle, ...style }}
+    >
+      {children}
+    </select>
+  )
+}
+
+function FormTextarea({ className, style, ...props }: ComponentProps<'textarea'>) {
+  return (
+    <textarea
+      {...props}
+      className={cn('w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none', className)}
+      style={{ ...inputStyle, ...style }}
+    />
+  )
+}
+
+const NUTRI_FIELDS = [
+  { key: 'calories' as const, label: 'ккал', step: undefined },
+  { key: 'protein' as const, label: 'белки', step: '0.1' },
+  { key: 'fat' as const, label: 'жиры', step: '0.1' },
+  { key: 'carbs' as const, label: 'углеводы', step: '0.1' },
+]
+
+function NutriFields({ nutri, onChange }: {
+  nutri: { calories: number; protein: number; fat: number; carbs: number }
+  onChange: (field: string, value: number) => void
+}) {
+  return (
+    <div className="flex gap-4 text-sm flex-wrap items-center">
+      {NUTRI_FIELDS.map(({ key, label, step }) => (
+        <div key={key} className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: '#6B6490' }}>{label}</span>
+          <input
+            type="number"
+            value={nutri[key]}
+            onChange={e => onChange(key, Number(e.target.value))}
+            step={step}
+            className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
+            style={{ background: 'rgba(255,255,255,0.7)', border: '0.5px solid rgba(255,255,255,0.5)', color: '#2C2950' }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RemoveButton({ onClick, size = 'md', variant = 'default' }: {
+  onClick: () => void
+  size?: 'sm' | 'md'
+  variant?: 'default' | 'light'
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-lg flex items-center justify-center shrink-0',
+        size === 'sm' ? 'w-7 h-7' : 'w-8 h-8',
+      )}
+      style={{
+        color: '#9D99B8',
+        background: variant === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(139,92,246,0.08)',
+        border: '0.5px solid rgba(255,255,255,0.5)',
+      }}
+    >
+      ✕
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+
 export default function ItemForm({ itemId, categoryId: initialCategoryId }: { itemId?: string; categoryId?: string }) {
   const router = useRouter()
 
@@ -58,6 +172,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [variantPickerTarget, setVariantPickerTarget] = useState<{ groupId: string; optionId: string } | null>(null)
 
   // Шаг 1: Ингредиенты в составе (без граммовок)
   const [ingredients, setIngredients] = useState<IngredientItem[]>([])
@@ -520,61 +635,43 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         <h2 className="text-lg font-medium mb-4" style={{ color: '#2C2950' }}>Основное</h2>
 
         {/* Категория */}
-        <div className="mb-5">
-          <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>Категория *</label>
-          <select
-            value={categoryId}
-            onChange={e => setCategoryId(e.target.value)}
-            className="w-full h-10 px-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-          >
+        <FormField label="Категория" required>
+          <FormSelect value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full">
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
-        </div>
+          </FormSelect>
+        </FormField>
 
         {/* Название */}
-        <div className="mb-5">
-          <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>Название *</label>
-          <input
+        <FormField label="Название" required>
+          <FormInput
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Например: Боул"
-            className="w-full h-10 px-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+            className="w-full"
           />
-        </div>
+        </FormField>
 
         {/* Описание */}
-        <div className="mb-5">
-          <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>Описание (необязательно)</label>
-          <textarea
+        <FormField label="Описание (необязательно)">
+          <FormTextarea
             value={description}
             onChange={e => setDescription(e.target.value)}
             rows={3}
             placeholder="Состав, особенности приготовления..."
-            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
           />
-        </div>
+        </FormField>
 
         {/* Состав */}
-        <div className="mb-5">
-          <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>Состав *</label>
+        <FormField label="Состав" required>
           <div className="space-y-2">
             {ingredients.map(ing => (
               <div key={ing.id} className="flex items-center gap-2">
                 <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: '#2C2950' }}>
                   {ing.name}
                 </span>
-                <button
-                  onClick={() => removeIngredient(ing.id)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ color: '#9D99B8', background: '#EAE7F8' }}
-                >
-                  ✕
-                </button>
+                <RemoveButton onClick={() => removeIngredient(ing.id)} />
               </div>
             ))}
 
@@ -590,11 +687,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               Выбрать из справочника
             </button>
           </div>
-        </div>
+        </FormField>
 
         {/* Размер порции */}
-        <div className="mb-5">
-          <label className="text-sm font-medium mb-1.5 block" style={{ color: '#2C2950' }}>Размер порции *</label>
+        <FormField label="Размер порции" required>
           <div className="space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -610,22 +706,20 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
             {!hasMultipleSizes && (
               <div className="ml-6 flex gap-2">
-                <input
+                <FormInput
                   value={sizes[0]?.name || ''}
                   onChange={e => updateSizeName(sizes[0]?.id || 'default', e.target.value)}
                   placeholder="Название размера (например: Стандартный)"
-                  className="flex-1 h-10 px-3 rounded-xl text-sm outline-none"
-                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  className="flex-1"
                 />
-                <select
+                <FormSelect
                   value={sizes[0]?.unit || 'г'}
                   onChange={e => updateSizeUnit(sizes[0]?.id || 'default', e.target.value as 'г' | 'мл')}
-                  className="w-24 h-10 px-3 rounded-xl text-sm outline-none"
-                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  className="w-24"
                 >
                   <option value="г">граммы (г)</option>
                   <option value="мл">миллилитры (мл)</option>
-                </select>
+                </FormSelect>
               </div>
             )}
 
@@ -651,30 +745,22 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <div className="flex flex-wrap gap-2 mb-3">
                   {sizes.map((size, idx) => (
                     <div key={size.id} className="flex items-center gap-1">
-                      <input
+                      <FormInput
                         value={size.name}
                         onChange={e => updateSizeName(size.id, e.target.value)}
                         placeholder={idx === 0 ? "Средний" : "Большой"}
-                        className="w-28 h-9 px-2 rounded-lg text-sm outline-none"
-                        style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                        className="w-28 h-9 px-2 rounded-lg"
                       />
-                      <select
+                      <FormSelect
                         value={size.unit}
                         onChange={e => updateSizeUnit(size.id, e.target.value as 'г' | 'мл')}
-                        className="w-20 h-9 px-2 rounded-lg text-sm outline-none"
-                        style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                        className="w-20 h-9 px-2 rounded-lg"
                       >
                         <option value="г">г</option>
                         <option value="мл">мл</option>
-                      </select>
+                      </FormSelect>
                       {sizes.length > 1 && (
-                        <button
-                          onClick={() => removeSize(size.id)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ color: '#9D99B8', background: '#EAE7F8' }}
-                        >
-                          ✕
-                        </button>
+                        <RemoveButton size="sm" onClick={() => removeSize(size.id)} />
                       )}
                     </div>
                   ))}
@@ -691,7 +777,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               </div>
             )}
           </div>
-        </div>
+        </FormField>
 
         {/* Таблица ингредиентов × размеров */}
         {ingredients.length > 0 && sizes.length > 0 && (
@@ -779,51 +865,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-4 text-sm flex-wrap items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: '#6B6490' }}>ккал</span>
-                        <input
-                          type="number"
-                          value={nutri.calories}
-                          onChange={e => updateManualNutri(size.id, 'calories', Number(e.target.value))}
-                          className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
-                          style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: '#6B6490' }}>белки</span>
-                        <input
-                          type="number"
-                          value={nutri.protein}
-                          onChange={e => updateManualNutri(size.id, 'protein', Number(e.target.value))}
-                          step="0.1"
-                          className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
-                          style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: '#6B6490' }}>жиры</span>
-                        <input
-                          type="number"
-                          value={nutri.fat}
-                          onChange={e => updateManualNutri(size.id, 'fat', Number(e.target.value))}
-                          step="0.1"
-                          className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
-                          style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: '#6B6490' }}>углеводы</span>
-                        <input
-                          type="number"
-                          value={nutri.carbs}
-                          onChange={e => updateManualNutri(size.id, 'carbs', Number(e.target.value))}
-                          step="0.1"
-                          className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
-                          style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-                        />
-                      </div>
-                    </div>
+                    <NutriFields
+                      nutri={nutri}
+                      onChange={(field, value) => updateManualNutri(size.id, field, value)}
+                    />
                   </div>
                 )
               })}
@@ -870,13 +915,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 />
                 Обязательный
               </label>
-              <button
-                onClick={() => removeVariantGroup(group.id)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ color: '#9D99B8', background: '#FEFEF2' }}
-              >
-                ✕
-              </button>
+              <RemoveButton variant="light" onClick={() => removeVariantGroup(group.id)} />
             </div>
 
             {/* Заменяет ингредиент из состава */}
@@ -923,34 +962,17 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
                 return (
                   <div key={opt.id} className="flex items-center gap-2 p-2 rounded-xl" style={{ background: '#FEFEF2' }}>
-                    <select
-                      value={opt.ingredientRefId || ''}
-                      onChange={e => {
-                        const ref = ingredientRefs.find(r => r.id === e.target.value)
-                        if (!ref) return
-                        // Если группа заменяет ингредиент — берём его объём из первого размера
-                        const amount = replacedAmountsPerSize?.[0]?.amount ?? opt.weight
-                        const unit = replacedAmountsPerSize?.[0]?.size.unit ?? ref.unit
-                        const ratio = amount / 100
-                        updateVariantOption(group.id, opt.id, {
-                          ingredientRefId: ref.id,
-                          label: ref.name,
-                          weight: amount,
-                          weightUnit: unit,
-                          calories: Math.round(ref.caloriesPer100 * ratio),
-                          protein: Math.round(ref.proteinPer100 * ratio * 10) / 10,
-                          fat: Math.round(ref.fatPer100 * ratio * 10) / 10,
-                          carbs: Math.round(ref.carbsPer100 * ratio * 10) / 10,
-                        })
+                    <button
+                      onClick={() => setVariantPickerTarget({ groupId: group.id, optionId: opt.id })}
+                      className="flex-1 h-8 px-3 rounded-lg text-sm text-left truncate transition-colors"
+                      style={{
+                        background: '#EAE7F8',
+                        border: '0.5px solid rgba(176,166,223,0.3)',
+                        color: selectedRef ? '#2C2950' : '#9D99B8',
                       }}
-                      className="flex-1 h-8 px-2 rounded-lg text-sm outline-none"
-                      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
                     >
-                      <option value="">-- Выберите ингредиент --</option>
-                      {ingredientRefs.map(ref => (
-                        <option key={ref.id} value={ref.id}>{ref.name}</option>
-                      ))}
-                    </select>
+                      {selectedRef ? selectedRef.name : '— Выбрать ингредиент'}
+                    </button>
 
                     {replacedAmountsPerSize ? (
                       // Объёмы унаследованы от заменяемого ингредиента — только чтение
@@ -1002,13 +1024,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       {displayCalories > 0 && `${displayCalories} ккал`}
                     </div>
 
-                    <button
-                      onClick={() => removeVariantOption(group.id, opt.id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ color: '#9D99B8', background: '#EAE7F8' }}
-                    >
-                      ✕
-                    </button>
+                    <RemoveButton size="sm" onClick={() => removeVariantOption(group.id, opt.id)} />
                   </div>
                 )
               })}
@@ -1067,6 +1083,36 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           alreadyAddedIds={ingredients.map(i => i.ingredientRefId)}
           onSelect={ref => addIngredient(ref.id)}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {variantPickerTarget && libraries.length > 0 && (
+        <IngredientPickerModal
+          libraries={libraries}
+          alreadyAddedIds={[]}
+          onSelect={ref => {
+            const { groupId, optionId } = variantPickerTarget
+            const group = variantGroups.find(g => g.id === groupId)
+            const opt = group?.options.find(o => o.id === optionId)
+            if (!group || !opt) return
+            const amount = group.replacesIngredientRefId
+              ? getAmountFromComposition(group.replacesIngredientRefId, sizes[0]?.id ?? '')
+              : (opt.weight || 100)
+            const unit = group.replacesIngredientRefId ? (sizes[0]?.unit ?? 'г') : ref.unit
+            const ratio = amount / 100
+            updateVariantOption(groupId, optionId, {
+              ingredientRefId: ref.id,
+              label: ref.name,
+              weight: amount,
+              weightUnit: unit,
+              calories: Math.round(ref.caloriesPer100 * ratio),
+              protein: Math.round(ref.proteinPer100 * ratio * 10) / 10,
+              fat: Math.round(ref.fatPer100 * ratio * 10) / 10,
+              carbs: Math.round(ref.carbsPer100 * ratio * 10) / 10,
+            })
+            setVariantPickerTarget(null)
+          }}
+          onClose={() => setVariantPickerTarget(null)}
         />
       )}
     </div>

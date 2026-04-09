@@ -15,27 +15,35 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
   const percent = Math.min(100, Math.round((nutri.calories / dailyNorm) * 100))
 
   return (
-    <div className="rounded-2xl p-3 bg-yellow">
-
+    <div
+      className="rounded-2xl p-3"
+      style={{
+        background: 'rgba(255,255,255,0.75)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: '0.5px solid rgba(255,255,255,0.6)',
+        boxShadow: '0 8px 32px rgba(139,92,246,0.12), 0 1px 0 rgba(255,255,255,0.8) inset',
+      }}
+    >
       {/* Заголовок */}
       <div
         className="flex justify-between items-center mb-2 cursor-pointer"
         onClick={() => setExpanded(e => !e)}
       >
-        <span className="text-sm font-medium text-yellow-dark">Мой рацион</span>
+        <span className="text-sm font-medium" style={{ color: '#7C3AED' }}>Мой рацион</span>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium" style={{ color: '#3D3100' }}>
+          <span className="text-sm font-medium" style={{ color: '#2C2950' }}>
             {Math.round(nutri.calories)} ккал
           </span>
-          <span className="text-xs text-yellow-dark">{expanded ? '▲' : '▼'}</span>
+          <span className="text-xs" style={{ color: '#9D99B8' }}>{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
 
       {/* Прогресс бар */}
-      <div className="h-1.5 rounded-full mb-2" style={{ background: 'rgba(99,82,0,0.15)' }}>
+      <div className="h-1.5 rounded-full mb-2" style={{ background: 'rgba(139,92,246,0.1)' }}>
         <div
           className="h-1.5 rounded-full transition-all"
-          style={{ width: `${percent}%`, background: '#B8A000' }}
+          style={{ width: `${percent}%`, background: '#8B5CF6' }}
         />
       </div>
 
@@ -48,15 +56,15 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
           { val: percent, label: 'нормы', unit: '%' },
         ].map(({ val, label, unit }) => (
           <div key={label}>
-            <p className="text-sm font-medium" style={{ color: '#3D3100' }}>{val}{unit}</p>
-            <p className="text-xs text-yellow-dark">{label}</p>
+            <p className="text-sm font-medium" style={{ color: '#2C2950' }}>{val}{unit}</p>
+            <p className="text-xs" style={{ color: '#9D99B8' }}>{label}</p>
           </div>
         ))}
       </div>
 
       {/* Список блюд */}
       {expanded && (
-        <div className="mt-3 pt-2" style={{ borderTop: '0.5px solid rgba(99,82,0,0.15)' }}>
+        <div className="mt-3 pt-2" style={{ borderTop: '0.5px solid rgba(139,92,246,0.12)' }}>
           {items.map((trackerItem) => {
             const { menuItem, quantity, variantLabel, resolvedCalories } = trackerItem
             const key = `${menuItem.id}-${variantLabel ?? ''}`
@@ -65,21 +73,21 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
 
             return (
               <div key={key} className="flex items-center justify-between py-1.5">
-                <span className="text-xs flex-1 truncate text-yellow-dark">
+                <span className="text-xs flex-1 truncate" style={{ color: '#6B6490' }}>
                   {fullName}
                   {quantity > 1 && (
-                    <span className="ml-1 font-medium" style={{ color: '#3D3100' }}>
+                    <span className="ml-1 font-medium" style={{ color: '#2C2950' }}>
                       ×{quantity}
                     </span>
                   )}
                 </span>
-                <span className="text-xs font-medium mx-2 flex-shrink-0" style={{ color: '#3D3100' }}>
+                <span className="text-xs font-medium mx-2 flex-shrink-0" style={{ color: '#2C2950' }}>
                   {totalKcal} ккал
                 </span>
                 <button
                   onClick={() => onRemove(key)}
                   className="text-xs w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(99,82,0,0.12)', color: '#635200' }}
+                  style={{ background: 'rgba(139,92,246,0.08)', color: '#9D99B8' }}
                 >
                   ✕
                 </button>

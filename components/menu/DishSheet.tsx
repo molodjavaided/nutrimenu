@@ -232,14 +232,28 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
         side="bottom"
-        className="rounded-t-2xl px-5 pt-3 pb-8 max-w-lg mx-auto overflow-y-auto bg-background"
-        style={{ border: 'none', maxHeight: '90vh' }}
+        className="rounded-t-2xl px-5 pt-3 max-w-lg mx-auto overflow-y-auto bg-background"
+        style={{
+          border: 'none',
+          maxHeight: '90vh',
+          paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          boxShadow: '0 -8px 40px rgba(139,92,246,0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
+        }}
       >
         {/* Handle */}
-        <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(176,166,223,0.5)' }} />
+        <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(139,92,246,0.25)' }} />
 
         {/* Фото */}
-        <div className="w-full h-32 rounded-xl flex items-center justify-center text-5xl mb-4 bg-lavender-light">
+        <div
+          className="w-full h-48 rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
+          style={{
+            background: 'rgba(139,92,246,0.06)',
+            border: '0.5px solid rgba(255,255,255,0.5)',
+          }}
+        >
           🍽️
         </div>
 
@@ -257,9 +271,16 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
             { val: `${Math.round(resolvedNutri.fat)}г`, label: 'жиры', accent: false },
             { val: `${Math.round(resolvedNutri.carbs)}г`, label: 'углеводы', accent: false },
           ].map(({ val, label, accent }) => (
-            <div key={label} className="rounded-xl p-2 text-center bg-lavender-light">
-              <p className={`text-sm font-medium ${accent ? 'text-lavender-dark' : 'text-text-primary'}`}>{val}</p>
-              <p className="text-xs mt-0.5 text-text-secondary">{label}</p>
+            <div
+              key={label}
+              className="rounded-xl p-2 text-center"
+              style={{
+                background: accent ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.5)',
+                border: '0.5px solid rgba(255,255,255,0.5)',
+              }}
+            >
+              <p className="text-sm font-medium" style={{ color: accent ? '#7C3AED' : '#2C2950' }}>{val}</p>
+              <p className="text-xs mt-0.5" style={{ color: '#9D99B8' }}>{label}</p>
             </div>
           ))}
         </div>
@@ -276,11 +297,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                   <button
                     key={size.id}
                     onClick={() => setSelectedSizeId(size.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                    className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
+                    style={
                       isActive
-                        ? 'bg-lavender text-text-primary'
-                        : 'bg-lavender-light text-text-secondary'
-                    }`}
+                        ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
+                        : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+                    }
                   >
                     {label}
                     <span className={`ml-1.5 text-xs ${isActive ? 'text-lavender-dark' : 'text-text-muted'}`}>
@@ -312,11 +334,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                     }
                     return { ...prev, [group.id]: opt.id }
                   })}
-                  className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                  className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
+                  style={
                     variants[group.id] === opt.id
-                      ? 'bg-lavender text-text-primary'
-                      : 'bg-lavender-light text-text-secondary'
-                  }`}
+                      ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
+                      : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+                  }
                 >
                   {opt.label} — {getOptionCalories(group, opt)} ккал
                 </button>
@@ -363,9 +386,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         <button
           onClick={handleAdd}
           disabled={!isValid}
-          className={`w-full py-3 rounded-xl text-base font-medium transition-all ${
-            isValid ? 'bg-lavender text-text-primary' : 'bg-lavender-light text-text-muted'
-          }`}
+          className="w-full py-4 rounded-xl text-base font-medium transition-all active:scale-[0.98]"
+          style={
+            isValid
+              ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 8px 24px rgba(139,92,246,0.35)' }
+              : { background: 'rgba(139,92,246,0.08)', color: '#9D99B8' }
+          }
         >
           {isValid ? 'Добавить в рацион' : 'Выберите параметры'}
         </button>
@@ -398,7 +424,8 @@ function ModifierGroupSection({ group, selected, onSelect }: {
 
           if (mod.allowPortions) {
             return (
-              <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden bg-lavender-light"
+              <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(255,255,255,0.5)' }}
                 style={{ border: '0.5px solid rgba(176,166,223,0.4)' }}>
                 {portionCount > 0 ? (
                   <>
@@ -440,12 +467,12 @@ function ModifierGroupSection({ group, selected, onSelect }: {
             <button
               key={mod.id}
               onClick={() => onSelect(mod.id)}
-              className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+              className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
+              style={
                 isSelected
-                  ? 'bg-lavender text-text-primary'
-                  : 'bg-lavender-light text-text-secondary'
-              }`}
-              style={{ border: isSelected ? '0.5px solid #B0A6DF' : '0.5px solid rgba(176,166,223,0.3)' }}
+                  ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
+                  : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+              }
             >
               {mod.label}
               {mod.calories > 0 && group.type !== 'replace' && (

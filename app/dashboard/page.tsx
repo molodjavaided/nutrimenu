@@ -21,8 +21,17 @@ export default function DashboardPage() {
           { label: 'Блюд', value: '47', sub: 'позиций' },
           { label: 'Просмотров', value: '—', sub: 'скоро' },
         ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-2xl p-3 sm:p-5"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)' }}>
+          <div
+            key={label}
+            className="rounded-2xl p-3 sm:p-5"
+            style={{
+              background: 'rgba(255,255,255,0.65)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '0.5px solid rgba(255,255,255,0.5)',
+              boxShadow: '0 8px 24px rgba(139,92,246,0.08)',
+            }}
+          >
             <p className="text-xs mb-1 sm:mb-2" style={{ color: '#6B6490' }}>{label}</p>
             <p className="text-2xl sm:text-3xl font-medium mb-0.5" style={{ color: '#2C2950' }}>{value}</p>
             <p className="text-xs" style={{ color: '#9D99B8' }}>{sub}</p>
@@ -36,7 +45,7 @@ export default function DashboardPage() {
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Link href="/dashboard/menu"
             className="flex items-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{ background: '#B0A6DF', color: '#2C2950' }}>
+            style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 16px rgba(139,92,246,0.3)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 4h12M2 8h12M2 12h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
             </svg>
@@ -44,7 +53,7 @@ export default function DashboardPage() {
           </Link>
           <Link href="/dashboard/item/new"
             className="flex items-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px solid rgba(176,166,223,0.4)' }}>
+            style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED', border: '0.5px solid rgba(139,92,246,0.2)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
             </svg>
@@ -52,7 +61,7 @@ export default function DashboardPage() {
           </Link>
           <Link href="/dashboard/settings"
             className="flex items-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px solid rgba(176,166,223,0.4)' }}>
+            style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED', border: '0.5px solid rgba(139,92,246,0.2)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
               <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>

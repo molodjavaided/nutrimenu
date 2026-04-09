@@ -92,11 +92,17 @@ export function DashboardNav() {
     <>
       {/* ── Sidebar — desktop only ── */}
       <aside
-        className="hidden md:flex w-56 shrink-0 border-r flex-col bg-background"
-        style={{ borderColor: 'rgba(176,166,223,0.3)' }}
+        className="hidden md:flex w-56 shrink-0 flex-col"
+        style={{
+          background: 'rgba(255,255,255,0.7)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderRight: '0.5px solid rgba(255,255,255,0.5)',
+          boxShadow: '1px 0 20px rgba(139,92,246,0.06)',
+        }}
       >
         {/* Логотип */}
-        <div className="px-5 py-5 border-b" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
+        <div className="px-5 py-5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-lavender">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -118,8 +124,8 @@ export function DashboardNav() {
                 href={item.href}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all"
                 style={{
-                  background: active ? '#EAE7F8' : 'transparent',
-                  color: active ? '#2C2950' : '#6B6490',
+                  background: active ? 'rgba(139,92,246,0.1)' : 'transparent',
+                  color: active ? '#7C3AED' : '#6B6490',
                   fontWeight: active ? 500 : 400,
                 }}
               >
@@ -131,7 +137,7 @@ export function DashboardNav() {
         </nav>
 
         {/* Ссылка на гостевое меню */}
-        <div className="px-3 py-4 border-t" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
+        <div className="px-3 py-4" style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
           <Link
             href="/menu/utro"
             target="_blank"
@@ -148,8 +154,15 @@ export function DashboardNav() {
 
       {/* ── Bottom nav — mobile only ── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex bg-background border-t"
-        style={{ borderColor: 'rgba(176,166,223,0.3)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex"
+        style={{
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          borderTop: '0.5px solid rgba(255,255,255,0.5)',
+          boxShadow: '0 -4px 24px rgba(139,92,246,0.08)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
       >
         {navItems.map(item => {
           const active = isActive(item.href, item.exact)
@@ -158,14 +171,14 @@ export function DashboardNav() {
               key={item.href}
               href={item.href}
               className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-              style={{ color: active ? '#534AB7' : '#9D99B8' }}
+              style={{ color: active ? '#7C3AED' : '#9D99B8' }}
             >
               {item.icon}
               <span className="text-[10px] font-medium">{item.label}</span>
               {active && (
                 <span
                   className="absolute top-0 w-8 h-0.5 rounded-full"
-                  style={{ background: '#B0A6DF' }}
+                  style={{ background: '#8B5CF6' }}
                 />
               )}
             </Link>

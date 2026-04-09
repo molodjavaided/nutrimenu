@@ -158,35 +158,27 @@ const resolved = {
 
         <VenueHeader venue={venue} />
 
-        {/* Поиск */}
-        <div className="px-4 pb-3">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Поиск блюда..."
+        {/* Sticky: поиск + табы */}
+        <div
+          className="sticky top-0 z-20 pt-1 pb-0"
+          style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}
+        >
+          <div className="px-4 pb-2">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Поиск блюда..."
+            />
+          </div>
+          <CategoryTabs
+            categories={categories}
+            activeCategory={activeCategory}
+            onSelect={setActiveCategory}
           />
         </div>
 
-        {/* Табы категорий */}
-        <CategoryTabs
-          categories={categories}
-          activeCategory={activeCategory}
-          onSelect={setActiveCategory}
-        />
-
-        {/* Трекер КБЖУ */}
-        {trackerItems.length > 0 && (
-          <div className="px-4 pb-3">
-            <NutriTracker
-              items={trackerItems}
-              nutri={nutri}
-              onRemove={handleRemoveFromTracker}
-            />
-          </div>
-        )}
-
         {/* Список блюд */}
-        <div className="px-4 pb-24">
+        <div className={`px-4 ${trackerItems.length > 0 ? 'pb-52' : 'pb-24'}`}>
           {filteredCategories.length === 0 ? (
             <p className="text-center py-12 text-sm text-text-muted">
               Ничего не найдено
@@ -196,7 +188,7 @@ const resolved = {
               <div key={cat.id} className="mb-6">
                 <p
                   className="text-xs font-medium uppercase tracking-wider pb-2 mb-1 text-text-muted"
-                  style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}
+                  style={{ borderBottom: '0.5px solid rgba(139,92,246,0.15)' }}
                 >
                   {cat.name}
                 </p>
@@ -226,6 +218,22 @@ const resolved = {
         onClose={() => setSheetOpen(false)}
         onAdd={handleAddToTracker}
       />
+
+      {/* Sticky NutriTracker */}
+      {trackerItems.length > 0 && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-30 px-4"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <div className="max-w-lg mx-auto pb-1">
+            <NutriTracker
+              items={trackerItems}
+              nutri={nutri}
+              onRemove={handleRemoveFromTracker}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

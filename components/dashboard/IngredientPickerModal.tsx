@@ -59,24 +59,27 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
     >
       {/* Panel */}
       <div
-        className="flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+        className="flex flex-col rounded-2xl overflow-hidden"
         style={{
           width: 560,
           maxHeight: '80vh',
-          background: '#FEFEF2',
-          border: '0.5px solid rgba(176,166,223,0.4)',
+          background: 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: '0.5px solid rgba(255,255,255,0.6)',
+          boxShadow: '0 24px 64px rgba(139,92,246,0.18), 0 1px 0 rgba(255,255,255,0.9) inset',
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4"
-          style={{ borderBottom: '0.5px solid rgba(176,166,223,0.25)' }}>
+          style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <p className="text-base font-medium" style={{ color: '#2C2950' }}>
             Выбрать ингредиент
           </p>
           <button
             onClick={onClose}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-            style={{ background: '#EAE7F8', color: '#6B6490' }}
+            style={{ background: 'rgba(139,92,246,0.08)', color: '#7C3AED' }}
           >
             ✕
           </button>
@@ -84,20 +87,19 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
 
         {/* Library tabs */}
         <div
-          className="flex gap-1 px-4 pt-3 pb-0 overflow-x-auto"
-          style={{ borderBottom: '0.5px solid rgba(176,166,223,0.25)' }}
+          className="flex gap-1 px-4 pt-3 pb-2 flex-wrap"
+          style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)', scrollbarWidth: 'none' }}
         >
           {libraries.map(lib => (
             <button
               key={lib.id}
               onClick={() => setActiveLibId(lib.id)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg whitespace-nowrap shrink-0 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg whitespace-nowrap shrink-0 flex-shrink-0 transition-colors"
               style={{
-                background: activeLibId === lib.id ? '#EAE7F8' : 'transparent',
-                color: activeLibId === lib.id ? '#2C2950' : '#9D99B8',
+                background: activeLibId === lib.id ? 'rgba(139,92,246,0.1)' : 'transparent',
+                color: activeLibId === lib.id ? '#7C3AED' : '#9D99B8',
                 fontWeight: activeLibId === lib.id ? 500 : 400,
-                borderBottom: activeLibId === lib.id ? '2px solid #B0A6DF' : '2px solid transparent',
-                marginBottom: -1,
+                boxShadow: activeLibId === lib.id ? 'inset 0 -2px 0 0 #8B5CF6' : 'none',
               }}
             >
               {lib.isSystem && (
@@ -113,9 +115,9 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         </div>
 
         {/* Search */}
-        <div className="px-4 py-3" style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
+        <div className="px-4 py-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <div className="flex items-center gap-2 px-3 h-9 rounded-xl"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)' }}>
+            style={{ background: 'rgba(255,255,255,0.6)', border: '0.5px solid rgba(255,255,255,0.5)' }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="7" cy="7" r="4.5" stroke="#9D99B8" strokeWidth="1.3"/>
               <path d="M11 11L14 14" stroke="#9D99B8" strokeWidth="1.3" strokeLinecap="round"/>
@@ -183,7 +185,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         {/* Footer */}
         <div
           className="px-5 py-3 flex items-center justify-between"
-          style={{ borderTop: '0.5px solid rgba(176,166,223,0.25)' }}
+          style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}
         >
           <p className="text-xs" style={{ color: '#9D99B8' }}>
             Нажмите на ингредиент чтобы добавить его в состав
@@ -191,7 +193,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ background: '#B0A6DF', color: '#2C2950' }}
+            style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
           >
             Готово
           </button>

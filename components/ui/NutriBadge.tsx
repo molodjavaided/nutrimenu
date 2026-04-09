@@ -11,13 +11,12 @@ interface Props {
 export function NutriBadge({ label, value, unit = '', variant = 'macro', className }: Props) {
   return (
     <span
-      className={cn(
-        'text-xs px-1.5 py-0.5 rounded-md font-medium',
+      className={cn('text-xs px-1.5 py-0.5 rounded-md font-medium', className)}
+      style={
         variant === 'calorie'
-          ? 'bg-yellow text-yellow-dark'
-          : 'bg-lavender-light text-lavender-dark',
-        className
-      )}
+          ? { background: 'rgba(242,217,101,0.3)', color: '#7C5200', border: '0.5px solid rgba(242,217,101,0.5)' }
+          : { background: 'rgba(139,92,246,0.1)', color: '#7C3AED', border: '0.5px solid rgba(139,92,246,0.2)' }
+      }
     >
       {label} {value}{unit}
     </span>

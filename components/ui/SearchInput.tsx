@@ -11,7 +11,13 @@ export function SearchInput({ value, onChange, placeholder = 'Поиск...', cl
   return (
     <div
       className={`flex items-center gap-2 px-3 h-10 rounded-xl ${className ?? ''}`}
-      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)' }}
+      style={{
+        background: 'rgba(255,255,255,0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '0.5px solid rgba(255,255,255,0.5)',
+        boxShadow: '0 2px 8px rgba(139,92,246,0.06)',
+      }}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
         <circle cx="7" cy="7" r="4.5" stroke="#9D99B8" strokeWidth="1.3" />

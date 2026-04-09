@@ -106,25 +106,26 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
 
       {/* Заголовок */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-medium mb-1" style={{ color: '#2C2950' }}>Меню</h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-medium mb-1 truncate" style={{ color: '#2C2950' }}>Меню</h1>
           <p className="text-sm" style={{ color: '#6B6490' }}>
             {categories.length} категорий · {categories.reduce((s, c) => s + (c.items?.length ?? 0), 0)} позиций
           </p>
         </div>
         <Link
           href="/dashboard/item/new"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shrink-0"
           style={{ background: '#B0A6DF', color: '#2C2950' }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          Добавить блюдо
+          <span className="hidden sm:inline">Добавить блюдо</span>
+          <span className="sm:hidden">Добавить</span>
         </Link>
       </div>
 

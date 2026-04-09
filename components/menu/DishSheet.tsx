@@ -6,6 +6,7 @@ import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVari
 import { buildVariantLabel, resolveNutri, resolveNutriFromComposition } from '@/lib/utils'
 import { getAllIngredients, initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
+import { QuantityControl } from '@/components/ui/QuantityControl'
 
 interface Props {
   item: MenuItem | null
@@ -231,21 +232,21 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
         side="bottom"
-        className="rounded-t-2xl px-5 pt-3 pb-8 max-w-lg mx-auto overflow-y-auto"
-        style={{ background: '#FEFEF2', border: 'none', maxHeight: '90vh' }}
+        className="rounded-t-2xl px-5 pt-3 pb-8 max-w-lg mx-auto overflow-y-auto bg-background"
+        style={{ border: 'none', maxHeight: '90vh' }}
       >
         {/* Handle */}
         <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(176,166,223,0.5)' }} />
 
         {/* Фото */}
-        <div className="w-full h-32 rounded-xl flex items-center justify-center text-5xl mb-4" style={{ background: '#EAE7F8' }}>
+        <div className="w-full h-32 rounded-xl flex items-center justify-center text-5xl mb-4 bg-lavender-light">
           🍽️
         </div>
 
         {/* Название */}
-        <h2 className="text-lg font-medium mb-1" style={{ color: '#2C2950' }}>{item.name}</h2>
+        <h2 className="text-lg font-medium mb-1 text-text-primary">{item.name}</h2>
         {item.description && (
-          <p className="text-sm mb-4 leading-relaxed" style={{ color: '#6B6490' }}>{item.description}</p>
+          <p className="text-sm mb-4 leading-relaxed text-text-secondary">{item.description}</p>
         )}
 
         {/* КБЖУ плитки */}
@@ -256,9 +257,9 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
             { val: `${Math.round(resolvedNutri.fat)}г`, label: 'жиры', accent: false },
             { val: `${Math.round(resolvedNutri.carbs)}г`, label: 'углеводы', accent: false },
           ].map(({ val, label, accent }) => (
-            <div key={label} className="rounded-xl p-2 text-center" style={{ background: '#EAE7F8' }}>
-              <p className="text-sm font-medium" style={{ color: accent ? '#534AB7' : '#2C2950' }}>{val}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#6B6490' }}>{label}</p>
+            <div key={label} className="rounded-xl p-2 text-center bg-lavender-light">
+              <p className={`text-sm font-medium ${accent ? 'text-lavender-dark' : 'text-text-primary'}`}>{val}</p>
+              <p className="text-xs mt-0.5 text-text-secondary">{label}</p>
             </div>
           ))}
         </div>
@@ -266,7 +267,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         {/* Выбор размера (из sizes) */}
         {item.sizes && item.sizes.length > 1 && (
           <div className="mb-4">
-            <p className="text-sm font-medium mb-2" style={{ color: '#2C2950' }}>Объём</p>
+            <p className="text-sm font-medium mb-2 text-text-primary">Объём</p>
             <div className="flex flex-wrap gap-2">
               {item.sizes.map(size => {
                 const isActive = (selectedSizeId ?? item.sizes![0].id) === size.id
@@ -275,14 +276,14 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                   <button
                     key={size.id}
                     onClick={() => setSelectedSizeId(size.id)}
-                    className="px-3 py-1.5 rounded-full text-sm transition-all"
-                    style={isActive
-                      ? { background: '#B0A6DF', color: '#2C2950' }
-                      : { background: '#EAE7F8', color: '#6B6490' }
-                    }
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                      isActive
+                        ? 'bg-lavender text-text-primary'
+                        : 'bg-lavender-light text-text-secondary'
+                    }`}
                   >
                     {label}
-                    <span className="ml-1.5 text-xs" style={{ color: isActive ? '#534AB7' : '#9D99B8' }}>
+                    <span className={`ml-1.5 text-xs ${isActive ? 'text-lavender-dark' : 'text-text-muted'}`}>
                       {size.calories} ккал
                     </span>
                   </button>
@@ -295,16 +296,15 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         {/* Группы вариантов */}
         {item.variantGroups?.map(group => (
           <div key={group.id} className="mb-4">
-            <p className="text-sm font-medium mb-2" style={{ color: '#2C2950' }}>
+            <p className="text-sm font-medium mb-2 text-text-primary">
               {group.label}
-              {!group.required && <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>(необязательно)</span>}
+              {!group.required && <span className="text-xs ml-1 text-text-muted">(необязательно)</span>}
             </p>
             <div className="flex flex-wrap gap-2">
               {group.options.map(opt => (
                 <button
                   key={opt.id}
                   onClick={() => setVariants(prev => {
-                    // Повторный клик по выбранной опции снимает выбор (только для необязательных групп)
                     if (!group.required && prev[group.id] === opt.id) {
                       const next = { ...prev }
                       delete next[group.id]
@@ -314,8 +314,8 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                   })}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                     variants[group.id] === opt.id
-                      ? 'bg-[#B0A6DF] text-[#2C2950]'
-                      : 'bg-[#EAE7F8] text-[#6B6490]'
+                      ? 'bg-lavender text-text-primary'
+                      : 'bg-lavender-light text-text-secondary'
                   }`}
                 >
                   {opt.label} — {getOptionCalories(group, opt)} ккал
@@ -349,20 +349,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
 
         {/* Количество */}
         <div className="flex items-center gap-3 mb-5 mt-2">
-          <button
-            onClick={() => setQuantity(q => Math.max(1, q - 1))}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}>
-            −
-          </button>
-          <span className="text-base font-medium w-5 text-center" style={{ color: '#2C2950' }}>{quantity}</span>
-          <button
-            onClick={() => setQuantity(q => q + 1)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
-            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}>
-            +
-          </button>
-          <span className="text-sm ml-1" style={{ color: '#6B6490' }}>
+          <QuantityControl
+            quantity={quantity}
+            onAdd={() => setQuantity(q => q + 1)}
+            onRemove={() => setQuantity(q => Math.max(1, q - 1))}
+          />
+          <span className="text-sm text-text-secondary">
             {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
           </span>
         </div>
@@ -371,12 +363,10 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         <button
           onClick={handleAdd}
           disabled={!isValid}
-          className="w-full py-3 rounded-xl text-base font-medium transition-all"
-          style={{
-            background: isValid ? '#B0A6DF' : '#EAE7F8',
-            color: isValid ? '#2C2950' : '#9D99B8',
-            border: 'none',
-          }}>
+          className={`w-full py-3 rounded-xl text-base font-medium transition-all ${
+            isValid ? 'bg-lavender text-text-primary' : 'bg-lavender-light text-text-muted'
+          }`}
+        >
           {isValid ? 'Добавить в рацион' : 'Выберите параметры'}
         </button>
       </SheetContent>
@@ -392,9 +382,9 @@ function ModifierGroupSection({ group, selected, onSelect }: {
 }) {
   return (
     <div className="mb-4">
-      <p className="text-sm font-medium mb-2" style={{ color: '#2C2950' }}>
+      <p className="text-sm font-medium mb-2 text-text-primary">
         {group.label}
-        {!group.required && <span className="text-xs font-normal ml-1" style={{ color: '#9D99B8' }}>необязательно</span>}
+        {!group.required && <span className="text-xs font-normal ml-1 text-text-muted">необязательно</span>}
       </p>
       <div className="flex flex-wrap gap-2">
         {group.modifiers.map(mod => {
@@ -407,40 +397,38 @@ function ModifierGroupSection({ group, selected, onSelect }: {
           const portionCount = mod.allowPortions && typeof selected === 'number' ? selected : 1
 
           if (mod.allowPortions) {
-            // Степпер порций
             return (
-              <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden"
-                style={{ border: '0.5px solid rgba(176,166,223,0.4)', background: '#EAE7F8' }}>
+              <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden bg-lavender-light"
+                style={{ border: '0.5px solid rgba(176,166,223,0.4)' }}>
                 {portionCount > 0 ? (
                   <>
                     <button
                       onClick={() => onSelect(mod.id, Math.max(0, portionCount - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors"
-                      style={{ color: '#534AB7' }}>−</button>
-                    <span className="min-w-[1.5rem] text-center text-sm font-medium" style={{ color: '#2C2950' }}>
+                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors text-lavender-dark">
+                      −
+                    </button>
+                    <span className="min-w-[1.5rem] text-center text-sm font-medium text-text-primary">
                       {portionCount}
                     </span>
                     <button
                       onClick={() => onSelect(mod.id, Math.min(portionCount + 1, mod.maxPortions ?? 10))}
-                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors"
-                      style={{ color: '#534AB7' }}>+</button>
-                    <span className="pr-3 text-xs" style={{ color: '#6B6490' }}>
+                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors text-lavender-dark">
+                      +
+                    </button>
+                    <span className="pr-3 text-xs text-text-secondary">
                       {mod.label}
                       {mod.calories > 0 && (
-                        <span className="ml-1" style={{ color: '#534AB7' }}>
-                          +{mod.calories * portionCount} ккал
-                        </span>
+                        <span className="ml-1 text-lavender-dark">+{mod.calories * portionCount} ккал</span>
                       )}
                     </span>
                   </>
                 ) : (
                   <button
                     onClick={() => onSelect(mod.id, 1)}
-                    className="px-3 py-1.5 text-sm"
-                    style={{ color: '#6B6490' }}>
+                    className="px-3 py-1.5 text-sm text-text-secondary">
                     {mod.label}
                     {mod.calories > 0 && (
-                      <span className="ml-1 text-xs" style={{ color: '#9D99B8' }}>+{mod.calories} ккал</span>
+                      <span className="ml-1 text-xs text-text-muted">+{mod.calories} ккал</span>
                     )}
                   </button>
                 )}
@@ -452,19 +440,21 @@ function ModifierGroupSection({ group, selected, onSelect }: {
             <button
               key={mod.id}
               onClick={() => onSelect(mod.id)}
-              className="px-3 py-1.5 rounded-full text-sm transition-all"
-              style={isSelected
-                ? { background: '#B0A6DF', color: '#2C2950', border: '0.5px solid #B0A6DF' }
-                : { background: '#EAE7F8', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.3)' }
-              }>
+              className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                isSelected
+                  ? 'bg-lavender text-text-primary'
+                  : 'bg-lavender-light text-text-secondary'
+              }`}
+              style={{ border: isSelected ? '0.5px solid #B0A6DF' : '0.5px solid rgba(176,166,223,0.3)' }}
+            >
               {mod.label}
               {mod.calories > 0 && group.type !== 'replace' && (
-                <span className="ml-1 text-xs" style={{ color: isSelected ? '#534AB7' : '#9D99B8' }}>
+                <span className={`ml-1 text-xs ${isSelected ? 'text-lavender-dark' : 'text-text-muted'}`}>
                   +{mod.calories} ккал
                 </span>
               )}
               {group.type === 'replace' && mod.calories > 0 && (
-                <span className="ml-1 text-xs" style={{ color: isSelected ? '#534AB7' : '#9D99B8' }}>
+                <span className={`ml-1 text-xs ${isSelected ? 'text-lavender-dark' : 'text-text-muted'}`}>
                   {mod.calories} ккал/100{mod.weightUnit}
                 </span>
               )}

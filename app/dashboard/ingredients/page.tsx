@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { IngredientLibrary, IngredientRef } from '@/types'
 import { getLibraries, saveLibraryIngredients, initLibraries, MY_LIBRARY_ID } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
+import { SearchInput } from '@/components/ui/SearchInput'
 
 const PRESET_CATEGORIES = ['Молоко', 'Крупа', 'Мясо и рыба', 'Овощи', 'Фрукты', 'Соусы', 'Выпечка', 'Прочее']
 
@@ -29,7 +30,6 @@ export default function IngredientsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [isCustomCategory, setIsCustomCategory] = useState(false)
 
-  // Barcode lookup
   const [barcodeMode, setBarcodeMode] = useState(false)
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeStatus, setBarcodeStatus] = useState<BarcodeStatus>('idle')
@@ -37,7 +37,6 @@ export default function IngredientsPage() {
   useEffect(() => {
     const libs = initLibraries(systemLibraries)
     setLibraries(libs)
-    // Default to personal library
     setActiveLibId(MY_LIBRARY_ID)
   }, [])
 
@@ -149,14 +148,15 @@ export default function IngredientsPage() {
   }, {})
 
   return (
-    <div className="flex gap-0 h-full">
+    <div className="flex flex-col md:flex-row h-full">
 
-      {/* ─── Левая панель: список библиотек ─────────────────── */}
+      {/* ── Библиотеки: горизонтальный скролл на мобильном, вертикальная панель на десктопе ── */}
       <div
-        className="w-56 shrink-0 flex flex-col gap-1 pt-8 pb-6 pr-2 border-r"
+        className="md:w-56 md:shrink-0 md:flex-col md:gap-1 md:pt-8 md:pb-6 md:pr-2 md:border-r md:flex
+                   flex overflow-x-auto gap-2 px-4 pt-4 pb-3 border-b shrink-0"
         style={{ borderColor: 'rgba(176,166,223,0.25)' }}
       >
-        <p className="text-xs font-medium uppercase tracking-wider px-3 mb-2" style={{ color: '#9D99B8' }}>
+        <p className="hidden md:block text-xs font-medium uppercase tracking-wider px-3 mb-2" style={{ color: '#9D99B8' }}>
           Библиотеки
         </p>
 
@@ -164,161 +164,160 @@ export default function IngredientsPage() {
           <button
             key={lib.id}
             onClick={() => { setActiveLibId(lib.id); setAdding(false); setEditingId(null); setSearch('') }}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-left w-full transition-colors"
+            className="flex items-center gap-2 px-3 py-2 md:py-2.5 rounded-xl text-sm text-left shrink-0 md:w-full transition-colors"
             style={{
               background: activeLibId === lib.id ? '#EAE7F8' : 'transparent',
               color: activeLibId === lib.id ? '#2C2950' : '#6B6490',
               fontWeight: activeLibId === lib.id ? 500 : 400,
+              border: activeLibId === lib.id ? 'none' : '0.5px solid rgba(176,166,223,0.3)',
             }}
           >
             {lib.isSystem ? (
-              /* Иконка системной библиотеки — замок */
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
                 <rect x="2.5" y="6" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
                 <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
             ) : (
-              /* Иконка личной библиотеки — стопка */
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
                 <path d="M2 10.5h10M2 7.5h10M2 4.5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               </svg>
             )}
             <span className="truncate">{lib.name}</span>
-            <span className="ml-auto text-xs shrink-0" style={{ color: '#9D99B8' }}>
+            <span className="ml-auto text-xs shrink-0 hidden md:inline" style={{ color: '#9D99B8' }}>
               {lib.ingredients.length}
             </span>
           </button>
         ))}
       </div>
 
-      {/* ─── Правая панель: содержимое библиотеки ────────────── */}
-      <div className="flex-1 p-8 max-w-4xl overflow-y-auto">
+      {/* ── Содержимое библиотеки ── */}
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
 
         {/* Заголовок */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-medium" style={{ color: '#2C2950' }}>
+        <div className="flex items-start justify-between gap-3 mb-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-medium" style={{ color: '#2C2950' }}>
                 {activeLib?.name ?? ''}
               </h1>
               {isSystem && (
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{ background: '#EAE7F8', color: '#B0A6DF' }}
-                >
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: '#EAE7F8', color: '#B0A6DF' }}>
                   Системная
                 </span>
               )}
             </div>
             <p className="text-sm" style={{ color: '#6B6490' }}>
-              {ingredients.length} ингредиентов · КБЖУ на 100 г / 100 мл
+              {ingredients.length} ингредиентов
               {isSystem && ' · только просмотр'}
             </p>
           </div>
 
           {!isSystem && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => { setBarcodeMode(m => !m); setBarcodeInput(''); setBarcodeStatus('idle') }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium"
                 style={{
                   background: barcodeMode ? '#2C2950' : '#EAE7F8',
                   color: barcodeMode ? '#EAE7F8' : '#2C2950',
                 }}
               >
-                {/* Barcode icon */}
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M1 3v10M3 3v10M5 3v10M7 3v6M9 3v10M11 3v10M13 3v6M7 11v2M10 9h3v4h-3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                 </svg>
-                По штрихкоду
+                <span className="hidden sm:inline">По штрихкоду</span>
               </button>
               <button
                 onClick={() => { setAdding(true); setEditingId(null); setForm({ ...EMPTY }); setIsCustomCategory(false); setBarcodeMode(false) }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
                 style={{ background: '#B0A6DF', color: '#2C2950' }}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
-                Добавить ингредиент
+                <span className="hidden sm:inline">Добавить ингредиент</span>
+                <span className="sm:hidden">Добавить</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* Панель поиска по штрихкоду */}
+        {/* Штрихкод */}
         {!isSystem && barcodeMode && (
-          <div className="rounded-2xl p-5 mb-6"
+          <div className="rounded-2xl p-4 sm:p-5 mb-6"
             style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.5)' }}>
             <p className="text-sm font-medium mb-1" style={{ color: '#2C2950' }}>
               Поиск по штрихкоду
             </p>
             <p className="text-xs mb-4" style={{ color: '#9D99B8' }}>
-              Введите штрихкод с упаковки — данные о КБЖУ заполнятся автоматически из открытой базы продуктов
+              Введите штрихкод с упаковки — данные о КБЖУ заполнятся автоматически
             </p>
-            <div className="flex gap-2 items-start">
-              <div className="flex flex-col gap-1 flex-1 max-w-xs">
+            <div className="flex flex-col sm:flex-row gap-2 items-start">
+              <div className="flex flex-col gap-1 flex-1 w-full">
                 <input
                   autoFocus
                   value={barcodeInput}
                   onChange={e => { setBarcodeInput(e.target.value); setBarcodeStatus('idle') }}
                   onKeyDown={e => e.key === 'Enter' && handleBarcodeLookup()}
                   placeholder="4630146040576"
-                  className="h-10 px-3 rounded-xl text-sm outline-none font-mono"
+                  className="h-11 px-3 rounded-xl text-sm outline-none font-mono w-full"
                   style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                 />
                 {barcodeStatus === 'not_found' && (
                   <p className="text-xs" style={{ color: '#E24B4A' }}>
-                    Товар не найден в базе. Попробуйте другой штрихкод или добавьте вручную.
+                    Товар не найден. Попробуйте другой штрихкод или добавьте вручную.
                   </p>
                 )}
                 {barcodeStatus === 'error' && (
                   <p className="text-xs" style={{ color: '#E24B4A' }}>
-                    Ошибка сети. Проверьте подключение и попробуйте снова.
+                    Ошибка сети. Проверьте подключение.
                   </p>
                 )}
               </div>
-              <button
-                onClick={handleBarcodeLookup}
-                disabled={!barcodeInput.trim() || barcodeStatus === 'loading'}
-                className="h-10 px-5 rounded-xl text-sm font-medium flex items-center gap-2"
-                style={{
-                  background: barcodeInput.trim() ? '#B0A6DF' : '#C8C3F0',
-                  color: '#2C2950',
-                  opacity: barcodeStatus === 'loading' ? 0.7 : 1,
-                }}
-              >
-                {barcodeStatus === 'loading' ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin">
-                      <circle cx="7" cy="7" r="5.5" stroke="#B0A6DF" strokeWidth="1.5"/>
-                      <path d="M7 1.5A5.5 5.5 0 0 1 12.5 7" stroke="#2C2950" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                    Поиск...
-                  </>
-                ) : 'Найти'}
-              </button>
-              <button
-                onClick={() => { setBarcodeMode(false); setBarcodeInput(''); setBarcodeStatus('idle') }}
-                className="h-10 px-3 rounded-xl text-sm"
-                style={{ background: '#FEFEF2', color: '#6B6490' }}
-              >
-                Отмена
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleBarcodeLookup}
+                  disabled={!barcodeInput.trim() || barcodeStatus === 'loading'}
+                  className="flex-1 sm:flex-none h-11 px-5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    background: barcodeInput.trim() ? '#B0A6DF' : '#C8C3F0',
+                    color: '#2C2950',
+                    opacity: barcodeStatus === 'loading' ? 0.7 : 1,
+                  }}
+                >
+                  {barcodeStatus === 'loading' ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin">
+                        <circle cx="7" cy="7" r="5.5" stroke="#B0A6DF" strokeWidth="1.5"/>
+                        <path d="M7 1.5A5.5 5.5 0 0 1 12.5 7" stroke="#2C2950" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      Поиск...
+                    </>
+                  ) : 'Найти'}
+                </button>
+                <button
+                  onClick={() => { setBarcodeMode(false); setBarcodeInput(''); setBarcodeStatus('idle') }}
+                  className="h-11 px-3 rounded-xl text-sm"
+                  style={{ background: '#FEFEF2', color: '#6B6490' }}
+                >
+                  Отмена
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Форма добавления / редактирования (только для личной библиотеки) */}
+        {/* Форма добавления / редактирования */}
         {!isSystem && (adding || editingId) && (
-          <div className="rounded-2xl p-5 mb-6"
+          <div className="rounded-2xl p-4 sm:p-5 mb-6"
             style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.5)' }}>
             <p className="text-sm font-medium mb-4" style={{ color: '#2C2950' }}>
               {editingId ? 'Редактировать ингредиент' : 'Новый ингредиент'}
             </p>
 
             {/* Строка 1 — название, категория, единица */}
-            <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: '1fr 160px 80px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px_80px] gap-3 mb-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs" style={{ color: '#6B6490' }}>Название *</label>
                 <input
@@ -326,7 +325,7 @@ export default function IngredientsPage() {
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Молоко классическое"
-                  className="h-10 px-3 rounded-xl text-sm outline-none"
+                  className="h-11 px-3 rounded-xl text-sm outline-none"
                   style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                 />
               </div>
@@ -335,18 +334,16 @@ export default function IngredientsPage() {
                 {isCustomCategory ? (
                   <div className="flex gap-1">
                     <input
-                      autoFocus
                       value={form.category}
                       onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                       placeholder="Название категории"
-                      className="flex-1 h-10 px-2 rounded-xl text-sm outline-none"
+                      className="flex-1 h-11 px-2 rounded-xl text-sm outline-none"
                       style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                     />
                     <button
                       onClick={() => { setIsCustomCategory(false); setForm(f => ({ ...f, category: 'Прочее' })) }}
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#9D99B8' }}
-                      title="Вернуться к списку"
                     >✕</button>
                   </div>
                 ) : (
@@ -360,11 +357,11 @@ export default function IngredientsPage() {
                         setForm(f => ({ ...f, category: e.target.value }))
                       }
                     }}
-                    className="h-10 px-2 rounded-xl text-sm outline-none"
+                    className="h-11 px-2 rounded-xl text-sm outline-none"
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                   >
                     {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option disabled style={{ color: '#C8C3F0' }}>──────────</option>
+                    <option disabled>──────────</option>
                     <option value="__custom__">+ Создать категорию...</option>
                   </select>
                 )}
@@ -374,7 +371,7 @@ export default function IngredientsPage() {
                 <select
                   value={form.unit}
                   onChange={e => setForm(f => ({ ...f, unit: e.target.value as 'г' | 'мл' }))}
-                  className="h-10 px-2 rounded-xl text-sm outline-none"
+                  className="h-11 px-2 rounded-xl text-sm outline-none"
                   style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                 >
                   <option value="г">г</option>
@@ -384,7 +381,7 @@ export default function IngredientsPage() {
             </div>
 
             {/* Строка 2 — КБЖУ на 100 */}
-            <div className="grid gap-3 mb-4" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               {([
                 { key: 'caloriesPer100', label: `Ккал / 100 ${form.unit}` },
                 { key: 'proteinPer100', label: 'Белки г' },
@@ -395,10 +392,11 @@ export default function IngredientsPage() {
                   <label className="text-xs" style={{ color: '#6B6490' }}>{label}</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     value={form[key] || ''}
                     onChange={e => setForm(f => ({ ...f, [key]: Number(e.target.value) }))}
                     placeholder="0"
-                    className="h-10 px-3 rounded-xl text-sm outline-none text-center"
+                    className="h-11 px-3 rounded-xl text-sm outline-none text-center"
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                   />
                 </div>
@@ -409,7 +407,7 @@ export default function IngredientsPage() {
               <button
                 onClick={editingId ? handleUpdate : handleAdd}
                 disabled={!form.name.trim()}
-                className="px-5 py-2 rounded-xl text-sm font-medium"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-medium"
                 style={{
                   background: form.name.trim() ? '#B0A6DF' : '#C8C3F0',
                   color: '#2C2950',
@@ -419,7 +417,7 @@ export default function IngredientsPage() {
               </button>
               <button
                 onClick={cancelForm}
-                className="px-5 py-2 rounded-xl text-sm"
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm"
                 style={{ background: '#FEFEF2', color: '#6B6490' }}
               >
                 Отмена
@@ -429,22 +427,12 @@ export default function IngredientsPage() {
         )}
 
         {/* Поиск */}
-        <div className="flex items-center gap-2 px-3 h-10 rounded-xl mb-6"
-          style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)' }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="4.5" stroke="#9D99B8" strokeWidth="1.3"/>
-            <path d="M11 11L14 14" stroke="#9D99B8" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-          <input
+        <div className="mb-6">
+          <SearchInput
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Поиск ингредиента..."
-            className="flex-1 bg-transparent text-sm outline-none"
-            style={{ color: '#2C2950' }}
           />
-          {search && (
-            <button onClick={() => setSearch('')} style={{ color: '#9D99B8' }}>✕</button>
-          )}
         </div>
 
         {/* Пустое состояние */}
@@ -468,7 +456,7 @@ export default function IngredientsPage() {
           </div>
         )}
 
-        {/* Таблица по категориям */}
+        {/* Список по категориям */}
         {Object.entries(grouped).map(([cat, items]) => (
           <div key={cat} className="mb-6">
             <p className="text-xs font-medium uppercase tracking-wider mb-2"
@@ -476,100 +464,145 @@ export default function IngredientsPage() {
               {cat}
             </p>
 
-            {/* Шапка */}
-            <div className="grid gap-3 px-4 py-2 text-xs rounded-xl mb-1"
-              style={{
-                color: '#9D99B8',
-                gridTemplateColumns: isSystem ? '1fr 80px 80px 60px 60px 70px' : '1fr 80px 80px 60px 60px 70px 72px',
-                background: '#EAE7F8',
-              }}>
-              <span>Название</span>
-              <span>Единица</span>
-              <span>Калории</span>
-              <span>Белки</span>
-              <span>Жиры</span>
-              <span>Углеводы</span>
-              {!isSystem && <span></span>}
+            {/* Desktop: таблица с шапкой */}
+            <div className="hidden sm:block">
+              <div className="grid gap-3 px-4 py-2 text-xs rounded-xl mb-1"
+                style={{
+                  color: '#9D99B8',
+                  gridTemplateColumns: isSystem ? '1fr 80px 80px 60px 60px 70px' : '1fr 80px 80px 60px 60px 70px 72px',
+                  background: '#EAE7F8',
+                }}>
+                <span>Название</span>
+                <span>Единица</span>
+                <span>Калории</span>
+                <span>Белки</span>
+                <span>Жиры</span>
+                <span>Углеводы</span>
+                {!isSystem && <span></span>}
+              </div>
+
+              {items.map(ing => (
+                <div key={ing.id}>
+                  {editingId !== ing.id && (
+                    <div
+                      className="grid gap-3 px-4 py-2.5 rounded-xl items-center"
+                      style={{
+                        gridTemplateColumns: isSystem ? '1fr 80px 80px 60px 60px 70px' : '1fr 80px 80px 60px 60px 70px 72px',
+                        borderBottom: '0.5px solid rgba(176,166,223,0.15)',
+                      }}
+                    >
+                      <span className="text-sm font-medium truncate" style={{ color: '#2C2950' }}>{ing.name}</span>
+                      <span className="text-sm" style={{ color: '#6B6490' }}>100 {ing.unit}</span>
+                      <span className="text-sm" style={{ color: '#534AB7' }}>{ing.caloriesPer100}</span>
+                      <span className="text-sm" style={{ color: '#6B6490' }}>{ing.proteinPer100}г</span>
+                      <span className="text-sm" style={{ color: '#6B6490' }}>{ing.fatPer100}г</span>
+                      <span className="text-sm" style={{ color: '#6B6490' }}>{ing.carbsPer100}г</span>
+                      {!isSystem && (
+                        <div className="flex items-center gap-1 justify-end">
+                          <IngredientActions
+                            ing={ing}
+                            confirmDeleteId={confirmDeleteId}
+                            onEdit={startEdit}
+                            onConfirmDelete={setConfirmDeleteId}
+                            onDelete={handleDelete}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
-            {items.map(ing => (
-              <div key={ing.id}>
-                {editingId === ing.id ? null : (
-                  <div
-                    className="grid gap-3 px-4 py-2.5 rounded-xl items-center"
-                    style={{
-                      gridTemplateColumns: isSystem ? '1fr 80px 80px 60px 60px 70px' : '1fr 80px 80px 60px 60px 70px 72px',
-                      borderBottom: '0.5px solid rgba(176,166,223,0.15)',
-                    }}
-                  >
-                    <span className="text-sm font-medium" style={{ color: '#2C2950' }}>
-                      {ing.name}
-                    </span>
-                    <span className="text-sm" style={{ color: '#6B6490' }}>
-                      на 100 {ing.unit}
-                    </span>
-                    <span className="text-sm" style={{ color: '#534AB7' }}>
-                      {ing.caloriesPer100}
-                    </span>
-                    <span className="text-sm" style={{ color: '#6B6490' }}>
-                      {ing.proteinPer100}г
-                    </span>
-                    <span className="text-sm" style={{ color: '#6B6490' }}>
-                      {ing.fatPer100}г
-                    </span>
-                    <span className="text-sm" style={{ color: '#6B6490' }}>
-                      {ing.carbsPer100}г
-                    </span>
-
-                    {!isSystem && (
-                      <div className="flex items-center gap-1 justify-end">
-                        <button
-                          onClick={() => startEdit(ing)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ color: '#6B6490', background: '#EAE7F8' }}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                            <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        {confirmDeleteId === ing.id ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleDelete(ing.id)}
-                              className="px-2 h-7 rounded-lg text-xs font-medium"
-                              style={{ background: '#E24B4A', color: '#fff' }}
-                            >
-                              Удалить
-                            </button>
-                            <button
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="px-2 h-7 rounded-lg text-xs"
-                              style={{ background: '#EAE7F8', color: '#6B6490' }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmDeleteId(ing.id)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center"
-                            style={{ color: '#6B6490', background: '#EAE7F8' }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                              <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4M8.5 6v4M3 3.5l.7 8h6.6l.7-8"
-                                stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    )}
+            {/* Mobile: карточки */}
+            <div className="sm:hidden flex flex-col gap-2">
+              {items.map(ing => (
+                editingId !== ing.id && (
+                  <div key={ing.id} className="rounded-xl p-3"
+                    style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.2)' }}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-sm font-medium" style={{ color: '#2C2950' }}>{ing.name}</span>
+                      {!isSystem && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <IngredientActions
+                            ing={ing}
+                            confirmDeleteId={confirmDeleteId}
+                            onEdit={startEdit}
+                            onConfirmDelete={setConfirmDeleteId}
+                            onDelete={handleDelete}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                      <span className="text-xs" style={{ color: '#9D99B8' }}>100 {ing.unit}</span>
+                      <span className="text-xs font-medium" style={{ color: '#534AB7' }}>{ing.caloriesPer100} ккал</span>
+                      <span className="text-xs" style={{ color: '#6B6490' }}>Б {ing.proteinPer100}г</span>
+                      <span className="text-xs" style={{ color: '#6B6490' }}>Ж {ing.fatPer100}г</span>
+                      <span className="text-xs" style={{ color: '#6B6490' }}>У {ing.carbsPer100}г</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                )
+              ))}
+            </div>
           </div>
         ))}
       </div>
     </div>
+  )
+}
+
+function IngredientActions({
+  ing,
+  confirmDeleteId,
+  onEdit,
+  onConfirmDelete,
+  onDelete,
+}: {
+  ing: IngredientRef
+  confirmDeleteId: string | null
+  onEdit: (ing: IngredientRef) => void
+  onConfirmDelete: (id: string | null) => void
+  onDelete: (id: string) => void
+}) {
+  return confirmDeleteId === ing.id ? (
+    <>
+      <button
+        onClick={() => onDelete(ing.id)}
+        className="px-2 h-7 rounded-lg text-xs font-medium"
+        style={{ background: '#E24B4A', color: '#fff' }}
+      >
+        Удалить
+      </button>
+      <button
+        onClick={() => onConfirmDelete(null)}
+        className="px-2 h-7 rounded-lg text-xs"
+        style={{ background: 'rgba(176,166,223,0.3)', color: '#6B6490' }}
+      >
+        ✕
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() => onEdit(ing)}
+        className="w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ color: '#6B6490', background: 'rgba(176,166,223,0.3)' }}
+      >
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+          <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      <button
+        onClick={() => onConfirmDelete(ing.id)}
+        className="w-7 h-7 rounded-lg flex items-center justify-center"
+        style={{ color: '#6B6490', background: 'rgba(176,166,223,0.3)' }}
+      >
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+          <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4M8.5 6v4M3 3.5l.7 8h6.6l.7-8"
+            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    </>
   )
 }

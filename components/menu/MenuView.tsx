@@ -10,6 +10,7 @@ import DishCard from './DishCard'
 import DishSheet from './DishSheet'
 import NutriTracker from './NutriTracker'
 import VenueHeader from './VenueHeader'
+import { SearchInput } from '@/components/ui/SearchInput'
 
 interface Props {
   venue: Venue
@@ -39,12 +40,7 @@ export default function MenuView({ venue, categories }: Props) {
       .filter((cat) => cat.items.length > 0)
   }, [categories, activeCategory, search])
 
-  const nutri = useMemo(() => {
-  console.log('trackerItems:', trackerItems)
-  const result = calcNutriTotal(trackerItems)
-  console.log('Рассчитанный nutri:', result)
-  return result
-}, [trackerItems])
+  const nutri = useMemo(() => calcNutriTotal(trackerItems), [trackerItems])
 
   function handleAddToTracker(
   item: MenuItem,
@@ -107,8 +103,6 @@ const resolved = {
   weightUnit: item.weightUnit,
 }
 
-console.log('Добавляем в трекер:', { resolved, variantLabel }) // ← добавить
-
   setTrackerItems((prev) => {
     const existing = prev.find((t) => t.menuItem.id === item.id && t.variantLabel === variantLabel)
     if (existing) {
@@ -154,54 +148,23 @@ console.log('Добавляем в трекер:', { resolved, variantLabel }) /
 }
 
   function handleOpenDish(item: MenuItem) {
-  console.log('Открыто блюдо:', item)
-  console.log('КБЖУ блюда:', item.calories, item.protein, item.fat, item.carbs)
-  console.log('Варианты:', item.variantGroups)
   setSelectedDish(item)
   setSheetOpen(true)
 }
 
   return (
-    <div className="min-h-screen" style={{ background: '#FEFEF2' }}>
+    <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto">
 
         <VenueHeader venue={venue} />
 
         {/* Поиск */}
         <div className="px-4 pb-3">
-          <div
-            className="flex items-center gap-2 px-3 h-10 rounded-xl"
-            style={{
-              background: '#EAE7F8',
-              border: '0.5px solid rgba(176,166,223,0.4)',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="4.5" stroke="#9D99B8" strokeWidth="1.3" />
-              <path
-                d="M11 11L14 14"
-                stroke="#9D99B8"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск блюда..."
-              className="flex-1 bg-transparent text-sm outline-none"
-              style={{ color: '#2C2950' }}
-            />
-            {search.length > 0 && (
-              <button
-                onClick={() => setSearch('')}
-                className="text-xs"
-                style={{ color: '#9D99B8' }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Поиск блюда..."
+          />
         </div>
 
         {/* Табы категорий */}
@@ -225,21 +188,15 @@ console.log('Добавляем в трекер:', { resolved, variantLabel }) /
         {/* Список блюд */}
         <div className="px-4 pb-24">
           {filteredCategories.length === 0 ? (
-            <p
-              className="text-center py-12 text-sm"
-              style={{ color: '#9D99B8' }}
-            >
+            <p className="text-center py-12 text-sm text-text-muted">
               Ничего не найдено
             </p>
           ) : (
             filteredCategories.map((cat) => (
               <div key={cat.id} className="mb-6">
                 <p
-                  className="text-xs font-medium uppercase tracking-wider pb-2 mb-1"
-                  style={{
-                    color: '#9D99B8',
-                    borderBottom: '0.5px solid rgba(176,166,223,0.2)',
-                  }}
+                  className="text-xs font-medium uppercase tracking-wider pb-2 mb-1 text-text-muted"
+                  style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}
                 >
                   {cat.name}
                 </p>

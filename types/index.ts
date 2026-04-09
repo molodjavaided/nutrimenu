@@ -17,16 +17,9 @@ export interface Category {
   items?: MenuItem[]
 }
 
-export interface VariantOption {
-  id: string
-  label: string
-  required: boolean
-  options: VariantChoice[]
-}
-
 export interface VariantChoice {
   id: string
-  ingredientRefId?: string  // ← добавить это поле
+  ingredientRefId?: string
   label: string
   weight: number
   weightUnit: 'г' | 'мл'
@@ -41,7 +34,16 @@ export interface VariantGroup {
   label: string
   required: boolean
   options: VariantChoice[]
-  replacesIngredientRefId?: string  // ингредиент из состава, который заменяют все опции группы
+  replacesIngredientRefId?: string
+}
+
+export interface ModifierSubOption {
+  id: string
+  label: string
+  calories: number
+  protein: number
+  fat: number
+  carbs: number
 }
 
 export interface Modifier {
@@ -54,18 +56,9 @@ export interface Modifier {
   carbs: number
   weight: number
   weightUnit: 'г' | 'мл'
-  allowPortions?: boolean  // гость может выбрать количество порций
-  maxPortions?: number     // максимум порций (по умолчанию 10)
+  allowPortions?: boolean
+  maxPortions?: number
   subOptions?: ModifierSubOption[]
-}
-
-export interface ModifierSubOption {
-  id: string
-  label: string
-  calories: number
-  protein: number
-  fat: number
-  carbs: number
 }
 
 export interface ModifierGroup {
@@ -74,14 +67,38 @@ export interface ModifierGroup {
   multi: boolean
   required: boolean
   modifiers: Modifier[]
-  // 'addon' — добавляет КБЖУ (сироп, топпинг)
-  // 'replace' — заменяет ингредиент (молоко)
   type?: 'addon' | 'replace'
-  // Для replace — какой ингредиент заменяется
   replacesIngredientId?: string
   calcByMl?: boolean
   mlPerVariant?: Record<string, number>
   linkedVariantGroupId?: string
+}
+
+// Строка состава блюда
+export interface CompositionRow {
+  ingredientId: string
+  amount: number
+  unit: 'г' | 'мл'
+}
+
+// Один объём/размер блюда
+export interface SizeOption {
+  id: string
+  name?: string
+  weight: number
+  weightUnit: 'г' | 'мл'
+  calories: number
+  protein: number
+  fat: number
+  carbs: number
+  composition: CompositionRow[]
+  ingredientAmounts?: Record<string, { amount: number; unit: 'г' | 'мл' }>
+}
+
+// Ингредиент блюда (простой, используется в ItemForm)
+export interface Ingredient {
+  id: string
+  name: string
 }
 
 export interface MenuItem {
@@ -95,6 +112,7 @@ export interface MenuItem {
   protein: number
   fat: number
   carbs: number
+  sizes?: SizeOption[]
   categoryId: string
   venueId: string
   isAvailable: boolean
@@ -108,7 +126,7 @@ export interface SelectedVariants {
 }
 
 export interface SelectedModifiers {
-  [modifierId: string]: string | true | number  // number = количество порций для allowPortions
+  [modifierId: string]: string | true | number
 }
 
 export interface TrackerItem {
@@ -132,50 +150,11 @@ export interface NutriTotal {
   carbs: number
 }
 
-// Один объём/размер блюда со своими КБЖУ
-export interface SizeOption {
-  id: string
-  name?: string
-  weight: number
-  weightUnit: 'г' | 'мл'
-  calories: number
-  protein: number
-  fat: number
-  carbs: number
-  composition: CompositionRow[]
-  ingredientAmounts: Record<string, { amount: number; unit: 'г' | 'мл' }>
-}
-
-// Ингредиент блюда
-export interface Ingredient {
-  id: string
-  name: string
-}
-
-export interface MenuItem {
-  id: string
-  name: string
-  description?: string
-  photo?: string
-  weight: number
-  weightUnit: 'г' | 'мл'
-  calories: number
-  protein: number
-  fat: number
-  carbs: number
-  sizes?: SizeOption[]
-  categoryId: string
-  venueId: string
-  isAvailable: boolean
-  variantGroups?: VariantGroup[]
-  modifierGroups?: ModifierGroup[]
-}
-
 // Библиотека ингредиентов
 export interface IngredientLibrary {
   id: string
   name: string
-  isSystem: boolean  // системная — только чтение для владельца
+  isSystem: boolean
   ingredients: IngredientRef[]
 }
 
@@ -183,35 +162,10 @@ export interface IngredientLibrary {
 export interface IngredientRef {
   id: string
   name: string
-  unit: 'г' | 'мл'       // базовая единица измерения
+  unit: 'г' | 'мл'
   caloriesPer100: number
   proteinPer100: number
   fatPer100: number
   carbsPer100: number
-  category?: string       // для группировки: 'молоко', 'крупа', 'мясо' и т.д.
-}
-
-// Строка состава блюда
-export interface CompositionRow {
-  ingredientId: string
-  amount: number
-  unit: 'г' | 'мл'
-}
-
-// Один объём/размер блюда
-export interface SizeOption {
-  id: string
-  name?: string
-  weight: number
-  weightUnit: 'г' | 'мл'
-  calories: number
-  protein: number
-  fat: number
-  carbs: number
-  composition: CompositionRow[]   // состав для этого объёма
-}
-
-export interface Ingredient {
-  id: string
-  name: string
+  category?: string
 }

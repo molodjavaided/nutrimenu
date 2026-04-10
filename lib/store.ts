@@ -13,6 +13,7 @@ export function getVenue(): Venue | null {
 
 export function saveVenue(venue: Venue): void {
   localStorage.setItem(VENUE_KEY, JSON.stringify(venue))
+  window.dispatchEvent(new CustomEvent('nutrimenu:updated'))
 }
 
 // ─── Categories ──────────────────────────────────────────────
@@ -25,6 +26,7 @@ export function getCategories(): Category[] {
 
 export function saveCategories(categories: Category[]): void {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
+  window.dispatchEvent(new CustomEvent('nutrimenu:updated'))
 }
 
 export function addCategory(name: string): Category {

@@ -1,25 +1,108 @@
+'use client'
+
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { getCategories, getVenue } from '@/lib/store'
+import { Category, Venue } from '@/types'
+
+// IDs that were hardcoded in the old mockCategories — used to detect stale data
+const STALE_CATEGORY_IDS = new Set([
+  'drinks-classic', 'drinks-author', 'drinks-tea',
+  'food-tortilla', 'food-bowl', 'food-main',
+  'food-breakfast', 'food-kids', 'sweets',
+])
+
+function isStaleData(categories: Category[], venue: Venue | null): boolean {
+  if (!venue) return false
+  return venue.id === '1' && venue.slug === 'utro' && categories.some(c => STALE_CATEGORY_IDS.has(c.id))
+}
 
 export default function DashboardPage() {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [venue, setVenue] = useState<Venue | null>(null)
+  const [stale, setStale] = useState(false)
+
+  function loadData() {
+    const cats = getCategories()
+    const v = getVenue()
+    setCategories(cats)
+    setVenue(v)
+    setStale(isStaleData(cats, v))
+  }
+
+  function clearStaleData() {
+    localStorage.removeItem('nutrimenu_categories')
+    localStorage.removeItem('nutrimenu_venue')
+    loadData()
+  }
+
+  useEffect(() => {
+    loadData()
+    // Cross-tab sync
+    window.addEventListener('storage', loadData)
+    // Same-tab sync (dispatched by menu/item pages after mutations)
+    window.addEventListener('nutrimenu:updated', loadData)
+    return () => {
+      window.removeEventListener('storage', loadData)
+      window.removeEventListener('nutrimenu:updated', loadData)
+    }
+  }, [])
+
+  const totalDishes = categories.reduce((sum, c) => sum + (c.items?.length ?? 0), 0)
+  const venueName = venue?.name ?? ''
+  const venueAddress = [venue?.address, venue?.workingHours].filter(Boolean).join(' · ')
+
   return (
     <div className="p-4 sm:p-8">
 
-      {/* Заголовок */}
+      {/* Stale data banner */}
+      {stale && (
+        <div
+          className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-5"
+          style={{ background: 'rgba(226,75,74,0.08)', border: '0.5px solid rgba(226,75,74,0.25)' }}
+        >
+          <p className="text-sm" style={{ color: '#C0392B' }}>
+            Обнаружены демо-данные из старой версии. Очистить?
+          </p>
+          <button
+            onClick={clearStaleData}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: '#E24B4A', color: '#fff' }}
+          >
+            Очистить
+          </button>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: '#2C2950' }}>
-          Кофейня «Утро»
-        </h1>
-        <p className="text-sm" style={{ color: '#6B6490' }}>
-          ул. Пушкина, 12 · до 22:00
-        </p>
+        {venueName ? (
+          <>
+            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: '#2C2950' }}>
+              {venueName}
+            </h1>
+            {venueAddress && (
+              <p className="text-sm" style={{ color: '#6B6490' }}>{venueAddress}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: '#9D99B8' }}>
+              Название заведения
+            </h1>
+            <Link href="/dashboard/settings" className="text-sm underline" style={{ color: '#B0A6DF' }}>
+              Заполните данные в настройках
+            </Link>
+          </>
+        )}
       </div>
 
-      {/* Карточки статистики */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {[
-          { label: 'Категорий', value: '9', sub: 'в меню' },
-          { label: 'Блюд', value: '47', sub: 'позиций' },
-          { label: 'Просмотров', value: '—', sub: 'скоро' },
+          { label: 'Категорий', value: categories.length, sub: 'в меню' },
+          { label: 'Блюд',      value: totalDishes,        sub: 'позиций' },
+          { label: 'Просмотров', value: '—',               sub: 'скоро' },
         ].map(({ label, value, sub }) => (
           <div
             key={label}
@@ -39,7 +122,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Быстрые действия */}
+      {/* Quick actions */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-3" style={{ color: '#2C2950' }}>Быстрые действия</p>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -71,7 +154,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* QR-код блок */}
+      {/* QR block */}
       <div className="rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4"
         style={{ background: '#F2D965', border: '0.5px solid rgba(242,217,101,0.5)' }}>
         <div className="min-w-0">
@@ -80,7 +163,7 @@ export default function DashboardPage() {
             Гости сканируют и сразу видят меню с КБЖУ
           </p>
           <p className="text-xs font-medium truncate" style={{ color: '#3D3100' }}>
-            nutrimenu.app/menu/utro
+            {venue?.slug ? `nutrimenu.app/menu/${venue.slug}` : 'nutrimenu.app/menu/…'}
           </p>
         </div>
         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center shrink-0"

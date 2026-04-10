@@ -292,6 +292,21 @@ export const initialFoodDatabase: FoodCategory[] = [
       { id: '10_31', name: 'Клюква',                   calories: 28,  proteins: 0.5, fats: 0.2,  carbs: 3.7,  unit: '100g' },
     ],
   },
+  {
+    id: 'cat_11',
+    title: 'Орехи и ореховые пасты',
+    items: [
+      { id: '11_1', name: 'Арахис жареный',          calories: 626, proteins: 26.3, fats: 52.2, carbs: 9.9,  unit: '100g' },
+      { id: '11_2', name: 'Арахис дробленый жареный', calories: 626, proteins: 26.3, fats: 52.2, carbs: 9.9,  unit: '100g' },
+      { id: '11_3', name: 'Лепестки миндаля',         calories: 609, proteins: 18.6, fats: 53.7, carbs: 13.0, unit: '100g' },
+      { id: '11_4', name: 'Фундук',                   calories: 651, proteins: 15.0, fats: 61.5, carbs: 9.4,  unit: '100g' },
+      { id: '11_5', name: 'Кешью',                    calories: 600, proteins: 18.5, fats: 48.5, carbs: 22.5, unit: '100g' },
+      { id: '11_6', name: 'Грецкий орех',             calories: 654, proteins: 15.2, fats: 65.2, carbs: 7.0,  unit: '100g' },
+      { id: '11_7', name: 'Арахисовая паста',         calories: 588, proteins: 25.0, fats: 50.0, carbs: 20.0, unit: '100g' },
+      { id: '11_8', name: 'Фисташковая паста',        calories: 650, proteins: 20.0, fats: 50.0, carbs: 25.0, unit: '100g' },
+      { id: '11_9', name: 'Миндальная паста',         calories: 614, proteins: 21.0, fats: 55.0, carbs: 11.0, unit: '100g' },
+    ],
+  },
 ]
 
 // ─── Converter: FoodCategory[] → IngredientLibrary ───────────────────────────

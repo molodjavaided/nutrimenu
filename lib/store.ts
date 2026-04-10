@@ -124,6 +124,10 @@ export function saveLibraries(libraries: IngredientLibrary[]): void {
 export function initLibraries(systemLibraries: IngredientLibrary[]): IngredientLibrary[] {
   let libs = getLibraries()
 
+  // Remove any legacy system libraries that are no longer in the current system list
+  const currentSystemIds = new Set(systemLibraries.map(l => l.id))
+  libs = libs.filter(l => !l.isSystem || currentSystemIds.has(l.id))
+
   // Always sync system libraries — replace stored content with latest definitions
   for (const sysLib of systemLibraries) {
     const existing = libs.find(l => l.id === sysLib.id)

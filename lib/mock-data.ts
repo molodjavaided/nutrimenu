@@ -1,5 +1,4 @@
 import { Category, IngredientLibrary, IngredientRef, Venue } from '@/types'
-import { systemIngredients } from '@/lib/data/systemIngredients'
 import { foodDatabaseLibrary } from '@/lib/data/foodDatabase'
 
 export const mockVenue: Venue = {
@@ -776,11 +775,5 @@ export const mockIngredients: IngredientRef[] = [
  * Подключаются через initLibraries() и доступны только для чтения владельцем.
  */
 export const systemLibraries: IngredientLibrary[] = [
-  {
-    id: 'system-base',
-    name: 'Базовые продукты HoReCa',
-    isSystem: true,
-    ingredients: systemIngredients,
-  },
   foodDatabaseLibrary,
 ]

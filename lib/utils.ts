@@ -154,6 +154,58 @@ export function calcNutriTotal(items: TrackerItem[]): NutriTotal {
   )
 }
 
+/**
+ * Recursively resolve the per-100g nutrition for an IngredientRef.
+ * For mono ingredients returns stored values unchanged.
+ * For composite ingredients sums component contributions and normalises to 100g.
+ * `visited` guards against circular dependencies.
+ */
+export function resolveIngredientPer100(
+  ref: IngredientRef,
+  allRefs: IngredientRef[],
+  visited: Set<string> = new Set()
+): { caloriesPer100: number; proteinPer100: number; fatPer100: number; carbsPer100: number } {
+  if (ref.type !== 'composite' || !ref.composition?.length) {
+    return {
+      caloriesPer100: ref.caloriesPer100,
+      proteinPer100:  ref.proteinPer100,
+      fatPer100:      ref.fatPer100,
+      carbsPer100:    ref.carbsPer100,
+    }
+  }
+
+  if (visited.has(ref.id)) {
+    // Circular dependency — return zeros to break the cycle
+    return { caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0 }
+  }
+
+  const next = new Set(visited).add(ref.id)
+  let cal = 0, pro = 0, fat = 0, car = 0, totalWeight = 0
+
+  for (const row of ref.composition) {
+    if (!row.amount) continue
+    const component = allRefs.find(r => r.id === row.ingredientId)
+    if (!component) continue
+    const n = resolveIngredientPer100(component, allRefs, next)
+    const ratio = row.amount / 100
+    cal += n.caloriesPer100 * ratio
+    pro += n.proteinPer100  * ratio
+    fat += n.fatPer100      * ratio
+    car += n.carbsPer100    * ratio
+    totalWeight += row.amount
+  }
+
+  if (totalWeight === 0) return { caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0 }
+
+  const norm = 100 / totalWeight
+  return {
+    caloriesPer100: Math.round(cal * norm),
+    proteinPer100:  Math.round(pro * norm * 10) / 10,
+    fatPer100:      Math.round(fat * norm * 10) / 10,
+    carbsPer100:    Math.round(car * norm * 10) / 10,
+  }
+}
+
 // Расчёт КБЖУ из состава с учётом замен ингредиентов
 export function resolveNutriFromComposition(
   composition: CompositionRow[],
@@ -171,7 +223,6 @@ export function resolveNutriFromComposition(
     const modifier = group.modifiers.find(m => m.id === selectedId)
     if (!modifier) continue
 
-    // Находим количество заменяемого ингредиента в составе
     const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientId)
     if (originalRow) {
       replacements.set(group.replacesIngredientId, {
@@ -185,7 +236,6 @@ export function resolveNutriFromComposition(
   let calories = 0, protein = 0, fat = 0, carbs = 0
 
   for (const row of composition) {
-    // Если этот ингредиент заменён — используем данные замены
     const replacement = replacements.get(row.ingredientId)
     if (replacement) {
       const ratio = replacement.amount / 100
@@ -196,14 +246,15 @@ export function resolveNutriFromComposition(
       continue
     }
 
-    // Иначе берём из справочника
+    // Resolve recursively — handles composite ingredients inside dishes
     const ref = ingredientRefs.find(r => r.id === row.ingredientId)
     if (!ref || !row.amount) continue
+    const per100 = resolveIngredientPer100(ref, ingredientRefs)
     const ratio = row.amount / 100
-    calories += ref.caloriesPer100 * ratio
-    protein  += ref.proteinPer100  * ratio
-    fat      += ref.fatPer100      * ratio
-    carbs    += ref.carbsPer100    * ratio
+    calories += per100.caloriesPer100 * ratio
+    protein  += per100.proteinPer100  * ratio
+    fat      += per100.fatPer100      * ratio
+    carbs    += per100.carbsPer100    * ratio
   }
 
   return {

@@ -60,6 +60,7 @@ export const initialFoodDatabase: FoodCategory[] = [
       { id: '3_2',  name: 'Брокколи',                     calories: 34,  proteins: 2.8, fats: 0.4, carbs: 6.6,  unit: '100g' },
       { id: '3_3',  name: 'Цветная капуста',              calories: 25,  proteins: 1.9, fats: 0.3, carbs: 5.0,  unit: '100g' },
       { id: '3_4',  name: 'Салат Айсберг',                calories: 14,  proteins: 0.9, fats: 0.1, carbs: 1.8,  unit: '100g' },
+      { id: '3_4_1', name: 'Салат Романо',              calories: 17,  proteins: 1.2, fats: 0.3, carbs: 3.3,  unit: '100g' },
       { id: '3_5',  name: 'Руккола',                      calories: 25,  proteins: 2.6, fats: 0.7, carbs: 2.1,  unit: '100g' },
       { id: '3_6',  name: 'Шпинат (свежий)',              calories: 23,  proteins: 2.9, fats: 0.4, carbs: 3.6,  unit: '100g' },
       { id: '3_7',  name: 'Зеленый лук (перо)',           calories: 32,  proteins: 1.8, fats: 0.2, carbs: 7.3,  unit: '100g' },

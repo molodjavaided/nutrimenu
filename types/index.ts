@@ -169,4 +169,8 @@ export interface IngredientRef {
   carbsPer100: number
   category?: string
   isSystem?: boolean
+  // Composite ingredient (sub-recipe) fields
+  type?: 'mono' | 'composite'
+  composition?: CompositionRow[]
+  instructions?: string
 }

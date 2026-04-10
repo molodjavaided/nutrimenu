@@ -2,15 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { IngredientLibrary, IngredientRef } from '@/types'
+import { resolveIngredientPer100 } from '@/lib/utils'
 
 interface Props {
   libraries: IngredientLibrary[]
   alreadyAddedIds: string[]
   onSelect: (ref: IngredientRef) => void
   onClose: () => void
+  /** All refs across all libraries — needed to resolve composite nutrition on-the-fly */
+  allRefs?: IngredientRef[]
 }
 
-export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSelect, onClose }: Props) {
+export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSelect, onClose, allRefs }: Props) {
   const [activeLibId, setActiveLibId] = useState<string>(libraries[0]?.id ?? '')
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
@@ -152,6 +155,10 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
               <div className="space-y-0.5">
                 {grouped[cat].map(ref => {
                   const added = alreadyAddedIds.includes(ref.id)
+                  const isComposite = ref.type === 'composite'
+                  const resolved = isComposite && allRefs
+                    ? resolveIngredientPer100(ref, allRefs)
+                    : { caloriesPer100: ref.caloriesPer100, proteinPer100: ref.proteinPer100, fatPer100: ref.fatPer100, carbsPer100: ref.carbsPer100 }
                   return (
                     <button
                       key={ref.id}
@@ -166,12 +173,21 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                       onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '#EAE7F8' }}
                       onMouseLeave={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '' }}
                     >
-                      <span className="font-medium">{ref.name}</span>
+                      <span className="flex items-center gap-1.5 font-medium min-w-0">
+                        {isComposite && (
+                          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
+                            <rect x="1" y="9" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                            <rect x="1" y="5.5" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                            <rect x="1" y="1.5" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                          </svg>
+                        )}
+                        <span className="truncate">{ref.name}</span>
+                      </span>
                       <span className="flex items-center gap-3 text-xs shrink-0 ml-3" style={{ color: added ? '#C8C3F0' : '#9D99B8' }}>
-                        <span>{ref.caloriesPer100} ккал</span>
-                        <span>Б {ref.proteinPer100}г</span>
-                        <span>Ж {ref.fatPer100}г</span>
-                        <span>У {ref.carbsPer100}г</span>
+                        <span>{resolved.caloriesPer100} ккал</span>
+                        <span>Б {resolved.proteinPer100}г</span>
+                        <span>Ж {resolved.fatPer100}г</span>
+                        <span>У {resolved.carbsPer100}г</span>
                         {added && <span style={{ color: '#B0A6DF' }}>✓ добавлен</span>}
                       </span>
                     </button>

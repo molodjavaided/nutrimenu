@@ -1080,6 +1080,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       {pickerOpen && libraries.length > 0 && (
         <IngredientPickerModal
           libraries={libraries}
+          allRefs={ingredientRefs}
           alreadyAddedIds={ingredients.map(i => i.ingredientRefId)}
           onSelect={ref => addIngredient(ref.id)}
           onClose={() => setPickerOpen(false)}
@@ -1089,6 +1090,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       {variantPickerTarget && libraries.length > 0 && (
         <IngredientPickerModal
           libraries={libraries}
+          allRefs={ingredientRefs}
           alreadyAddedIds={[]}
           onSelect={ref => {
             const { groupId, optionId } = variantPickerTarget

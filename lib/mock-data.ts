@@ -11,17 +11,7 @@ export const mockVenue: Venue = {
   tags: ['Кофе', 'Завтраки', 'Веган'],
 }
 
-export const mockCategories: Category[] = [
-  { id: 'drinks-classic', name: 'Кофе — классика',    venueId: '1', order: 1, items: [] },
-  { id: 'drinks-author',  name: 'Авторские напитки',  venueId: '1', order: 2, items: [] },
-  { id: 'drinks-tea',     name: 'Чай и холодные',     venueId: '1', order: 3, items: [] },
-  { id: 'food-tortilla',  name: 'Тортилья',           venueId: '1', order: 4, items: [] },
-  { id: 'food-bowl',      name: 'Боул',               venueId: '1', order: 5, items: [] },
-  { id: 'food-main',      name: 'Основные блюда',     venueId: '1', order: 6, items: [] },
-  { id: 'food-breakfast', name: 'Завтраки',           venueId: '1', order: 7, items: [] },
-  { id: 'food-kids',      name: 'Детское меню',       venueId: '1', order: 8, items: [] },
-  { id: 'sweets',         name: 'Десерты',            venueId: '1', order: 9, items: [] },
-]
+export const mockCategories: Category[] = []
 
 export const mockIngredients: IngredientRef[] = [
   // ─── МЯСО ───────────────────────────────────────────────────────────────

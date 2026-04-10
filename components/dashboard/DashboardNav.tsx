@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 
 const navItems = [
   {
@@ -136,8 +137,8 @@ export function DashboardNav() {
           })}
         </nav>
 
-        {/* Ссылка на гостевое меню */}
-        <div className="px-3 py-4" style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
+        {/* Ссылка на гостевое меню + смена роли */}
+        <div className="px-3 py-4 flex flex-col gap-1" style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
           <Link
             href="/menu/utro"
             target="_blank"
@@ -149,6 +150,7 @@ export function DashboardNav() {
             </svg>
             Смотреть меню
           </Link>
+          <SwitchRoleButton variant="sidebar" />
         </div>
       </aside>
 

@@ -425,8 +425,7 @@ function ModifierGroupSection({ group, selected, onSelect }: {
           if (mod.allowPortions) {
             return (
               <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(255,255,255,0.5)' }}
-                style={{ border: '0.5px solid rgba(176,166,223,0.4)' }}>
+                style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(176,166,223,0.4)' }}>
                 {portionCount > 0 ? (
                   <>
                     <button

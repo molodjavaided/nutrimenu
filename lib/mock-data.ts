@@ -1,4 +1,6 @@
 import { Category, IngredientLibrary, IngredientRef, Venue } from '@/types'
+import { systemIngredients } from '@/lib/data/systemIngredients'
+import { foodDatabaseLibrary } from '@/lib/data/foodDatabase'
 
 export const mockVenue: Venue = {
   id: '1',
@@ -776,8 +778,9 @@ export const mockIngredients: IngredientRef[] = [
 export const systemLibraries: IngredientLibrary[] = [
   {
     id: 'system-base',
-    name: 'Базовые продукты',
+    name: 'Базовые продукты HoReCa',
     isSystem: true,
-    ingredients: mockIngredients,
+    ingredients: systemIngredients,
   },
+  foodDatabaseLibrary,
 ]

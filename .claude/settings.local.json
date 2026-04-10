@@ -25,7 +25,11 @@
       "WebSearch",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(gh api:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Skill(web-design)",
+      "Skill(react-best-practices)",
+      "Skill(commit-push-pr)",
+      "Bash(git:*)"
     ]
   }
 }

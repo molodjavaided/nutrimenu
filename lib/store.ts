@@ -124,9 +124,12 @@ export function saveLibraries(libraries: IngredientLibrary[]): void {
 export function initLibraries(systemLibraries: IngredientLibrary[]): IngredientLibrary[] {
   let libs = getLibraries()
 
-  // Seed any system library not yet stored
+  // Always sync system libraries — replace stored content with latest definitions
   for (const sysLib of systemLibraries) {
-    if (!libs.find(l => l.id === sysLib.id)) {
+    const existing = libs.find(l => l.id === sysLib.id)
+    if (existing) {
+      libs = libs.map(l => l.id === sysLib.id ? { ...sysLib } : l)
+    } else {
       libs = [sysLib, ...libs]
     }
   }

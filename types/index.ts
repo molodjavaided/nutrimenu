@@ -168,4 +168,5 @@ export interface IngredientRef {
   fatPer100: number
   carbsPer100: number
   category?: string
+  isSystem?: boolean
 }

@@ -29,11 +29,13 @@ import {
   reorderItems,
 } from '@/lib/store'
 import SortableCategory from '@/components/dashboard/SortableCategory'
+import ImportModal from '@/components/dashboard/ImportModal'
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -116,18 +118,44 @@ export default function MenuPage() {
             {categories.length} категорий · {categories.reduce((s, c) => s + (c.items?.length ?? 0), 0)} позиций
           </p>
         </div>
-        <Link
-          href="/dashboard/item/new"
-          className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shrink-0"
-          style={{ background: '#B0A6DF', color: '#2C2950' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span className="hidden sm:inline">Добавить блюдо</span>
-          <span className="sm:hidden">Добавить</span>
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
+            style={{
+              background: 'rgba(176,166,223,0.2)',
+              border: '0.5px solid rgba(176,166,223,0.5)',
+              color: '#2C2950',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+              <path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 12h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="hidden sm:inline">Импорт</span>
+          </button>
+          <Link
+            href="/dashboard/item/new"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
+            style={{ background: '#B0A6DF', color: '#2C2950' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <span className="hidden sm:inline">Добавить блюдо</span>
+            <span className="sm:hidden">Добавить</span>
+          </Link>
+        </div>
       </div>
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={(count) => {
+            setCategories(getCategories())
+            setShowImport(false)
+          }}
+        />
+      )}
 
       {/* Список категорий с drag-and-drop */}
       <DndContext

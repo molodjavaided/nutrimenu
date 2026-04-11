@@ -30,9 +30,9 @@ export const TEMPLATE_CSV =
   'Капучино,Напитки,Молоко,150,\n' +
   'Капучино,Напитки,Эспрессо,30,\n'
 
-// ─── Parsing ───────────────────────────────────────────────────
+// ─── CSV columnar parser (header row + data rows) ─────────────
 
-function normalizeRow(row: Record<string, unknown>): {
+function normalizeColumnarRow(row: Record<string, unknown>): {
   dishName: string
   category: string
   ingredientName: string
@@ -55,23 +55,153 @@ function normalizeRow(row: Record<string, unknown>): {
   }
 }
 
-function groupIntoDishes(rawRows: Record<string, unknown>[]): ParsedDish[] {
+function groupColumnarRows(rawRows: Record<string, unknown>[]): ParsedDish[] {
   const map = new Map<string, ParsedDish>()
   for (const raw of rawRows) {
-    const { dishName, category, ingredientName, netWeight, instructions } = normalizeRow(raw)
+    const { dishName, category, ingredientName, netWeight, instructions } = normalizeColumnarRow(raw)
     if (!dishName || !category) continue
     const key = `${category.toLowerCase()}|||${dishName.toLowerCase()}`
     if (!map.has(key)) {
       map.set(key, { name: dishName, category, instructions: instructions || undefined, ingredients: [] })
     }
     const dish = map.get(key)!
-    if (ingredientName) {
-      dish.ingredients.push({ ingredientName, netWeight })
-    }
+    if (ingredientName) dish.ingredients.push({ ingredientName, netWeight })
     if (instructions && !dish.instructions) dish.instructions = instructions
   }
   return Array.from(map.values())
 }
+
+// ─── TTK hierarchical XLSX parser ─────────────────────────────
+// Layout: dish name (bold or first row after empty), ingredients below,
+// quote-wrapped rows → instructions, empty rows → block separator.
+
+/** Extract the first numeric value from a cell, ignoring unit suffixes. */
+function extractWeight(raw: unknown): number {
+  if (typeof raw === 'number') return raw > 0 ? raw : 0
+  if (raw == null || raw === '') return 0
+  const s = String(raw)
+    .replace(/[кК][гГ]/g, 'e3') // "кг" → multiply by 1000 handled below
+    .replace(/[гГ][рР]\.?|[гГ]\.?(?!\d)|[мМ][лЛ]\.?|шт\.?/gi, '')
+    .trim()
+  // Ranges like "20/40" → take first number
+  const m = s.match(/(\d+[,.]?\d*)/)
+  if (!m) return 0
+  const n = parseFloat(m[1].replace(',', '.'))
+  return isNaN(n) ? 0 : n
+}
+
+/** Rows to ignore entirely (column headers, totals, etc.) */
+const SKIP_RE = /^(выход|итого|итог|всего|брутто|нетто|наименование|ингредиент|продукт|сырьё|№|n\s*п|расход|закладка)/i
+
+function isSkipText(t: string): boolean {
+  return SKIP_RE.test(t.trim())
+}
+
+/** Rows that map to dish.instructions rather than ingredients */
+function isInstruction(t: string): boolean {
+  const trimmed = t.trim()
+  return (
+    trimmed.startsWith('"') ||
+    trimmed.startsWith('«') ||
+    trimmed.startsWith('*') ||
+    /технологи[яи]/i.test(trimmed) ||
+    /приготовлени[яе]/i.test(trimmed)
+  )
+}
+
+interface XLSXCell {
+  v?: unknown
+  s?: { font?: { bold?: boolean } }
+}
+
+interface XLSXRange {
+  s: { r: number; c: number }
+  e: { r: number; c: number }
+}
+
+interface XLSXUtils {
+  decode_range(ref: string): XLSXRange
+  encode_cell(cell: { r: number; c: number }): string
+}
+
+function parseTTKSheet(
+  ws: Record<string, XLSXCell | unknown>,
+  category: string,
+  utils: XLSXUtils,
+): ParsedDish[] {
+  const ref = (ws as { '!ref'?: string })['!ref']
+  if (!ref) return []
+
+  const range = utils.decode_range(ref)
+  const dishes: ParsedDish[] = []
+  let current: ParsedDish | null = null
+  let lastWasEmpty = true // start in "expecting dish" state → skip leading empties
+
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    // Collect cells for this row
+    type RowCell = { text: string; rawVal: unknown; bold: boolean }
+    const cols: RowCell[] = []
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = utils.encode_cell({ r, c })
+      const cell = (ws as Record<string, XLSXCell>)[addr]
+      const v = cell?.v
+      cols.push({
+        text: v != null && v !== '' ? String(v).trim() : '',
+        rawVal: v,
+        bold: cell?.s?.font?.bold === true,
+      })
+    }
+
+    // Empty row → flush current dish, reset state
+    if (cols.every(c => !c.text)) {
+      if (current) { dishes.push(current); current = null }
+      lastWasEmpty = true
+      continue
+    }
+
+    const first = cols[0]
+    if (!first.text) continue // leading empty cell in row (merged / indent)
+
+    // Determine if this row is a new dish header
+    const isHeader = lastWasEmpty || first.bold
+
+    if (isHeader) {
+      // Column-header rows ("Наименование", "Нетто", etc.) are skipped but keep
+      // lastWasEmpty = true so the very next content row is still treated as a dish name.
+      if (isSkipText(first.text)) continue
+      lastWasEmpty = false
+      if (current) dishes.push(current)
+      current = { name: first.text, category, ingredients: [] }
+      continue
+    }
+
+    lastWasEmpty = false
+
+    // Inside a dish
+    if (!current) continue
+    if (isSkipText(first.text)) continue
+
+    if (isInstruction(first.text)) {
+      if (!current.instructions) {
+        current.instructions = first.text.replace(/^["«]|["»]$/g, '').trim()
+      }
+      continue
+    }
+
+    // Ingredient row — find weight in cols 1..5
+    let weight = 0
+    for (let ci = 1; ci < cols.length && ci <= 5; ci++) {
+      const w = extractWeight(cols[ci].rawVal)
+      if (w > 0) { weight = w; break }
+    }
+    current.ingredients.push({ ingredientName: first.text, netWeight: weight })
+  }
+
+  if (current) dishes.push(current)
+  return dishes
+}
+
+// ─── Main parse entry point ────────────────────────────────────
 
 export async function parseFile(file: File): Promise<ImportResult> {
   const name = file.name.toLowerCase()
@@ -81,7 +211,7 @@ export async function parseFile(file: File): Promise<ImportResult> {
     const Papa = (await import('papaparse')).default
     const result = Papa.parse<Record<string, unknown>>(text, { header: true, skipEmptyLines: true })
     return {
-      dishes: groupIntoDishes(result.data),
+      dishes: groupColumnarRows(result.data),
       errors: result.errors.slice(0, 5).map(e => e.message),
     }
   }
@@ -89,10 +219,15 @@ export async function parseFile(file: File): Promise<ImportResult> {
   if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
     const buffer = await file.arrayBuffer()
     const XLSX = await import('xlsx')
-    const wb = XLSX.read(new Uint8Array(buffer))
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' })
-    return { dishes: groupIntoDishes(rows), errors: [] }
+    // cellStyles: true → reads bold/italic font info for dish-header detection
+    const wb = XLSX.read(new Uint8Array(buffer), { cellStyles: true })
+    const dishes: ParsedDish[] = []
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName] as Record<string, XLSXCell | unknown>
+      const category = sheetName.trim() || 'Основное'
+      dishes.push(...parseTTKSheet(ws, category, XLSX.utils))
+    }
+    return { dishes, errors: [] }
   }
 
   return { dishes: [], errors: [`Неподдерживаемый формат файла: ${file.name}`] }

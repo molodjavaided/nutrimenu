@@ -4,6 +4,8 @@ import { resolveNutriFromComposition, resolveIngredientPer100 } from '@/lib/util
 // ─── Public types ──────────────────────────────────────────────
 
 export interface ParsedDish {
+  /** Stable UUID assigned at parse time — use as React key */
+  id: string
   name: string
   category: string
   /**
@@ -82,7 +84,7 @@ function groupColumnarRows(rawRows: Record<string, unknown>[]): ParsedDish[] {
     if (!map.has(key)) {
       const kind: 'dish' | 'preparation' =
         isPreparationSheet(category) || isPreparationItem(dishName) ? 'preparation' : 'dish'
-      map.set(key, { name: dishName, category, kind, instructions: instructions || undefined, ingredients: [] })
+      map.set(key, { id: crypto.randomUUID(), name: dishName, category, kind, instructions: instructions || undefined, ingredients: [] })
     }
     const dish = map.get(key)!
     if (ingredientName) dish.ingredients.push({ ingredientName, netWeight })
@@ -108,6 +110,30 @@ function extractWeight(raw: unknown): number {
   if (!m) return 0
   const n = parseFloat(m[1].replace(',', '.'))
   return isNaN(n) ? 0 : n
+}
+
+/** Clean an ingredient name: strip ПФ prefix, cleaning notes, trailing dots/spaces. */
+export function normalizeIngredientName(raw: string): string {
+  return raw
+    .replace(/^\s*п\/ф\s*/i, '')            // п/ф prefix
+    .replace(/^\s*пф\s+/i, '')              // ПФ prefix (standalone word)
+    .replace(/\bчищен\w*\b/gi, '')          // чищенный / чищеная / чищеное
+    .replace(/\.+\s*$/, '')                 // trailing dots
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Try to extract a weight embedded in the ingredient name itself.
+ * Handles patterns like "Молоко 250гр", "Яйцо 1шт", "Масло 50г".
+ * Returns null if no embedded weight is found.
+ */
+function extractEmbeddedWeight(text: string): { cleanName: string; weight: number } | null {
+  const m = text.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(?:гр?|г|мл|шт)\.?\s*$/i)
+  if (!m) return null
+  const weight = parseFloat(m[2].replace(',', '.'))
+  if (!weight) return null
+  return { cleanName: m[1].trim(), weight }
 }
 
 /** Rows to ignore entirely (column headers, totals, etc.) */
@@ -158,6 +184,19 @@ function parseTTKSheet(
   const dishes: ParsedDish[] = []
   let current: ParsedDish | null = null
   let lastWasEmpty = true // start in "expecting dish" state → skip leading empties
+  // Track the longest piece of text seen in the current block for instructions fallback
+  let longestCellText = ''
+
+  /** Flush the current dish into dishes[], applying instruction fallback. */
+  function flushCurrent() {
+    if (!current) return
+    if (!current.instructions && longestCellText.length > 50) {
+      current.instructions = longestCellText
+    }
+    dishes.push(current)
+    current = null
+    longestCellText = ''
+  }
 
   for (let r = range.s.r; r <= range.e.r; r++) {
     // Collect cells for this row
@@ -176,7 +215,7 @@ function parseTTKSheet(
 
     // Empty row → flush current dish, reset state
     if (cols.every(c => !c.text)) {
-      if (current) { dishes.push(current); current = null }
+      flushCurrent()
       lastWasEmpty = true
       continue
     }
@@ -184,18 +223,29 @@ function parseTTKSheet(
     const first = cols[0]
     if (!first.text) continue // leading empty cell in row (merged / indent)
 
-    // Determine if this row is a new dish header
-    const isHeader = lastWasEmpty || first.bold
+    // ── Block-start detection (Pro-Chef logic) ──────────────────
+    // A new dish block starts when:
+    //   1. Preceded by an empty row (lastWasEmpty) — reliable separator
+    //   2. Cell is bold — reliable when styles are preserved
+    //   3. Only the first column has content (qty columns 1-4 all empty)
+    //      → "quantity column is empty" heuristic from the spec.
+    //      Guard: only activate once the current dish already has at least one
+    //      weighted ingredient — this proves the file consistently uses weight
+    //      columns, and prevents treating every no-weight ingredient as a header.
+    const allNonFirstEmpty = cols.slice(1).every(c => !c.text)
+    const currentHasWeightedIngredients = current?.ingredients.some(i => i.netWeight > 0) ?? false
+    const isBlockByQtyCol = allNonFirstEmpty && !isInstruction(first.text) && currentHasWeightedIngredients
+    const isHeader = lastWasEmpty || first.bold || isBlockByQtyCol
 
     if (isHeader) {
-      // Column-header rows ("Наименование", "Нетто", etc.) are skipped but keep
-      // lastWasEmpty = true so the very next content row is still treated as a dish name.
+      // Column-header rows ("Наименование", "Нетто", etc.) — skip but keep
+      // lastWasEmpty = true so the next content row is still treated as a dish name.
       if (isSkipText(first.text)) continue
       lastWasEmpty = false
-      if (current) dishes.push(current)
+      flushCurrent()
       const kind: 'dish' | 'preparation' =
         sheetIsPrep || isPreparationItem(first.text) ? 'preparation' : 'dish'
-      current = { name: first.text, category, kind, ingredients: [] }
+      current = { id: crypto.randomUUID(), name: first.text, category, kind, ingredients: [] }
       continue
     }
 
@@ -212,17 +262,91 @@ function parseTTKSheet(
       continue
     }
 
+    // Track longest cell in this block across ALL columns (longest = instructions fallback)
+    for (const col of cols) {
+      if (col.text.length > longestCellText.length) longestCellText = col.text
+    }
+
     // Ingredient row — find weight in cols 1..5
     let weight = 0
     for (let ci = 1; ci < cols.length && ci <= 5; ci++) {
       const w = extractWeight(cols[ci].rawVal)
       if (w > 0) { weight = w; break }
     }
-    current.ingredients.push({ ingredientName: first.text, netWeight: weight })
+
+    // If no weight found in dedicated columns, try extracting from the name itself ("Молоко 250г")
+    let ingredientName = first.text
+    if (weight === 0) {
+      const embedded = extractEmbeddedWeight(first.text)
+      if (embedded) {
+        ingredientName = embedded.cleanName
+        weight = embedded.weight
+      }
+    }
+
+    // Normalize: strip ПФ prefix, чищенный, trailing dots
+    ingredientName = normalizeIngredientName(ingredientName)
+    if (!ingredientName) continue
+
+    current.ingredients.push({ ingredientName, netWeight: weight })
   }
 
-  if (current) dishes.push(current)
-  return dishes
+  flushCurrent()
+
+  // Deduplicate by name within sheet — merge ingredients from repeated blocks
+  const seen = new Map<string, ParsedDish>()
+  for (const d of dishes) {
+    const k = d.name.toLowerCase()
+    const existing = seen.get(k)
+    if (existing) {
+      existing.ingredients.push(...d.ingredients)
+      if (!existing.instructions && d.instructions) existing.instructions = d.instructions
+    } else {
+      seen.set(k, d)
+    }
+  }
+  return Array.from(seen.values())
+}
+
+// ─── Constructor / Modifier sheet parser ──────────────────────
+// When a sheet name or content contains "Конструктор" / "Модификаторы",
+// each non-empty cell in the grid is treated as a standalone ingredient/preparation.
+
+function parseConstructorSheet(
+  ws: Record<string, XLSXCell | unknown>,
+  sheetName: string,
+  utils: XLSXUtils,
+): ParsedDish[] {
+  const ref = (ws as { '!ref'?: string })['!ref']
+  if (!ref) return []
+
+  const range = utils.decode_range(ref)
+  const seen = new Map<string, ParsedDish>()
+
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = utils.encode_cell({ r, c })
+      const cell = (ws as Record<string, XLSXCell>)[addr]
+      const v = cell?.v
+      if (v == null || v === '') continue
+      const raw = String(v).trim()
+      if (!raw || isSkipText(raw)) continue
+      const name = normalizeIngredientName(raw)
+      if (!name || name.length < 2) continue
+      const key = name.toLowerCase()
+      if (!seen.has(key)) {
+        seen.set(key, {
+          id: crypto.randomUUID(),
+          name,
+          category: sheetName,
+          kind: 'preparation',
+          ingredients: [],
+        })
+      }
+    }
+  }
+
+  return Array.from(seen.values())
 }
 
 // ─── Main parse entry point ────────────────────────────────────
@@ -249,9 +373,24 @@ export async function parseFile(file: File): Promise<ImportResult> {
     for (const sheetName of wb.SheetNames) {
       const ws = wb.Sheets[sheetName] as Record<string, XLSXCell | unknown>
       const category = sheetName.trim() || 'Основное'
-      dishes.push(...parseTTKSheet(ws, category, XLSX.utils))
+      // Route constructor / modifier sheets to the horizontal parser
+      if (/конструктор|модификатор/i.test(sheetName)) {
+        dishes.push(...parseConstructorSheet(ws, category, XLSX.utils))
+      } else {
+        dishes.push(...parseTTKSheet(ws, category, XLSX.utils))
+      }
     }
-    return { dishes, errors: [] }
+    // Deduplicate across sheets by id — defensive guard against UUID collisions
+    // or any edge case where the same object reference ends up in multiple sheets
+    const seenIds = new Map<string, ParsedDish>()
+    for (const d of dishes) {
+      if (seenIds.has(d.id)) {
+        console.warn('[importer] duplicate id across sheets, skipping duplicate:', d.id, d.name)
+      } else {
+        seenIds.set(d.id, d)
+      }
+    }
+    return { dishes: Array.from(seenIds.values()), errors: [] }
   }
 
   return { dishes: [], errors: [`Неподдерживаемый формат файла: ${file.name}`] }
@@ -260,10 +399,16 @@ export async function parseFile(file: File): Promise<ImportResult> {
 // ─── Smart ingredient matching ─────────────────────────────────
 
 function fuzzyFind(name: string, refs: IngredientRef[]): IngredientRef | null {
-  const q = name.toLowerCase().trim()
+  // Normalize both sides so "ПФ Лук чищенный" matches "Лук" and vice versa
+  const norm = (s: string) => normalizeIngredientName(s).toLowerCase()
+  const q = norm(name)
+  if (!q) return null
   return (
-    refs.find(r => r.name.toLowerCase() === q) ??
-    refs.find(r => r.name.toLowerCase().includes(q) || q.includes(r.name.toLowerCase())) ??
+    refs.find(r => norm(r.name) === q) ??
+    refs.find(r => {
+      const rn = norm(r.name)
+      return rn.length >= 3 && (rn.includes(q) || q.includes(rn))
+    }) ??
     null
   )
 }
@@ -416,6 +561,17 @@ export function buildImportedCategories(
     } else {
       cat.items = [...(cat.items ?? []), item]
     }
+  }
+
+  // Final guard: ensure no category's items array has duplicate IDs
+  // (can happen if existingCategories already contained duplicates)
+  for (const cat of cats) {
+    const seen = new Set<string>()
+    cat.items = (cat.items ?? []).filter(item => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
   }
 
   return { categories: cats, preparations, newIngredients }

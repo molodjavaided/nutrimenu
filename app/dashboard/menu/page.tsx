@@ -103,8 +103,9 @@ export default function MenuPage() {
     const oldIndex = categories.findIndex(c => c.id === active.id)
     const newIndex = categories.findIndex(c => c.id === over.id)
     const reordered = arrayMove(categories, oldIndex, newIndex)
-    setCategories(reordered)
-    saveCategories(reordered)
+    const withOrder = reordered.map((c, i) => ({ ...c, order: i }))
+    setCategories(withOrder)
+    reorderCategories(withOrder)
   }
 
   return (
@@ -150,7 +151,7 @@ export default function MenuPage() {
       {showImport && (
         <ImportModal
           onClose={() => setShowImport(false)}
-          onImported={(count) => {
+          onImported={() => {
             setCategories(getCategories())
             setShowImport(false)
           }}

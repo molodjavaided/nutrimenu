@@ -67,7 +67,14 @@ export default function SortableCategory({
     onReorderItems(category.id, String(active.id), String(over.id))
   }
 
-  const items = category.items ?? []
+  const rawItems = category.items ?? []
+  // Guard against duplicate IDs from corrupt localStorage data
+  const seenItemIds = new Set<string>()
+  const items = rawItems.filter(i => {
+    if (seenItemIds.has(i.id)) return false
+    seenItemIds.add(i.id)
+    return true
+  })
 
   return (
     <div ref={setNodeRef} style={style}>

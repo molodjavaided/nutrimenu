@@ -2,6 +2,45 @@ import { Category, IngredientLibrary, IngredientRef, MenuItem, Venue } from '@/t
 
 const VENUE_KEY = 'nutrimenu_venue'
 const CATEGORIES_KEY = 'nutrimenu_categories'
+const INGREDIENTS_KEY = 'nutrimenu_ingredients'
+const LIBRARIES_KEY = 'nutrimenu_ingredient_libraries'
+const IMPORT_BACKUP_KEY = 'nutrimenu_import_backup'
+
+// ─── Import backup / rollback ────────────────────────────────
+
+interface ImportBackup {
+  categories: string
+  libraries: string
+}
+
+/** Snapshot current categories + ingredient libraries before an import. */
+export function createImportBackup(): void {
+  if (typeof window === 'undefined') return
+  const backup: ImportBackup = {
+    categories: localStorage.getItem(CATEGORIES_KEY) ?? '[]',
+    libraries: localStorage.getItem(LIBRARIES_KEY) ?? '[]',
+  }
+  localStorage.setItem(IMPORT_BACKUP_KEY, JSON.stringify(backup))
+}
+
+/** Restore categories + libraries from last import backup. Returns true on success. */
+export function rollbackImport(): boolean {
+  if (typeof window === 'undefined') return false
+  const raw = localStorage.getItem(IMPORT_BACKUP_KEY)
+  if (!raw) return false
+  const backup: ImportBackup = JSON.parse(raw)
+  localStorage.setItem(CATEGORIES_KEY, backup.categories)
+  localStorage.setItem(LIBRARIES_KEY, backup.libraries)
+  localStorage.removeItem(IMPORT_BACKUP_KEY)
+  window.dispatchEvent(new CustomEvent('nutrimenu:updated'))
+  return true
+}
+
+/** Discard the backup after the undo window closes. */
+export function clearImportBackup(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(IMPORT_BACKUP_KEY)
+}
 
 // ─── Venue ───────────────────────────────────────────────────
 
@@ -21,7 +60,23 @@ export function saveVenue(venue: Venue): void {
 export function getCategories(): Category[] {
   if (typeof window === 'undefined') return []
   const raw = localStorage.getItem(CATEGORIES_KEY)
-  return raw ? JSON.parse(raw) : []
+  if (!raw) return []
+  const cats: Category[] = JSON.parse(raw)
+  // Heal any duplicate item IDs written by earlier import bugs
+  let dirty = false
+  const healed = cats.map(c => {
+    const seen = new Set<string>()
+    const items = (c.items ?? []).filter(i => {
+      if (seen.has(i.id)) return false
+      seen.add(i.id)
+      return true
+    })
+    if (items.length !== (c.items?.length ?? 0)) { dirty = true; return { ...c, items } }
+    return c
+  })
+  // Write back the cleaned data so corrupt keys don't re-surface on next read
+  if (dirty) localStorage.setItem(CATEGORIES_KEY, JSON.stringify(healed))
+  return healed
 }
 
 export function saveCategories(categories: Category[]): void {
@@ -100,9 +155,6 @@ export function getItemById(itemId: string): { item: MenuItem; categoryId: strin
   }
   return null
 }
-
-const INGREDIENTS_KEY = 'nutrimenu_ingredients'
-const LIBRARIES_KEY = 'nutrimenu_ingredient_libraries'
 
 export const MY_LIBRARY_ID = 'my-library'
 

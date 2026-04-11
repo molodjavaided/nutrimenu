@@ -1,11 +1,16 @@
 import type { Category, CompositionRow, IngredientRef, MenuItem } from '@/types'
-import { resolveNutriFromComposition } from '@/lib/utils'
+import { resolveNutriFromComposition, resolveIngredientPer100 } from '@/lib/utils'
 
 // ─── Public types ──────────────────────────────────────────────
 
 export interface ParsedDish {
   name: string
   category: string
+  /**
+   * 'dish'        → MenuItem in a menu category
+   * 'preparation' → composite IngredientRef in Мои ингредиенты (Pass 1)
+   */
+  kind: 'dish' | 'preparation'
   instructions?: string
   ingredients: Array<{ ingredientName: string; netWeight: number }>
 }
@@ -17,7 +22,20 @@ export interface ImportResult {
 
 export interface BuildResult {
   categories: Category[]
+  /** Composite IngredientRefs built from preparations — save to MY_LIBRARY_ID */
+  preparations: IngredientRef[]
+  /** Placeholder mono IngredientRefs for unmatched raw ingredients — save to MY_LIBRARY_ID */
   newIngredients: IngredientRef[]
+}
+
+// ─── Classification helpers ────────────────────────────────────
+
+function isPreparationSheet(sheetName: string): boolean {
+  return /заготовк|пф/i.test(sheetName)
+}
+
+function isPreparationItem(name: string): boolean {
+  return /пф/i.test(name)
 }
 
 // ─── CSV template ──────────────────────────────────────────────
@@ -62,7 +80,9 @@ function groupColumnarRows(rawRows: Record<string, unknown>[]): ParsedDish[] {
     if (!dishName || !category) continue
     const key = `${category.toLowerCase()}|||${dishName.toLowerCase()}`
     if (!map.has(key)) {
-      map.set(key, { name: dishName, category, instructions: instructions || undefined, ingredients: [] })
+      const kind: 'dish' | 'preparation' =
+        isPreparationSheet(category) || isPreparationItem(dishName) ? 'preparation' : 'dish'
+      map.set(key, { name: dishName, category, kind, instructions: instructions || undefined, ingredients: [] })
     }
     const dish = map.get(key)!
     if (ingredientName) dish.ingredients.push({ ingredientName, netWeight })
@@ -126,12 +146,14 @@ interface XLSXUtils {
 
 function parseTTKSheet(
   ws: Record<string, XLSXCell | unknown>,
-  category: string,
+  sheetName: string,
   utils: XLSXUtils,
 ): ParsedDish[] {
   const ref = (ws as { '!ref'?: string })['!ref']
   if (!ref) return []
 
+  const sheetIsPrep = isPreparationSheet(sheetName)
+  const category = sheetName || 'Основное'
   const range = utils.decode_range(ref)
   const dishes: ParsedDish[] = []
   let current: ParsedDish | null = null
@@ -171,7 +193,9 @@ function parseTTKSheet(
       if (isSkipText(first.text)) continue
       lastWasEmpty = false
       if (current) dishes.push(current)
-      current = { name: first.text, category, ingredients: [] }
+      const kind: 'dish' | 'preparation' =
+        sheetIsPrep || isPreparationItem(first.text) ? 'preparation' : 'dish'
+      current = { name: first.text, category, kind, ingredients: [] }
       continue
     }
 
@@ -244,7 +268,59 @@ function fuzzyFind(name: string, refs: IngredientRef[]): IngredientRef | null {
   )
 }
 
-// ─── Build categories from parsed dishes ───────────────────────
+/** Resolve per-100g macros for a composition, normalising by total weight. */
+function calcPer100(composition: CompositionRow[], allRefs: IngredientRef[]) {
+  let cal = 0, pro = 0, fat = 0, car = 0, totalWeight = 0
+  for (const row of composition) {
+    if (!row.amount) continue
+    const ref = allRefs.find(r => r.id === row.ingredientId)
+    if (!ref) continue
+    const n = resolveIngredientPer100(ref, allRefs)
+    const ratio = row.amount / 100
+    cal += n.caloriesPer100 * ratio
+    pro += n.proteinPer100 * ratio
+    fat += n.fatPer100 * ratio
+    car += n.carbsPer100 * ratio
+    totalWeight += row.amount
+  }
+  if (totalWeight === 0) return { caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0 }
+  const norm = 100 / totalWeight
+  return {
+    caloriesPer100: Math.round(cal * norm),
+    proteinPer100:  Math.round(pro * norm * 10) / 10,
+    fatPer100:      Math.round(fat * norm * 10) / 10,
+    carbsPer100:    Math.round(car * norm * 10) / 10,
+  }
+}
+
+/** Resolve or create a placeholder IngredientRef; mutates allRefs and newIngredients. */
+function resolveOrCreateRef(
+  ingredientName: string,
+  allRefs: IngredientRef[],
+  newIngredients: IngredientRef[],
+): IngredientRef {
+  const existing = fuzzyFind(ingredientName, allRefs)
+  if (existing) return existing
+  const placeholder: IngredientRef = {
+    id: crypto.randomUUID(),
+    name: ingredientName,
+    unit: 'г',
+    caloriesPer100: 0,
+    proteinPer100: 0,
+    fatPer100: 0,
+    carbsPer100: 0,
+    isSystem: false,
+    type: 'mono',
+  }
+  newIngredients.push(placeholder)
+  allRefs.push(placeholder)
+  return placeholder
+}
+
+// ─── Build categories + ingredients from parsed dishes ──────────
+// Two-pass:
+//   Pass 1 — preparations → composite IngredientRef (added to allRefs so Pass 2 can find them)
+//   Pass 2 — dishes       → MenuItem in the right category
 
 export function buildImportedCategories(
   dishes: ParsedDish[],
@@ -254,11 +330,49 @@ export function buildImportedCategories(
   venueId: string,
 ): BuildResult {
   const cats: Category[] = existingCategories.map(c => ({ ...c, items: [...(c.items ?? [])] }))
-  const newIngredients: IngredientRef[] = []
+  const preparations: IngredientRef[] = []
+  const newIngredients: IngredientRef[] = [] // placeholder monos for unmatched raw ingredients
   const allRefs = [...allIngredients]
 
+  // ── Pass 1: preparations → composite IngredientRef ────────────
   for (const dish of dishes) {
-    const key = `${dish.category.toLowerCase()}|||${dish.name.toLowerCase()}`
+    if (dish.kind !== 'preparation') continue
+
+    const composition: CompositionRow[] = []
+    for (const { ingredientName, netWeight } of dish.ingredients) {
+      const ref = resolveOrCreateRef(ingredientName, allRefs, newIngredients)
+      if (netWeight > 0) composition.push({ ingredientId: ref.id, amount: netWeight, unit: 'г' })
+    }
+
+    const per100 = calcPer100(composition, allRefs)
+
+    // Reuse existing ID if a same-name ingredient already exists in allRefs
+    const existingRef = allRefs.find(r => r.name.toLowerCase() === dish.name.toLowerCase())
+    const prepRef: IngredientRef = {
+      id: existingRef?.id ?? crypto.randomUUID(),
+      name: dish.name,
+      unit: 'г',
+      ...per100,
+      isSystem: false,
+      type: 'composite',
+      composition,
+      instructions: dish.instructions,
+    }
+
+    // Replace or append in the working refs pool
+    if (existingRef) {
+      const idx = allRefs.indexOf(existingRef)
+      allRefs[idx] = prepRef
+    } else {
+      allRefs.push(prepRef)
+    }
+    preparations.push(prepRef)
+  }
+
+  // ── Pass 2: dishes → MenuItem ──────────────────────────────────
+  for (const dish of dishes) {
+    if (dish.kind !== 'dish') continue
+    const key = dishKey(dish)
     if (resolutions.get(key) === 'skip') continue
 
     // Find or create category
@@ -270,28 +384,10 @@ export function buildImportedCategories(
 
     const existingIdx = (cat.items ?? []).findIndex(i => i.name.toLowerCase() === dish.name.toLowerCase())
 
-    // Build composition with smart matching
     const composition: CompositionRow[] = []
     let totalWeight = 0
-
     for (const { ingredientName, netWeight } of dish.ingredients) {
-      let ref = fuzzyFind(ingredientName, allRefs)
-      if (!ref) {
-        // Create placeholder mono ingredient
-        ref = {
-          id: crypto.randomUUID(),
-          name: ingredientName,
-          unit: 'г',
-          caloriesPer100: 0,
-          proteinPer100: 0,
-          fatPer100: 0,
-          carbsPer100: 0,
-          isSystem: false,
-          type: 'mono',
-        }
-        newIngredients.push(ref)
-        allRefs.push(ref)
-      }
+      const ref = resolveOrCreateRef(ingredientName, allRefs, newIngredients)
       if (netWeight > 0) {
         composition.push({ ingredientId: ref.id, amount: netWeight, unit: 'г' })
         totalWeight += netWeight
@@ -322,15 +418,17 @@ export function buildImportedCategories(
     }
   }
 
-  return { categories: cats, newIngredients }
+  return { categories: cats, preparations, newIngredients }
 }
 
 // ─── Detect conflicts against existing data ────────────────────
+// Only dishes can conflict with menu categories; preparations always go to the ingredient library.
 
 export function detectConflicts(dishes: ParsedDish[], existingCategories: Category[]): Set<string> {
   const conflicts = new Set<string>()
   for (const dish of dishes) {
-    const key = `${dish.category.toLowerCase()}|||${dish.name.toLowerCase()}`
+    if (dish.kind === 'preparation') continue
+    const key = dishKey(dish)
     const cat = existingCategories.find(c => c.name.toLowerCase() === dish.category.toLowerCase())
     if (cat?.items?.some(i => i.name.toLowerCase() === dish.name.toLowerCase())) {
       conflicts.add(key)

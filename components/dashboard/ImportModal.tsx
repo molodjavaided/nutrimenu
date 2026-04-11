@@ -33,6 +33,13 @@ function pluralBlud(n: number): string {
   return 'блюд'
 }
 
+function buildButtonLabel(dishCount: number, prepCount: number): string {
+  const parts: string[] = []
+  if (dishCount > 0) parts.push(`${dishCount} ${pluralBlud(dishCount)}`)
+  if (prepCount > 0) parts.push(`${prepCount} заготовок`)
+  return parts.length ? `Импортировать: ${parts.join(' + ')}` : 'Нечего импортировать'
+}
+
 export default function ImportModal({ onClose, onImported }: Props) {
   const [step, setStep] = useState<'upload' | 'preview'>('upload')
   const [isDragging, setIsDragging] = useState(false)
@@ -87,7 +94,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
     const venue = getVenue()
     const venueId = venue?.id ?? '1'
 
-    const { categories, newIngredients } = buildImportedCategories(
+    const { categories, preparations, newIngredients } = buildImportedCategories(
       dishes,
       allIngredients,
       existing,
@@ -95,15 +102,22 @@ export default function ImportModal({ onClose, onImported }: Props) {
       venueId,
     )
 
-    if (newIngredients.length > 0) {
+    // Merge preparations + placeholder monos into personal library,
+    // replacing any existing entries with the same ID.
+    const allToLibrary = [...preparations, ...newIngredients]
+    if (allToLibrary.length > 0) {
       const existingPersonal = getIngredients()
-      saveLibraryIngredients(MY_LIBRARY_ID, [...existingPersonal, ...newIngredients])
+      const replacedIds = new Set(allToLibrary.map(r => r.id))
+      const kept = existingPersonal.filter(r => !replacedIds.has(r.id))
+      saveLibraryIngredients(MY_LIBRARY_ID, [...kept, ...allToLibrary])
     }
 
     saveCategories(categories)
 
-    const imported = dishes.filter(d => resolutions.get(dishKey(d)) !== 'skip').length
-    onImported(imported)
+    const dishCount = dishes.filter(
+      d => d.kind === 'dish' && resolutions.get(dishKey(d)) !== 'skip'
+    ).length
+    onImported(dishCount)
   }
 
   const downloadTemplate = () => {
@@ -116,7 +130,11 @@ export default function ImportModal({ onClose, onImported }: Props) {
     URL.revokeObjectURL(url)
   }
 
-  const importCount = dishes.filter(d => resolutions.get(dishKey(d)) !== 'skip').length
+  const dishImportCount = dishes.filter(
+    d => d.kind === 'dish' && resolutions.get(dishKey(d)) !== 'skip'
+  ).length
+  const prepCount = dishes.filter(d => d.kind === 'preparation').length
+  const importCount = dishImportCount + prepCount
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -148,7 +166,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
             <p className="text-xs mt-0.5" style={{ color: '#6B6490' }}>
               {step === 'upload'
                 ? 'Загрузите XLSX или CSV файл с вашим ТТК'
-                : `${dishes.length} ${pluralBlud(dishes.length)} распознано`}
+                : `${dishImportCount} ${pluralBlud(dishImportCount)} в меню` +
+                  (prepCount > 0 ? ` · ${prepCount} заготовок в ингредиенты` : '')}
             </p>
           </div>
           <button
@@ -204,9 +223,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
               className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
               style={{ background: '#B0A6DF', color: '#2C2950' }}
             >
-              {isSaving
-                ? 'Сохранение…'
-                : `Импортировать ${importCount} ${pluralBlud(importCount)}`}
+              {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
             </button>
           </div>
         )}
@@ -409,10 +426,10 @@ function PreviewStep({ dishes, conflicts, resolutions, onToggle }: PreviewStepPr
                 style={{
                   gridTemplateColumns: '1fr 120px 80px 140px',
                   background:
-                    isConflict && resolution === 'skip'
+                    dish.kind === 'dish' && isConflict && resolution === 'skip'
                       ? 'rgba(0,0,0,0.02)'
                       : 'transparent',
-                  opacity: isConflict && resolution === 'skip' ? 0.5 : 1,
+                  opacity: dish.kind === 'dish' && isConflict && resolution === 'skip' ? 0.5 : 1,
                 }}
               >
                 {/* Name + category */}
@@ -441,7 +458,18 @@ function PreviewStep({ dishes, conflicts, resolutions, onToggle }: PreviewStepPr
                 </span>
 
                 {/* Status / conflict controls */}
-                {isConflict ? (
+                {dish.kind === 'preparation' ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit"
+                    style={{
+                      background: 'rgba(176,166,223,0.2)',
+                      color: '#6B6490',
+                      border: '0.5px solid rgba(176,166,223,0.4)',
+                    }}
+                  >
+                    → Ингредиенты
+                  </span>
+                ) : isConflict ? (
                   <div className="flex gap-1">
                     <button
                       onClick={() => onToggle(key, 'overwrite')}

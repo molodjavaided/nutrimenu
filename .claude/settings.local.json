@@ -32,7 +32,10 @@
       "Bash(git:*)",
       "Bash(npm:*)",
       "Bash(echo \"PID=$!\")",
-      "Bash(awk '!seen[$0]++')"
+      "Bash(awk '!seen[$0]++')",
+      "Bash(echo \"DEV_PID=$!\")",
+      "Bash(grep -v '\"error\":\"\\\\$undefined\"')",
+      "Bash(grep -vE '\"error\":\"\\\\$undefined\"|errorStyles|errorScripts|global-error')"
     ]
   }
 }

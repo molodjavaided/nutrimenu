@@ -12,6 +12,7 @@ interface IngredientItem {
   id: string
   ingredientRefId: string
   name: string
+  unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
 }
 
 interface Size {
@@ -241,15 +242,14 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           const loadedIngredients = compositionData.map((comp) => {
             const newId = crypto.randomUUID()
             const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
-            console.log(`Ищем ингредиент с ID ${comp.ingredientId}:`, ref)
             ingredientIdMap.set(comp.ingredientId, newId)
             return {
               id: newId,
               ingredientRefId: comp.ingredientId,
               name: ref?.name || `Неизвестный ингредиент (${comp.ingredientId})`,
+              unit: (comp.unit || ref?.unit || 'г') as IngredientItem['unit'],
             }
           })
-          console.log('Загруженные ингредиенты:', loadedIngredients)
           setIngredients(loadedIngredients)
 
           const loadedAmounts: AmountCell[] = []
@@ -265,7 +265,6 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               }
             }
           }
-          console.log('Загруженные граммовки:', loadedAmounts)
           setAmounts(loadedAmounts)
         }
 
@@ -296,6 +295,43 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           }
         }
         setManualNutri(loadedManual)
+      } else if (found.item.composition && found.item.composition.length > 0) {
+        // Flat composition — imported dish without a sizes structure
+        const compositionData = found.item.composition
+        const ingredientIdMap = new Map<string, string>()
+
+        const loadedIngredients = compositionData.map(comp => {
+          const newId = crypto.randomUUID()
+          const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
+          ingredientIdMap.set(comp.ingredientId, newId)
+          return {
+            id: newId,
+            ingredientRefId: comp.ingredientId,
+            name: ref?.name || `ID: ${comp.ingredientId}`,
+            unit: (comp.unit || ref?.unit || 'г') as IngredientItem['unit'],
+          }
+        })
+        setIngredients(loadedIngredients)
+
+        const loadedAmounts: AmountCell[] = compositionData
+          .map(comp => ({
+            ingredientId: ingredientIdMap.get(comp.ingredientId) ?? '',
+            sizeId: 'default',
+            amount: comp.amount,
+          }))
+          .filter(a => a.ingredientId)
+        setAmounts(loadedAmounts)
+
+        // Seed КБЖУ from item-level values so the summary shows meaningful data
+        setManualNutri({
+          default: {
+            calories: found.item.calories,
+            protein: found.item.protein,
+            fat: found.item.fat,
+            carbs: found.item.carbs,
+            isManual: true,
+          },
+        })
       }
 
       // ─── Загрузка вариантов (шаг 2) ───────────────────────
@@ -402,7 +438,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
       if (!ref) continue
 
-      const ratio = amountCell.amount / 100
+      const effectiveGrams = (ingredient.unit === 'шт' && ref.weightPerUnit)
+        ? amountCell.amount * ref.weightPerUnit
+        : amountCell.amount
+      const ratio = effectiveGrams / 100
       totalCalories += ref.caloriesPer100 * ratio
       totalProtein += ref.proteinPer100 * ratio
       totalFat += ref.fatPer100 * ratio
@@ -425,16 +464,21 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     const sizesToSave: SizeOption[] = sizes.map(size => {
       const composition = ingredients.map(ingredient => {
         const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
-        const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
         return {
           ingredientId: ingredient.ingredientRefId,
           amount: amountCell?.amount || 0,
-          unit: ref?.unit || 'г',
+          unit: ingredient.unit,
         }
       }).filter(comp => comp.amount > 0)
 
       const nutri = calculateNutriForSize(size.id)
-      const totalWeight = composition.reduce((sum, comp) => sum + comp.amount, 0)
+      const totalWeight = composition.reduce((sum, comp) => {
+        const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
+        const grams = (comp.unit === 'шт' && ref?.weightPerUnit)
+          ? comp.amount * ref.weightPerUnit
+          : comp.amount
+        return sum + grams
+      }, 0)
 
       return {
         id: size.id,
@@ -510,6 +554,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       protein: sizesToSave[0].protein,
       fat: sizesToSave[0].fat,
       carbs: sizesToSave[0].carbs,
+      composition: sizesToSave[0].composition,
       sizes: sizesToSave,
       variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
       categoryId,
@@ -546,6 +591,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       id: crypto.randomUUID(),
       ingredientRefId,
       name: ref.name,
+      unit: ref.unit,
     }
     setIngredients(prev => [...prev, newIngredient])
   }, [ingredientRefs])
@@ -795,8 +841,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               </thead>
               <tbody>
                 {ingredients.map(ingredient => {
-                  const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
-                  const unit = ref?.unit || 'г'
+                  const unit = ingredient.unit
+                  const isCount = unit === 'шт'
                   return (
                     <tr key={ingredient.id}>
                       <td className="py-2 px-3 text-sm" style={{ color: '#2C2950' }}>
@@ -810,6 +856,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                             <div className="flex items-center gap-1 justify-center">
                               <input
                                 type="number"
+                                inputMode={isCount ? 'numeric' : 'decimal'}
+                                step={isCount ? 1 : undefined}
+                                min={isCount ? 0 : undefined}
                                 value={amount || ''}
                                 onChange={e => updateAmount(ingredient.id, size.id, Number(e.target.value))}
                                 placeholder="0"
@@ -842,7 +891,14 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 for (const ingredient of ingredients) {
                   const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
                   if (amountCell?.amount) {
-                    totalWeight += amountCell.amount
+                    if (ingredient.unit === 'шт') {
+                      const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
+                      totalWeight += ref?.weightPerUnit
+                        ? amountCell.amount * ref.weightPerUnit
+                        : amountCell.amount
+                    } else {
+                      totalWeight += amountCell.amount
+                    }
                   }
                 }
 
@@ -1100,7 +1156,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             const amount = group.replacesIngredientRefId
               ? getAmountFromComposition(group.replacesIngredientRefId, sizes[0]?.id ?? '')
               : (opt.weight || 100)
-            const unit = group.replacesIngredientRefId ? (sizes[0]?.unit ?? 'г') : ref.unit
+            const rawUnit = group.replacesIngredientRefId ? (sizes[0]?.unit ?? 'г') : ref.unit
+            const unit: 'г' | 'мл' = rawUnit === 'мл' ? 'мл' : 'г'
             const ratio = amount / 100
             updateVariantOption(groupId, optionId, {
               ingredientRefId: ref.id,

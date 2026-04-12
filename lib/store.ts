@@ -163,7 +163,22 @@ export const MY_LIBRARY_ID = 'my-library'
 export function getLibraries(): IngredientLibrary[] {
   if (typeof window === 'undefined') return []
   const raw = localStorage.getItem(LIBRARIES_KEY)
-  return raw ? JSON.parse(raw) : []
+  if (!raw) return []
+  const libs: IngredientLibrary[] = JSON.parse(raw)
+  // Heal duplicate ingredient IDs written by earlier import bugs
+  let dirty = false
+  const healed = libs.map(lib => {
+    const seen = new Set<string>()
+    const ingredients = lib.ingredients.filter(i => {
+      if (seen.has(i.id)) return false
+      seen.add(i.id)
+      return true
+    })
+    if (ingredients.length !== lib.ingredients.length) { dirty = true; return { ...lib, ingredients } }
+    return lib
+  })
+  if (dirty) localStorage.setItem(LIBRARIES_KEY, JSON.stringify(healed))
+  return healed
 }
 
 export function saveLibraries(libraries: IngredientLibrary[]): void {
@@ -246,4 +261,85 @@ export function updateIngredient(id: string, data: Omit<IngredientRef, 'id'>): v
 export function deleteIngredient(id: string): void {
   const ingredients = getIngredients()
   saveIngredients(ingredients.filter(i => i.id !== id))
+}
+
+// ─── Deduplication utility ───────────────────────────────────
+// Groups library ingredients by normalised name, merges duplicates
+// (keeps the entry with the most nutritional data), then rewrites
+// all composition references across categories.
+
+function normName(s: string): string {
+  return s
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\b(охл|зам|с\/м|конс|св|сух)\.?\b/gi, '')
+    .replace(/^\s*п\/ф\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+export function deduplicateLibraryIngredients(): { merged: number; removed: number } {
+  const libs = getLibraries()
+  const myLib = libs.find(l => l.id === MY_LIBRARY_ID)
+  if (!myLib) return { merged: 0, removed: 0 }
+
+  // Group by normalised name
+  const groups = new Map<string, IngredientRef[]>()
+  for (const ing of myLib.ingredients) {
+    const key = normName(ing.name)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(ing)
+  }
+
+  const idRemap = new Map<string, string>() // old id → canonical id
+  const toKeep: IngredientRef[] = []
+  let removed = 0
+
+  for (const group of groups.values()) {
+    if (group.length === 1) { toKeep.push(group[0]); continue }
+    // Pick the canonical entry: prefer the one with highest calorie data
+    const canonical = group.reduce((best, cur) =>
+      cur.caloriesPer100 > best.caloriesPer100 ? cur : best
+    )
+    toKeep.push(canonical)
+    for (const dup of group) {
+      if (dup.id !== canonical.id) {
+        idRemap.set(dup.id, canonical.id)
+        removed++
+        console.info(`[dedup] "${dup.name}" (${dup.id}) → "${canonical.name}" (${canonical.id})`)
+      }
+    }
+  }
+
+  if (removed === 0) return { merged: 0, removed: 0 }
+
+  // Rewrite personal library
+  const updatedLibs = libs.map(l =>
+    l.id === MY_LIBRARY_ID ? { ...l, ingredients: toKeep } : l
+  )
+
+  // Rewrite composition references in all categories
+  const cats = getCategories()
+  const updatedCats = cats.map(cat => ({
+    ...cat,
+    items: (cat.items ?? []).map(item => ({
+      ...item,
+      composition: (item.composition ?? []).map(row => ({
+        ...row,
+        ingredientId: idRemap.get(row.ingredientId) ?? row.ingredientId,
+      })),
+      sizes: (item.sizes ?? []).map(size => ({
+        ...size,
+        composition: (size.composition ?? []).map(row => ({
+          ...row,
+          ingredientId: idRemap.get(row.ingredientId) ?? row.ingredientId,
+        })),
+      })),
+    })),
+  }))
+
+  saveLibraries(updatedLibs)
+  saveCategories(updatedCats)
+
+  return { merged: idRemap.size, removed }
 }

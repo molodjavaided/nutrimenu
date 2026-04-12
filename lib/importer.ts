@@ -14,7 +14,7 @@ export interface ParsedDish {
    */
   kind: 'dish' | 'preparation'
   instructions?: string
-  ingredients: Array<{ ingredientName: string; netWeight: number }>
+  ingredients: Array<{ ingredientName: string; netWeight: number; unit: string }>
 }
 
 export interface ImportResult {
@@ -28,6 +28,27 @@ export interface BuildResult {
   preparations: IngredientRef[]
   /** Placeholder mono IngredientRefs for unmatched raw ingredients — save to MY_LIBRARY_ID */
   newIngredients: IngredientRef[]
+}
+
+/** One library candidate shown to the user during the matching step. */
+export interface IngredientCandidate {
+  id: string
+  name: string
+  /** Dice similarity score [0..1] */
+  score: number
+}
+
+/**
+ * An ingredient from the import file that has similar-but-not-exact matches
+ * in the library — needs user confirmation before import.
+ */
+export interface IngredientMatch {
+  importedName: string    // normalized name as it came from the file
+  normalizedKey: string   // importedName.toLowerCase() — key for the decisions map
+  unit: string
+  candidates: IngredientCandidate[]
+  /** Pre-selected choice: candidate id (score ≥ 0.60) or 'new' */
+  autoPreselect: string | 'new'
 }
 
 // ─── Classification helpers ────────────────────────────────────
@@ -87,7 +108,7 @@ function groupColumnarRows(rawRows: Record<string, unknown>[]): ParsedDish[] {
       map.set(key, { id: crypto.randomUUID(), name: dishName, category, kind, instructions: instructions || undefined, ingredients: [] })
     }
     const dish = map.get(key)!
-    if (ingredientName) dish.ingredients.push({ ingredientName, netWeight })
+    if (ingredientName) dish.ingredients.push({ ingredientName, netWeight, unit: 'г' })
     if (instructions && !dish.instructions) dish.instructions = instructions
   }
   return Array.from(map.values())
@@ -97,43 +118,76 @@ function groupColumnarRows(rawRows: Record<string, unknown>[]): ParsedDish[] {
 // Layout: dish name (bold or first row after empty), ingredients below,
 // quote-wrapped rows → instructions, empty rows → block separator.
 
-/** Extract the first numeric value from a cell, ignoring unit suffixes. */
-function extractWeight(raw: unknown): number {
-  if (typeof raw === 'number') return raw > 0 ? raw : 0
-  if (raw == null || raw === '') return 0
-  const s = String(raw)
-    .replace(/[кК][гГ]/g, 'e3') // "кг" → multiply by 1000 handled below
-    .replace(/[гГ][рР]\.?|[гГ]\.?(?!\d)|[мМ][лЛ]\.?|шт\.?/gi, '')
-    .trim()
-  // Ranges like "20/40" → take first number
-  const m = s.match(/(\d+[,.]?\d*)/)
-  if (!m) return 0
-  const n = parseFloat(m[1].replace(',', '.'))
-  return isNaN(n) ? 0 : n
+/**
+ * Extract the numeric amount and unit from a cell value.
+ * - кг  → amount × 1000, unit 'г'
+ * - л   → amount × 1000, unit 'мл'
+ * - шт  → amount as-is,  unit 'шт'
+ * - мл  → amount as-is,  unit 'мл'
+ * - г/гр/default → amount as-is, unit 'г'
+ * Ranges like "20/40" → first number. Returns { amount: 0 } when nothing found.
+ */
+function extractWeightAndUnit(raw: unknown): { amount: number; unit: 'г' | 'мл' | 'шт' } {
+  if (raw == null || raw === '') return { amount: 0, unit: 'г' }
+  if (typeof raw === 'number') return { amount: raw > 0 ? raw : 0, unit: 'г' }
+
+  const s = String(raw).trim()
+  // Take first numeric token (handles ranges like "120/100/100")
+  const numMatch = s.match(/(\d+[,.]?\d*)/)
+  if (!numMatch) return { amount: 0, unit: 'г' }
+  const n = parseFloat(numMatch[1].replace(',', '.'))
+  if (isNaN(n) || n <= 0) return { amount: 0, unit: 'г' }
+
+  if (/[кК][гГ]/.test(s)) return { amount: n * 1000, unit: 'г' }
+  if (/\bл\.?\s*$/i.test(s) && !/[мМ][лЛ]/.test(s)) return { amount: n * 1000, unit: 'мл' }
+  if (/[мМ][лЛ]/.test(s)) return { amount: n, unit: 'мл' }
+  if (/шт\.?/i.test(s)) return { amount: n, unit: 'шт' }
+  return { amount: n, unit: 'г' }
 }
 
-/** Clean an ingredient name: strip ПФ prefix, cleaning notes, trailing dots/spaces. */
+/** Thin wrapper: just the numeric part (used where unit is irrelevant). */
+function extractWeight(raw: unknown): number {
+  return extractWeightAndUnit(raw).amount
+}
+
+/**
+ * Clean an ingredient name:
+ *  - strip ПФ prefix/suffix
+ *  - strip parenthesised annotations: "(Италия)", "(охл.)", "(550 г)"
+ *  - strip standalone quality abbreviations: охл, зам, с/м, конс, св, сух
+ *  - strip "чищенный" variants
+ *  - collapse whitespace
+ */
 export function normalizeIngredientName(raw: string): string {
   return raw
-    .replace(/^\s*п\/ф\s*/i, '')            // п/ф prefix
-    .replace(/^\s*пф\s+/i, '')              // ПФ prefix (standalone word)
-    .replace(/\bчищен\w*\b/gi, '')          // чищенный / чищеная / чищеное
-    .replace(/\.+\s*$/, '')                 // trailing dots
+    .replace(/^\s*п\/ф\s*/i, '')                          // п/ф prefix
+    .replace(/^\s*пф\s+/i, '')                            // ПФ prefix (standalone word)
+    .replace(/\s+п\/ф\s*$/i, '')                          // п/ф suffix
+    .replace(/\s+пф\s*$/i, '')                            // ПФ suffix
+    .replace(/\s*\([^)]*\)/g, '')                         // (Италия) / (охл.) / (550 г)
+    .replace(/\b(охл|зам|с\/м|конс|св|сух)\.?\b/gi, '')  // quality abbrevs
+    .replace(/\bчищен\w*\b/gi, '')                        // чищенный / чищеная
+    .replace(/\.+\s*$/, '')                               // trailing dots
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 /**
- * Try to extract a weight embedded in the ingredient name itself.
- * Handles patterns like "Молоко 250гр", "Яйцо 1шт", "Масло 50г".
- * Returns null if no embedded weight is found.
+ * Try to extract a weight+unit embedded in the ingredient name itself.
+ * Handles "Молоко 250гр", "Яйцо 2шт", "Масло 50г", "Сыр 1кг".
+ * Returns null if no pattern found.
  */
-function extractEmbeddedWeight(text: string): { cleanName: string; weight: number } | null {
-  const m = text.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(?:гр?|г|мл|шт)\.?\s*$/i)
+function extractEmbeddedWeight(text: string): { cleanName: string; weight: number; unit: 'г' | 'мл' | 'шт' } | null {
+  const m = text.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*(кг|л\b|мл|гр?|г|шт)\.?\s*$/i)
   if (!m) return null
-  const weight = parseFloat(m[2].replace(',', '.'))
-  if (!weight) return null
-  return { cleanName: m[1].trim(), weight }
+  const n = parseFloat(m[2].replace(',', '.'))
+  if (!n) return null
+  const rawUnit = m[3].toLowerCase()
+  if (/кг/.test(rawUnit)) return { cleanName: m[1].trim(), weight: n * 1000, unit: 'г' }
+  if (/^л$/.test(rawUnit)) return { cleanName: m[1].trim(), weight: n * 1000, unit: 'мл' }
+  if (/мл/.test(rawUnit)) return { cleanName: m[1].trim(), weight: n, unit: 'мл' }
+  if (/шт/.test(rawUnit)) return { cleanName: m[1].trim(), weight: n, unit: 'шт' }
+  return { cleanName: m[1].trim(), weight: n, unit: 'г' }
 }
 
 /** Rows to ignore entirely (column headers, totals, etc.) */
@@ -183,20 +237,30 @@ function parseTTKSheet(
   const range = utils.decode_range(ref)
   const dishes: ParsedDish[] = []
   let current: ParsedDish | null = null
-  let lastWasEmpty = true // start in "expecting dish" state → skip leading empties
-  // Track the longest piece of text seen in the current block for instructions fallback
-  let longestCellText = ''
 
-  /** Flush the current dish into dishes[], applying instruction fallback. */
+  /** Flush the current dish into dishes[]. */
   function flushCurrent() {
     if (!current) return
-    if (!current.instructions && longestCellText.length > 50) {
-      current.instructions = longestCellText
-    }
     dishes.push(current)
     current = null
-    longestCellText = ''
   }
+
+  // ── State machine ────────────────────────────────────────────
+  // Header detection is weight-based, NOT separator-based:
+  //
+  //   DISH HEADER  = col 0 has text AND all other cols are empty
+  //                  (name-only row with no weight anywhere)
+  //   INGREDIENT   = has a weight value in any of cols 1-6
+  //                  OR embedded weight in the name itself
+  //
+  // This handles both layouts found in practice:
+  //   Layout A (Заготовки / Яйца / БОУЛ): name in col 0, weight in col 3
+  //   Layout B (Меню2+):                  name in col 1, weight in col 4,
+  //                                        col 0 is empty for ingredient rows
+  //
+  // Empty rows are skipped — they are positional separators between the dish
+  // name and its ingredients and must NOT trigger a flush.  A flush happens
+  // only when a NEW dish header is encountered (or at end of sheet).
 
   for (let r = range.s.r; r <= range.e.r; r++) {
     // Collect cells for this row
@@ -213,82 +277,79 @@ function parseTTKSheet(
       })
     }
 
-    // Empty row → flush current dish, reset state
-    if (cols.every(c => !c.text)) {
-      flushCurrent()
-      lastWasEmpty = true
+    // Empty row → skip (do NOT flush; new headers trigger flush)
+    if (cols.every(c => !c.text)) continue
+
+    // Resolve which column holds the ingredient / dish name:
+    //   col 0 if non-empty (Layout A + all headers)
+    //   col 1 if col 0 is empty (Layout B ingredient rows)
+    const nameColIdx = cols[0].text ? 0 : (cols[1]?.text ? 1 : -1)
+    if (nameColIdx === -1) continue
+    const nameRaw = cols[nameColIdx].text
+
+    if (isSkipText(nameRaw)) continue
+
+    // Explicit instruction rows (starts with " « * or keyword)
+    if (isInstruction(nameRaw)) {
+      if (current && !current.instructions) {
+        current.instructions = nameRaw.replace(/^["«]|["»]$/g, '').trim()
+      }
       continue
     }
 
-    const first = cols[0]
-    if (!first.text) continue // leading empty cell in row (merged / indent)
+    // ── Dish header detection ──────────────────────────────────
+    // A header row has text ONLY in col 0; all other columns are empty.
+    // Bold is an additional confirming signal but not required.
+    const allOtherEmpty = cols.slice(1).every(c => !c.text)
+    const isDishHeader = cols[0].text !== '' && allOtherEmpty
 
-    // ── Block-start detection (Pro-Chef logic) ──────────────────
-    // A new dish block starts when:
-    //   1. Preceded by an empty row (lastWasEmpty) — reliable separator
-    //   2. Cell is bold — reliable when styles are preserved
-    //   3. Only the first column has content (qty columns 1-4 all empty)
-    //      → "quantity column is empty" heuristic from the spec.
-    //      Guard: only activate once the current dish already has at least one
-    //      weighted ingredient — this proves the file consistently uses weight
-    //      columns, and prevents treating every no-weight ingredient as a header.
-    const allNonFirstEmpty = cols.slice(1).every(c => !c.text)
-    const currentHasWeightedIngredients = current?.ingredients.some(i => i.netWeight > 0) ?? false
-    const isBlockByQtyCol = allNonFirstEmpty && !isInstruction(first.text) && currentHasWeightedIngredients
-    const isHeader = lastWasEmpty || first.bold || isBlockByQtyCol
-
-    if (isHeader) {
-      // Column-header rows ("Наименование", "Нетто", etc.) — skip but keep
-      // lastWasEmpty = true so the next content row is still treated as a dish name.
-      if (isSkipText(first.text)) continue
-      lastWasEmpty = false
+    if (isDishHeader) {
       flushCurrent()
       const kind: 'dish' | 'preparation' =
-        sheetIsPrep || isPreparationItem(first.text) ? 'preparation' : 'dish'
-      current = { id: crypto.randomUUID(), name: first.text, category, kind, ingredients: [] }
+        sheetIsPrep || isPreparationItem(cols[0].text) ? 'preparation' : 'dish'
+      current = { id: crypto.randomUUID(), name: cols[0].text, category, kind, ingredients: [] }
       continue
     }
 
-    lastWasEmpty = false
-
-    // Inside a dish
+    // ── Ingredient row ─────────────────────────────────────────
     if (!current) continue
-    if (isSkipText(first.text)) continue
 
-    if (isInstruction(first.text)) {
-      if (!current.instructions) {
-        current.instructions = first.text.replace(/^["«]|["»]$/g, '').trim()
+    // Find weight+unit in cols 1-6 (Layout A: col 3 / Layout B: col 4)
+    let amount = 0
+    let unit: 'г' | 'мл' | 'шт' = 'г'
+    let weightColIdx = -1
+    for (let ci = 1; ci < cols.length && ci <= 6; ci++) {
+      const wu = extractWeightAndUnit(cols[ci].rawVal)
+      if (wu.amount > 0) { amount = wu.amount; unit = wu.unit; weightColIdx = ci; break }
+    }
+
+    // Look for instructions in any long-text cell (not the name or weight col)
+    if (!current.instructions) {
+      for (let ci = 0; ci < cols.length; ci++) {
+        if (ci === nameColIdx || ci === weightColIdx) continue
+        if (cols[ci].text.length > 30) {
+          current.instructions = cols[ci].text
+          break
+        }
       }
-      continue
     }
 
-    // Track longest cell in this block across ALL columns (longest = instructions fallback)
-    for (const col of cols) {
-      if (col.text.length > longestCellText.length) longestCellText = col.text
-    }
-
-    // Ingredient row — find weight in cols 1..5
-    let weight = 0
-    for (let ci = 1; ci < cols.length && ci <= 5; ci++) {
-      const w = extractWeight(cols[ci].rawVal)
-      if (w > 0) { weight = w; break }
-    }
-
-    // If no weight found in dedicated columns, try extracting from the name itself ("Молоко 250г")
-    let ingredientName = first.text
-    if (weight === 0) {
-      const embedded = extractEmbeddedWeight(first.text)
+    // Try embedded weight+unit in name if no dedicated weight column found
+    let ingredientName = cols[nameColIdx].text
+    if (amount === 0) {
+      const embedded = extractEmbeddedWeight(ingredientName)
       if (embedded) {
         ingredientName = embedded.cleanName
-        weight = embedded.weight
+        amount = embedded.weight
+        unit = embedded.unit
       }
     }
 
-    // Normalize: strip ПФ prefix, чищенный, trailing dots
+    // Normalize: strip ПФ prefix, quality suffixes, trailing dots
     ingredientName = normalizeIngredientName(ingredientName)
     if (!ingredientName) continue
 
-    current.ingredients.push({ ingredientName, netWeight: weight })
+    current.ingredients.push({ ingredientName, netWeight: amount, unit })
   }
 
   flushCurrent()
@@ -398,19 +459,55 @@ export async function parseFile(file: File): Promise<ImportResult> {
 
 // ─── Smart ingredient matching ─────────────────────────────────
 
+/** Sørensen–Dice coefficient on character bigrams — language-agnostic similarity [0..1]. */
+function diceSimilarity(a: string, b: string): number {
+  if (a === b) return 1
+  if (a.length < 2 || b.length < 2) return 0
+  const bigrams = (s: string): Map<string, number> => {
+    const m = new Map<string, number>()
+    for (let i = 0; i < s.length - 1; i++) {
+      const bg = s.slice(i, i + 2)
+      m.set(bg, (m.get(bg) ?? 0) + 1)
+    }
+    return m
+  }
+  const aMap = bigrams(a)
+  const bMap = bigrams(b)
+  let intersection = 0
+  for (const [bg, cnt] of aMap) {
+    intersection += Math.min(cnt, bMap.get(bg) ?? 0)
+  }
+  return (2 * intersection) / (a.length - 1 + (b.length - 1))
+}
+
 function fuzzyFind(name: string, refs: IngredientRef[]): IngredientRef | null {
-  // Normalize both sides so "ПФ Лук чищенный" matches "Лук" and vice versa
   const norm = (s: string) => normalizeIngredientName(s).toLowerCase()
   const q = norm(name)
   if (!q) return null
-  return (
-    refs.find(r => norm(r.name) === q) ??
-    refs.find(r => {
-      const rn = norm(r.name)
-      return rn.length >= 3 && (rn.includes(q) || q.includes(rn))
-    }) ??
-    null
-  )
+
+  // 1. Exact match after normalization
+  const exact = refs.find(r => norm(r.name) === q)
+  if (exact) return exact
+
+  // 2. Substring containment (one is a prefix/suffix of the other)
+  const substr = refs.find(r => {
+    const rn = norm(r.name)
+    return rn.length >= 3 && (rn.includes(q) || q.includes(rn))
+  })
+  if (substr) return substr
+
+  // 3. Dice similarity ≥ 0.82 — catches "Масло оливковое" ↔ "Масло оливковое"
+  //    with minor typos or word-order differences
+  let best: IngredientRef | null = null
+  let bestScore = 0.82
+  for (const r of refs) {
+    const rn = norm(r.name)
+    // Skip if lengths differ by more than 40% — fast pre-filter
+    if (Math.abs(rn.length - q.length) > Math.max(rn.length, q.length) * 0.4) continue
+    const score = diceSimilarity(q, rn)
+    if (score > bestScore) { bestScore = score; best = r }
+  }
+  return best
 }
 
 /** Resolve per-100g macros for a composition, normalising by total weight. */
@@ -421,12 +518,15 @@ function calcPer100(composition: CompositionRow[], allRefs: IngredientRef[]) {
     const ref = allRefs.find(r => r.id === row.ingredientId)
     if (!ref) continue
     const n = resolveIngredientPer100(ref, allRefs)
-    const ratio = row.amount / 100
+    const effectiveGrams = (row.unit === 'шт' && ref.weightPerUnit)
+      ? row.amount * ref.weightPerUnit
+      : row.amount
+    const ratio = effectiveGrams / 100
     cal += n.caloriesPer100 * ratio
     pro += n.proteinPer100 * ratio
     fat += n.fatPer100 * ratio
     car += n.carbsPer100 * ratio
-    totalWeight += row.amount
+    totalWeight += effectiveGrams
   }
   if (totalWeight === 0) return { caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0 }
   const norm = 100 / totalWeight
@@ -438,18 +538,34 @@ function calcPer100(composition: CompositionRow[], allRefs: IngredientRef[]) {
   }
 }
 
-/** Resolve or create a placeholder IngredientRef; mutates allRefs and newIngredients. */
+/**
+ * Resolve or create a placeholder IngredientRef; mutates allRefs and newIngredients.
+ * @param forceNew  When true, skip fuzzyFind and always create a new ref
+ *                  (used when the user explicitly chose "Создать новый" in the matching step).
+ *                  Still deduplicates against refs already created this session.
+ */
 function resolveOrCreateRef(
   ingredientName: string,
+  unit: string,
   allRefs: IngredientRef[],
   newIngredients: IngredientRef[],
+  forceNew = false,
 ): IngredientRef {
-  const existing = fuzzyFind(ingredientName, allRefs)
-  if (existing) return existing
+  if (!forceNew) {
+    const existing = fuzzyFind(ingredientName, allRefs)
+    if (existing) return existing
+  } else {
+    // Avoid creating duplicates for the same ingredient within one import run
+    const normKey = normalizeIngredientName(ingredientName).toLowerCase()
+    const alreadyCreated = newIngredients.find(
+      r => normalizeIngredientName(r.name).toLowerCase() === normKey,
+    )
+    if (alreadyCreated) return alreadyCreated
+  }
   const placeholder: IngredientRef = {
     id: crypto.randomUUID(),
     name: ingredientName,
-    unit: 'г',
+    unit: (unit as IngredientRef['unit']) || 'г',
     caloriesPer100: 0,
     proteinPer100: 0,
     fatPer100: 0,
@@ -473,20 +589,35 @@ export function buildImportedCategories(
   existingCategories: Category[],
   resolutions: Map<string, 'skip' | 'overwrite'>,
   venueId: string,
+  /** User decisions from the matching step: normalizedKey → existing refId | 'new' */
+  ingredientResolutions?: Map<string, string | 'new'>,
 ): BuildResult {
   const cats: Category[] = existingCategories.map(c => ({ ...c, items: [...(c.items ?? [])] }))
   const preparations: IngredientRef[] = []
   const newIngredients: IngredientRef[] = [] // placeholder monos for unmatched raw ingredients
   const allRefs = [...allIngredients]
 
+  /** Resolve one ingredient row respecting any user decision from the matching step. */
+  function resolveRef(ingredientName: string, unit: string): IngredientRef {
+    const normKey = normalizeIngredientName(ingredientName).toLowerCase()
+    const decision = ingredientResolutions?.get(normKey)
+    if (decision && decision !== 'new') {
+      // User chose to link to an existing library ref
+      return allRefs.find(r => r.id === decision)
+        ?? resolveOrCreateRef(ingredientName, unit, allRefs, newIngredients)
+    }
+    // 'new' = force-create; undefined = normal fuzzy behaviour
+    return resolveOrCreateRef(ingredientName, unit, allRefs, newIngredients, decision === 'new')
+  }
+
   // ── Pass 1: preparations → composite IngredientRef ────────────
   for (const dish of dishes) {
     if (dish.kind !== 'preparation') continue
 
     const composition: CompositionRow[] = []
-    for (const { ingredientName, netWeight } of dish.ingredients) {
-      const ref = resolveOrCreateRef(ingredientName, allRefs, newIngredients)
-      if (netWeight > 0) composition.push({ ingredientId: ref.id, amount: netWeight, unit: 'г' })
+    for (const { ingredientName, netWeight, unit } of dish.ingredients) {
+      const ref = resolveRef(ingredientName, unit)
+      if (netWeight > 0) composition.push({ ingredientId: ref.id, amount: netWeight, unit: (unit as CompositionRow['unit']) || 'г' })
     }
 
     const per100 = calcPer100(composition, allRefs)
@@ -531,11 +662,12 @@ export function buildImportedCategories(
 
     const composition: CompositionRow[] = []
     let totalWeight = 0
-    for (const { ingredientName, netWeight } of dish.ingredients) {
-      const ref = resolveOrCreateRef(ingredientName, allRefs, newIngredients)
+    for (const { ingredientName, netWeight, unit } of dish.ingredients) {
+      const ref = resolveRef(ingredientName, unit)
       if (netWeight > 0) {
-        composition.push({ ingredientId: ref.id, amount: netWeight, unit: 'г' })
-        totalWeight += netWeight
+        composition.push({ ingredientId: ref.id, amount: netWeight, unit: (unit as CompositionRow['unit']) || 'г' })
+        // шт items don't contribute to gram-based weight sum
+        if (unit !== 'шт') totalWeight += netWeight
       }
     }
 
@@ -595,4 +727,54 @@ export function detectConflicts(dishes: ParsedDish[], existingCategories: Catego
 
 export function dishKey(dish: ParsedDish): string {
   return `${dish.category.toLowerCase()}|||${dish.name.toLowerCase()}`
+}
+
+// ─── Ingredient matching step ──────────────────────────────────
+// Scans imported dishes for ingredients that have fuzzy-but-not-exact
+// matches in the library, so the user can confirm before import.
+
+/**
+ * Returns ingredients that need user confirmation:
+ * - fuzzyFind would NOT auto-link them (no exact/high-confidence match)
+ * - but dice similarity ≥ 0.40 with at least one library entry
+ *
+ * Ingredients with no candidates are silently created as new refs.
+ * Ingredients with an exact match are silently reused.
+ */
+export function detectIngredientMatches(
+  dishes: ParsedDish[],
+  allRefs: IngredientRef[],
+): IngredientMatch[] {
+  const norm = (s: string) => normalizeIngredientName(s).toLowerCase()
+
+  // Collect unique ingredients (first occurrence wins for unit/name display)
+  const seen = new Map<string, { importedName: string; unit: string }>()
+  for (const dish of dishes) {
+    for (const { ingredientName, unit } of dish.ingredients) {
+      const key = norm(ingredientName)
+      if (key && !seen.has(key)) seen.set(key, { importedName: ingredientName, unit })
+    }
+  }
+
+  const results: IngredientMatch[] = []
+  for (const [normalizedKey, { importedName, unit }] of seen) {
+    // Already matched (exact or auto-fuzzy) → handled silently
+    if (fuzzyFind(importedName, allRefs) !== null) continue
+
+    // Find candidates with dice similarity ≥ 0.40
+    const candidates: IngredientCandidate[] = allRefs
+      .map(ref => ({ id: ref.id, name: ref.name, score: diceSimilarity(normalizedKey, norm(ref.name)) }))
+      .filter(c => c.score >= 0.40)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+
+    if (candidates.length === 0) continue // brand-new → no confirmation needed
+
+    const autoPreselect: string | 'new' =
+      candidates[0].score >= 0.60 ? candidates[0].id : 'new'
+
+    results.push({ importedName, normalizedKey, unit, candidates, autoPreselect })
+  }
+
+  return results
 }

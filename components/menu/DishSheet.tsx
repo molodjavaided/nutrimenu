@@ -260,7 +260,37 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         {/* Название */}
         <h2 className="text-lg font-medium mb-1 text-text-primary">{item.name}</h2>
         {item.description && (
-          <p className="text-sm mb-4 leading-relaxed text-text-secondary">{item.description}</p>
+          <p className="text-sm mb-3 leading-relaxed text-text-secondary">{item.description}</p>
+        )}
+
+        {/* Состав */}
+        {(item.composition ?? []).length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: '#9D99B8' }}>СОСТАВ</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(item.composition ?? []).map((row, i) => {
+                const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+                const name = ref?.name ?? null
+                if (!name) return null
+                return (
+                  <span
+                    key={i}
+                    className="text-xs px-2.5 py-1 rounded-full"
+                    style={{
+                      background: 'rgba(255,255,255,0.5)',
+                      border: '0.5px solid rgba(176,166,223,0.3)',
+                      color: '#6B6490',
+                    }}
+                  >
+                    {name}
+                    {row.amount > 0 && (
+                      <span style={{ color: '#9D99B8' }}>&thinsp;{row.amount}{row.unit}</span>
+                    )}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/* КБЖУ плитки */}

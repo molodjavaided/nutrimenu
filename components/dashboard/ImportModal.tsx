@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { X, Upload, Download, AlertTriangle, Check, FileSpreadsheet, RotateCcw, Trash2 } from 'lucide-react'
+import { X, Upload, Download, AlertTriangle, Check, FileSpreadsheet, RotateCcw, Trash2, Info, ChevronRight } from 'lucide-react'
 import {
   parseFile,
   buildImportedCategories,
   detectConflicts,
+  detectIngredientMatches,
   dishKey,
   TEMPLATE_CSV,
   type ParsedDish,
+  type IngredientMatch,
 } from '@/lib/importer'
 import {
   getCategories,
@@ -47,7 +49,7 @@ function buildButtonLabel(dishCount: number, prepCount: number): string {
 }
 
 export default function ImportModal({ onClose, onImported }: Props) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'success'>('upload')
+  const [step, setStep] = useState<'upload' | 'preview' | 'matching' | 'success'>('upload')
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -55,6 +57,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
   const [parseErrors, setParseErrors] = useState<string[]>([])
   const [conflicts, setConflicts] = useState<Set<string>>(new Set())
   const [resolutions, setResolutions] = useState<Map<string, 'skip' | 'overwrite'>>(new Map())
+  const [matches, setMatches] = useState<IngredientMatch[]>([])
+  const [ingredientDecisions, setIngredientDecisions] = useState<Map<string, string | 'new'>>(new Map())
   const [countdown, setCountdown] = useState(UNDO_SECONDS)
   const [savedDishCount, setSavedDishCount] = useState(0)
   const [savedPrepCount, setSavedPrepCount] = useState(0)
@@ -96,12 +100,12 @@ export default function ImportModal({ onClose, onImported }: Props) {
   }, [onImported])
 
   const handleFile = useCallback(async (file: File) => {
-    // Reset all preview state before starting a new parse so stale IDs never
-    // clash with freshly generated ones from the new file.
     setDishes([])
     setConflicts(new Set())
     setResolutions(new Map())
     setSelectedIds(new Set())
+    setMatches([])
+    setIngredientDecisions(new Map())
     setConfirmDelete(false)
     setIsLoading(true)
     setParseErrors([])
@@ -113,13 +117,22 @@ export default function ImportModal({ onClose, onImported }: Props) {
         return
       }
       const existing = getCategories()
+      const allIngr = getAllIngredients()
       const found = detectConflicts(result.dishes, existing)
       const defaultRes = new Map<string, 'skip' | 'overwrite'>()
       for (const key of found) defaultRes.set(key, 'overwrite')
+
+      // Detect uncertain ingredient matches for the review step
+      const foundMatches = detectIngredientMatches(result.dishes, allIngr)
+      const initDecisions = new Map<string, string | 'new'>()
+      for (const m of foundMatches) initDecisions.set(m.normalizedKey, m.autoPreselect)
+
       setDishes(result.dishes)
       setParseErrors(result.errors)
       setConflicts(found)
       setResolutions(defaultRes)
+      setMatches(foundMatches)
+      setIngredientDecisions(initDecisions)
       setStep('preview')
     } catch (err) {
       setParseErrors([String(err)])
@@ -140,7 +153,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
   const handleImport = async () => {
     setIsSaving(true)
-    // Yield to React so the "Сохранение…" label renders before the synchronous work starts
     await new Promise(resolve => setTimeout(resolve, 0))
     createImportBackup()
 
@@ -155,10 +167,9 @@ export default function ImportModal({ onClose, onImported }: Props) {
       existing,
       resolutions,
       venueId,
+      ingredientDecisions,
     )
 
-    // Merge preparations + placeholder monos into personal library,
-    // replacing any existing entries with the same ID.
     const allToLibrary = [...preparations, ...newIngredients]
     if (allToLibrary.length > 0) {
       const existingPersonal = getIngredients()
@@ -204,8 +215,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
   const handleDeleteSelected = useCallback(() => {
     const remaining = dishes.filter(d => !selectedIds.has(d.id))
     setDishes(remaining)
-
-    // Clean up conflicts / resolutions for removed dishes
     const remainingKeys = new Set(remaining.map(d => dishKey(d)))
     setConflicts(prev => new Set([...prev].filter(k => remainingKeys.has(k))))
     setResolutions(prev => {
@@ -215,7 +224,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
       }
       return next
     })
-
     setSelectedIds(new Set())
     setConfirmDelete(false)
   }, [dishes, selectedIds])
@@ -235,6 +243,22 @@ export default function ImportModal({ onClose, onImported }: Props) {
   ).length
   const prepCount = dishes.filter(d => d.kind === 'preparation').length
   const importCount = dishImportCount + prepCount
+
+  // Counts for matching step
+  const undecidedCount = matches.filter(m => !ingredientDecisions.has(m.normalizedKey)).length
+
+  // ─── Step labels ───────────────────────────────────────────────
+
+  const headerSubtitle =
+    step === 'upload'
+      ? 'Загрузите XLSX или CSV файл с вашим ТТК'
+      : step === 'matching'
+      ? `${matches.length} ингред${matches.length === 1 ? 'иент' : 'иента'} требуют проверки`
+      : step === 'success'
+      ? `${savedDishCount} ${pluralBlud(savedDishCount)} в меню` +
+        (savedPrepCount > 0 ? ` · ${savedPrepCount} заготовок в ингредиенты` : '')
+      : `${dishImportCount} ${pluralBlud(dishImportCount)} в меню` +
+        (prepCount > 0 ? ` · ${prepCount} заготовок в ингредиенты` : '')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -260,18 +284,40 @@ export default function ImportModal({ onClose, onImported }: Props) {
           style={{ borderBottom: '0.5px solid rgba(176,166,223,0.3)' }}
         >
           <div>
-            <h2 className="text-base font-semibold" style={{ color: '#2C2950' }}>
-              Импорт меню
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: '#6B6490' }}>
-              {step === 'upload'
-                ? 'Загрузите XLSX или CSV файл с вашим ТТК'
-                : step === 'success'
-                ? `${savedDishCount} ${pluralBlud(savedDishCount)} в меню` +
-                  (savedPrepCount > 0 ? ` · ${savedPrepCount} заготовок в ингредиенты` : '')
-                : `${dishImportCount} ${pluralBlud(dishImportCount)} в меню` +
-                  (prepCount > 0 ? ` · ${prepCount} заготовок в ингредиенты` : '')}
-            </p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold" style={{ color: '#2C2950' }}>
+                Импорт меню
+              </h2>
+              {/* Step breadcrumb */}
+              {(step === 'preview' || step === 'matching') && (
+                <div className="flex items-center gap-1 text-xs" style={{ color: '#9D99B8' }}>
+                  <span
+                    className="px-2 py-0.5 rounded-full"
+                    style={{
+                      background: step === 'preview' ? 'rgba(176,166,223,0.25)' : 'transparent',
+                      color: step === 'preview' ? '#2C2950' : '#9D99B8',
+                    }}
+                  >
+                    Просмотр
+                  </span>
+                  {matches.length > 0 && (
+                    <>
+                      <ChevronRight size={11} />
+                      <span
+                        className="px-2 py-0.5 rounded-full"
+                        style={{
+                          background: step === 'matching' ? 'rgba(176,166,223,0.25)' : 'transparent',
+                          color: step === 'matching' ? '#2C2950' : '#9D99B8',
+                        }}
+                      >
+                        Сопоставление
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: '#6B6490' }}>{headerSubtitle}</p>
           </div>
           <button
             onClick={step === 'success' ? handleSuccessClose : onClose}
@@ -305,6 +351,14 @@ export default function ImportModal({ onClose, onImported }: Props) {
               onUndo={handleUndo}
               onClose={handleSuccessClose}
             />
+          ) : step === 'matching' ? (
+            <MatchingStep
+              matches={matches}
+              decisions={ingredientDecisions}
+              onDecide={(key, choice) =>
+                setIngredientDecisions(prev => new Map(prev).set(key, choice))
+              }
+            />
           ) : (
             <PreviewStep
               dishes={dishes}
@@ -320,17 +374,13 @@ export default function ImportModal({ onClose, onImported }: Props) {
           )}
         </div>
 
-        {/* Bulk delete bar — slides in when items are selected */}
+        {/* Bulk delete bar — preview only */}
         {step === 'preview' && selectedIds.size > 0 && (
           <div
             className="flex items-center justify-between gap-3 px-6 py-3 shrink-0"
             style={{
-              background: confirmDelete
-                ? 'rgba(192,57,43,0.06)'
-                : 'rgba(176,166,223,0.1)',
-              borderTop: confirmDelete
-                ? '0.5px solid rgba(192,57,43,0.2)'
-                : '0.5px solid rgba(176,166,223,0.25)',
+              background: confirmDelete ? 'rgba(192,57,43,0.06)' : 'rgba(176,166,223,0.1)',
+              borderTop: confirmDelete ? '0.5px solid rgba(192,57,43,0.2)' : '0.5px solid rgba(176,166,223,0.25)',
               transition: 'background 0.2s ease, border-color 0.2s ease',
             }}
           >
@@ -388,7 +438,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
           </div>
         )}
 
-        {/* Footer — preview only */}
+        {/* Footer — preview */}
         {step === 'preview' && (
           <div
             className="flex items-center justify-between gap-3 px-6 py-4 shrink-0"
@@ -405,14 +455,57 @@ export default function ImportModal({ onClose, onImported }: Props) {
             >
               Назад
             </button>
+            {matches.length > 0 ? (
+              <button
+                onClick={() => setStep('matching')}
+                disabled={importCount === 0}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
+                style={{ background: '#B0A6DF', color: '#2C2950' }}
+              >
+                Сопоставление ингредиентов
+                <ChevronRight size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={handleImport}
+                disabled={importCount === 0 || isSaving}
+                className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
+                style={{ background: '#B0A6DF', color: '#2C2950' }}
+              >
+                {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Footer — matching */}
+        {step === 'matching' && (
+          <div
+            className="flex items-center justify-between gap-3 px-6 py-4 shrink-0"
+            style={{ borderTop: '0.5px solid rgba(176,166,223,0.3)' }}
+          >
             <button
-              onClick={handleImport}
-              disabled={importCount === 0 || isSaving}
-              className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
-              style={{ background: '#B0A6DF', color: '#2C2950' }}
+              onClick={() => setStep('preview')}
+              className="px-4 py-2 rounded-xl text-sm"
+              style={{ background: '#EAE7F8', color: '#6B6490' }}
             >
-              {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
+              Назад
             </button>
+            <div className="flex items-center gap-3">
+              {undecidedCount > 0 && (
+                <span className="text-xs" style={{ color: '#D4830A' }}>
+                  Не указано: {undecidedCount}
+                </span>
+              )}
+              <button
+                onClick={handleImport}
+                disabled={undecidedCount > 0 || isSaving}
+                className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
+                style={{ background: '#B0A6DF', color: '#2C2950' }}
+              >
+                {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -447,7 +540,6 @@ function UploadStep({
 }: UploadStepProps) {
   return (
     <div className="p-6 space-y-5">
-      {/* Drop zone */}
       <div
         onDrop={onDrop}
         onDragOver={onDragOver}
@@ -455,12 +547,8 @@ function UploadStep({
         onClick={() => fileInputRef.current?.click()}
         className="flex flex-col items-center justify-center gap-4 rounded-2xl cursor-pointer transition-all py-12 px-6 text-center select-none"
         style={{
-          border: isDragging
-            ? '2px dashed #B0A6DF'
-            : '2px dashed rgba(176,166,223,0.5)',
-          background: isDragging
-            ? 'rgba(176,166,223,0.12)'
-            : 'rgba(234,231,248,0.4)',
+          border: isDragging ? '2px dashed #B0A6DF' : '2px dashed rgba(176,166,223,0.5)',
+          background: isDragging ? 'rgba(176,166,223,0.12)' : 'rgba(234,231,248,0.4)',
           backdropFilter: 'blur(8px)',
         }}
       >
@@ -503,21 +591,17 @@ function UploadStep({
         />
       </div>
 
-      {/* Errors */}
       {parseErrors.length > 0 && (
         <div
           className="rounded-xl px-4 py-3 space-y-1"
           style={{ background: 'rgba(255,100,80,0.08)', border: '0.5px solid rgba(255,100,80,0.2)' }}
         >
           {parseErrors.map((e, i) => (
-            <p key={i} className="text-xs" style={{ color: '#C0392B' }}>
-              {e}
-            </p>
+            <p key={i} className="text-xs" style={{ color: '#C0392B' }}>{e}</p>
           ))}
         </div>
       )}
 
-      {/* Format hint + template download */}
       <div
         className="rounded-xl p-4 space-y-3"
         style={{ background: 'rgba(234,231,248,0.6)', border: '0.5px solid rgba(176,166,223,0.3)' }}
@@ -574,13 +658,9 @@ function PreviewStep({
 }: PreviewStepProps) {
   const conflictCount = conflicts.size
 
-  // Defensive dedup: log and strip any duplicate ids before rendering
   const seenKeys = new Set<string>()
   const uniqueDishes = dishes.filter(d => {
-    if (seenKeys.has(d.id)) {
-      console.warn('[PreviewStep] duplicate key filtered out:', d.id, d.name)
-      return false
-    }
+    if (seenKeys.has(d.id)) return false
     seenKeys.add(d.id)
     return true
   })
@@ -604,12 +684,10 @@ function PreviewStep({
         </div>
       )}
 
-      {/* Table */}
       <div
         className="rounded-xl overflow-hidden"
         style={{ border: '0.5px solid rgba(176,166,223,0.35)' }}
       >
-        {/* Header row */}
         <div
           className="grid items-center text-xs font-medium px-4 py-2.5"
           style={{
@@ -630,13 +708,12 @@ function PreviewStep({
           <span>Статус</span>
         </div>
 
-        {/* Dish rows */}
         <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.2)' }}>
           {uniqueDishes.map((dish) => {
             const key = dishKey(dish)
             const isConflict = conflicts.has(key)
             const resolution = resolutions.get(key)
-            const totalWeight = dish.ingredients.reduce((s, i) => s + i.netWeight, 0)
+            const totalWeight = dish.ingredients.filter(i => i.unit !== 'шт').reduce((s, i) => s + i.netWeight, 0)
             const isSelected = selectedIds.has(dish.id)
             const isSkipped = dish.kind === 'dish' && isConflict && resolution === 'skip'
 
@@ -647,66 +724,36 @@ function PreviewStep({
                 className="grid items-center px-4 py-3 text-sm cursor-pointer"
                 style={{
                   gridTemplateColumns: '28px 1fr 110px 72px 140px',
-                  background: isSelected
-                    ? 'rgba(176,166,223,0.13)'
-                    : isSkipped
-                    ? 'rgba(0,0,0,0.02)'
-                    : 'transparent',
-                  borderLeft: isSelected
-                    ? '2px solid #B0A6DF'
-                    : '2px solid transparent',
+                  background: isSelected ? 'rgba(176,166,223,0.13)' : isSkipped ? 'rgba(0,0,0,0.02)' : 'transparent',
+                  borderLeft: isSelected ? '2px solid #B0A6DF' : '2px solid transparent',
                   opacity: isSkipped && !isSelected ? 0.5 : 1,
                   transition: 'background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                {/* Checkbox */}
-                <GlassCheckbox
-                  checked={isSelected}
-                  onChange={() => onSelectToggle(dish.id)}
-                />
+                <GlassCheckbox checked={isSelected} onChange={() => onSelectToggle(dish.id)} />
 
-                {/* Name + category */}
                 <div className="min-w-0 pl-1 pr-3">
-                  <p
-                    className="font-medium truncate text-sm"
-                    style={{ color: '#2C2950' }}
-                  >
-                    {dish.name}
-                  </p>
-                  <p className="text-xs truncate" style={{ color: '#6B6490' }}>
-                    {dish.category}
-                  </p>
+                  <p className="font-medium truncate text-sm" style={{ color: '#2C2950' }}>{dish.name}</p>
+                  <p className="text-xs truncate" style={{ color: '#6B6490' }}>{dish.category}</p>
                 </div>
 
-                {/* Ingredient count */}
                 <span className="text-xs" style={{ color: '#6B6490' }}>
-                  {dish.ingredients.length > 0
-                    ? `${dish.ingredients.length} ингр.`
-                    : '—'}
+                  {dish.ingredients.length > 0 ? `${dish.ingredients.length} ингр.` : '—'}
                 </span>
 
-                {/* Weight */}
                 <span className="text-xs" style={{ color: '#6B6490' }}>
-                  {totalWeight > 0 ? `${totalWeight} г` : '—'}
+                  {totalWeight > 0 ? `${Math.round(totalWeight)} г` : '—'}
                 </span>
 
-                {/* Status / conflict controls */}
                 {dish.kind === 'preparation' ? (
                   <span
                     className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit"
-                    style={{
-                      background: 'rgba(176,166,223,0.2)',
-                      color: '#6B6490',
-                      border: '0.5px solid rgba(176,166,223,0.4)',
-                    }}
+                    style={{ background: 'rgba(176,166,223,0.2)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.4)' }}
                   >
                     → Ингредиенты
                   </span>
                 ) : isConflict ? (
-                  <div
-                    className="flex gap-1"
-                    onClick={e => e.stopPropagation()}
-                  >
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => onToggle(key, 'overwrite')}
                       className="flex-1 h-7 rounded-lg text-xs font-medium transition-all"
@@ -731,10 +778,7 @@ function PreviewStep({
                     </button>
                   </div>
                 ) : (
-                  <span
-                    className="flex items-center gap-1.5 text-xs"
-                    style={{ color: '#2A9D5C' }}
-                  >
+                  <span className="flex items-center gap-1.5 text-xs" style={{ color: '#2A9D5C' }}>
                     <Check size={13} />
                     Новое
                   </span>
@@ -750,6 +794,128 @@ function PreviewStep({
           Ингредиенты с нулевым весом будут добавлены без учёта в состав.
         </p>
       )}
+    </div>
+  )
+}
+
+// ─── Matching step ─────────────────────────────────────────────
+
+function UnitBadge({ unit }: { unit: string }) {
+  const isSpecial = unit !== 'г' && unit !== 'мл'
+  return (
+    <span
+      className="text-xs px-2 py-0.5 rounded-full shrink-0"
+      style={{
+        background: isSpecial ? 'rgba(255,180,50,0.15)' : 'rgba(176,166,223,0.15)',
+        color: isSpecial ? '#D4830A' : '#6B6490',
+        border: `0.5px solid ${isSpecial ? 'rgba(255,180,50,0.3)' : 'rgba(176,166,223,0.3)'}`,
+      }}
+    >
+      {unit}
+    </span>
+  )
+}
+
+function MatchingStep({
+  matches,
+  decisions,
+  onDecide,
+}: {
+  matches: IngredientMatch[]
+  decisions: Map<string, string | 'new'>
+  onDecide: (key: string, choice: string | 'new') => void
+}) {
+  return (
+    <div className="p-6 space-y-4">
+      {/* Info banner */}
+      <div
+        className="flex items-start gap-3 rounded-xl px-4 py-3"
+        style={{ background: 'rgba(176,166,223,0.12)', border: '0.5px solid rgba(176,166,223,0.3)' }}
+      >
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: '#6B6490' }} />
+        <p className="text-xs leading-relaxed" style={{ color: '#6B6490' }}>
+          Система нашла похожие ингредиенты в вашем справочнике, но не может связать их автоматически.
+          Просмотрите и выберите для каждого: использовать существующий или создать новый.
+        </p>
+      </div>
+
+      {/* Match cards */}
+      <div className="space-y-3">
+        {matches.map(match => {
+          const decision = decisions.get(match.normalizedKey)
+          const isUndecided = decision === undefined
+
+          return (
+            <div
+              key={match.normalizedKey}
+              className="rounded-xl p-4"
+              style={{
+                background: isUndecided
+                  ? 'rgba(255,180,50,0.06)'
+                  : 'rgba(234,231,248,0.5)',
+                border: `0.5px solid ${isUndecided ? 'rgba(255,180,50,0.3)' : 'rgba(176,166,223,0.3)'}`,
+                transition: 'background 0.2s ease, border-color 0.2s ease',
+              }}
+            >
+              {/* Header row: name + unit + undecided badge */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-sm font-medium" style={{ color: '#2C2950' }}>
+                  {match.importedName}
+                </span>
+                <UnitBadge unit={match.unit} />
+                {isUndecided && (
+                  <span
+                    className="ml-auto text-xs px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,180,50,0.2)', color: '#D4830A', border: '0.5px solid rgba(255,180,50,0.35)' }}
+                  >
+                    Не указано
+                  </span>
+                )}
+                {decision && !isUndecided && (
+                  <Check size={13} className="ml-auto" style={{ color: '#2A9D5C' }} />
+                )}
+              </div>
+
+              {/* Option chips */}
+              <div className="flex flex-wrap gap-2">
+                {match.candidates.map(c => {
+                  const isSelected = decision === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => onDecide(match.normalizedKey, c.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all active:scale-95"
+                      style={
+                        isSelected
+                          ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 2px 8px rgba(139,92,246,0.25)' }
+                          : { background: 'rgba(255,255,255,0.8)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.45)' }
+                      }
+                    >
+                      {isSelected && <Check size={11} />}
+                      <span>{c.name}</span>
+                      <span style={{ opacity: 0.55 }}>{Math.round(c.score * 100)}%</span>
+                    </button>
+                  )
+                })}
+
+                {/* Create new */}
+                <button
+                  onClick={() => onDecide(match.normalizedKey, 'new')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all active:scale-95"
+                  style={
+                    decision === 'new'
+                      ? { background: '#2A9D5C', color: '#fff', boxShadow: '0 2px 8px rgba(42,157,92,0.2)' }
+                      : { background: 'rgba(255,255,255,0.8)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.45)' }
+                  }
+                >
+                  {decision === 'new' && <Check size={11} />}
+                  + Создать новый
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -771,7 +937,6 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
 
   return (
     <div className="p-6 flex flex-col items-center gap-6">
-      {/* Check mark */}
       <div className="flex flex-col items-center gap-3 pt-6 pb-2">
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center"
@@ -794,7 +959,6 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
         </div>
       </div>
 
-      {/* Undo row */}
       <div
         className="w-full rounded-xl overflow-hidden"
         style={{ border: '0.5px solid rgba(176,166,223,0.35)' }}
@@ -815,7 +979,6 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
             Отменить
           </button>
         </div>
-        {/* Countdown bar */}
         <div style={{ height: '3px', background: 'rgba(176,166,223,0.2)' }}>
           <div
             style={{
@@ -828,7 +991,6 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
         </div>
       </div>
 
-      {/* Close button */}
       <button
         onClick={onClose}
         className="text-sm font-medium transition-opacity hover:opacity-70"

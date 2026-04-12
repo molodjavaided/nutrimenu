@@ -187,12 +187,15 @@ export function resolveIngredientPer100(
     const component = allRefs.find(r => r.id === row.ingredientId)
     if (!component) continue
     const n = resolveIngredientPer100(component, allRefs, next)
-    const ratio = row.amount / 100
+    const effectiveGrams = (row.unit === 'шт' && component.weightPerUnit)
+      ? row.amount * component.weightPerUnit
+      : row.amount
+    const ratio = effectiveGrams / 100
     cal += n.caloriesPer100 * ratio
     pro += n.proteinPer100  * ratio
     fat += n.fatPer100      * ratio
     car += n.carbsPer100    * ratio
-    totalWeight += row.amount
+    totalWeight += effectiveGrams
   }
 
   if (totalWeight === 0) return { caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0 }
@@ -214,7 +217,7 @@ export function resolveNutriFromComposition(
   selectedModifiers: SelectedModifiers
 ): { calories: number; protein: number; fat: number; carbs: number } {
   // Строим карту замен: replacesIngredientId → modifier
-  const replacements = new Map<string, { modifier: Modifier; amount: number; unit: 'г' | 'мл' }>()
+  const replacements = new Map<string, { modifier: Modifier; amount: number; unit: 'г' | 'мл' | 'шт' | 'кг' | 'л' }>()
 
   for (const group of modifierGroups) {
     if (group.type !== 'replace' || !group.replacesIngredientId) continue
@@ -250,7 +253,10 @@ export function resolveNutriFromComposition(
     const ref = ingredientRefs.find(r => r.id === row.ingredientId)
     if (!ref || !row.amount) continue
     const per100 = resolveIngredientPer100(ref, ingredientRefs)
-    const ratio = row.amount / 100
+    const effectiveGrams = (row.unit === 'шт' && ref.weightPerUnit)
+      ? row.amount * ref.weightPerUnit
+      : row.amount
+    const ratio = effectiveGrams / 100
     calories += per100.caloriesPer100 * ratio
     protein  += per100.proteinPer100  * ratio
     fat      += per100.fatPer100      * ratio

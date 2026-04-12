@@ -78,7 +78,7 @@ export interface ModifierGroup {
 export interface CompositionRow {
   ingredientId: string
   amount: number
-  unit: 'г' | 'мл'
+  unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
 }
 
 // Один объём/размер блюда
@@ -92,7 +92,7 @@ export interface SizeOption {
   fat: number
   carbs: number
   composition: CompositionRow[]
-  ingredientAmounts?: Record<string, { amount: number; unit: 'г' | 'мл' }>
+  ingredientAmounts?: Record<string, { amount: number; unit: 'г' | 'мл' | 'шт' | 'кг' | 'л' }>
 }
 
 // Ингредиент блюда (простой, используется в ItemForm)
@@ -162,8 +162,10 @@ export interface IngredientLibrary {
 export interface IngredientRef {
   id: string
   name: string
-  unit: 'г' | 'мл'
-  caloriesPer100: number
+  unit: 'г' | 'мл' | 'шт'
+  /** Grams per 1 piece — only relevant when unit = 'шт'. Used for КБЖУ calculation. */
+  weightPerUnit?: number
+  caloriesPer100: number  // always per 100 g, regardless of unit
   proteinPer100: number
   fatPer100: number
   carbsPer100: number

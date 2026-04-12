@@ -31,7 +31,8 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
   const [mode, setMode] = useState<'mono' | 'composite'>(editing?.type ?? 'mono')
   const [name, setName] = useState(editing?.name ?? '')
   const [category, setCategory] = useState(editing?.category ?? 'Прочее')
-  const [unit, setUnit] = useState<'г' | 'мл'>(editing?.unit ?? 'г')
+  const [unit, setUnit] = useState<'г' | 'мл' | 'шт'>(editing?.unit ?? 'г')
+  const [weightPerUnit, setWeightPerUnit] = useState<number>(editing?.weightPerUnit ?? 0)
   const [isCustomCategory, setIsCustomCategory] = useState(
     !!editing?.category && !PRESET_CATEGORIES.includes(editing.category)
   )
@@ -126,6 +127,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       id: editing?.id ?? crypto.randomUUID(),
       name: name.trim(),
       unit,
+      ...(unit === 'шт' && weightPerUnit > 0 ? { weightPerUnit } : {}),
       category,
       isSystem: false as const,
       type: mode,
@@ -291,22 +293,39 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                   <label className="text-xs" style={{ color: '#6B6490' }}>Единица</label>
                   <select
                     value={unit}
-                    onChange={e => setUnit(e.target.value as 'г' | 'мл')}
+                    onChange={e => setUnit(e.target.value as 'г' | 'мл' | 'шт')}
                     className="h-11 px-2 rounded-xl text-sm outline-none"
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                   >
                     <option value="г">г</option>
                     <option value="мл">мл</option>
+                    <option value="шт">шт</option>
                   </select>
                 </div>
               </div>
+
+              {/* Weight per piece — shown only when unit = шт */}
+              {unit === 'шт' && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs" style={{ color: '#6B6490' }}>Вес 1 шт (г)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={weightPerUnit || ''}
+                    onChange={e => setWeightPerUnit(Number(e.target.value))}
+                    placeholder="60"
+                    className="h-11 px-3 rounded-xl text-sm outline-none"
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* ══ MONO: manual КБЖУ ══ */}
             {mode === 'mono' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Ккал / 100 {unit}</label>
+                  <label className="text-xs" style={{ color: '#6B6490' }}>Ккал / 100 г</label>
                   <input type="number" inputMode="decimal" value={calories || ''} onChange={e => setCalories(Number(e.target.value))}
                     placeholder="0" className="h-11 px-3 rounded-xl text-sm outline-none text-center"
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }} />
@@ -341,7 +360,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                   style={{ background: 'rgba(176,166,223,0.12)', border: '0.5px solid rgba(176,166,223,0.3)' }}
                 >
                   <p className="text-xs mb-2" style={{ color: '#9D99B8' }}>
-                    КБЖУ на 100 {unit} · {composition.length > 0 ? `итого ~${nutri.weight} ${unit}` : 'добавьте компоненты'}
+                    КБЖУ на 100 г · {composition.length > 0 ? `итого ~${nutri.weight} г` : 'добавьте компоненты'}
                   </p>
                   <div className="flex gap-4">
                     {[

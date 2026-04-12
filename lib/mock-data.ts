@@ -59,7 +59,9 @@ export const mockIngredients: IngredientRef[] = [
   { id: 'ing-perch', name: 'Окунь речной', unit: 'г', caloriesPer100: 82, proteinPer100: 18.5, fatPer100: 0.9, carbsPer100: 0, category: 'Рыба' },
 
   // ─── ЯЙЦА И МОЛОЧНОЕ ─────────────────────────────────────────────────────
-  { id: 'ing-egg-chicken', name: 'Яйцо куриное', unit: 'г', caloriesPer100: 157, proteinPer100: 12.7, fatPer100: 11.5, carbsPer100: 0.7, category: 'Яйца и молочное' },
+  { id: 'ing-egg-chicken', name: 'Яйцо куриное', unit: 'шт', weightPerUnit: 60, caloriesPer100: 157, proteinPer100: 12.7, fatPer100: 11.5, carbsPer100: 0.7, category: 'Яйца и молочное' },
+  { id: 'ing-egg-c0', name: 'Яйцо куриное С0', unit: 'шт', weightPerUnit: 70, caloriesPer100: 157, proteinPer100: 12.7, fatPer100: 11.5, carbsPer100: 0.7, category: 'Яйца и молочное' },
+  { id: 'ing-egg-c1', name: 'Яйцо куриное С1', unit: 'шт', weightPerUnit: 60, caloriesPer100: 157, proteinPer100: 12.7, fatPer100: 11.5, carbsPer100: 0.7, category: 'Яйца и молочное' },
   { id: 'ing-milk-15', name: 'Молоко 1.5%', unit: 'мл', caloriesPer100: 45, proteinPer100: 3.0, fatPer100: 1.5, carbsPer100: 4.8, category: 'Яйца и молочное' },
   { id: 'ing-milk-25', name: 'Молоко 2.5%', unit: 'мл', caloriesPer100: 54, proteinPer100: 2.9, fatPer100: 2.5, carbsPer100: 4.8, category: 'Яйца и молочное' },
   { id: 'ing-milk-32', name: 'Молоко 3.2%', unit: 'мл', caloriesPer100: 60, proteinPer100: 2.9, fatPer100: 3.2, carbsPer100: 4.7, category: 'Яйца и молочное' },

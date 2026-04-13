@@ -207,6 +207,22 @@ export function initLibraries(systemLibraries: IngredientLibrary[]): IngredientL
     }
   }
 
+  // Propagate unit/weightPerUnit from system libraries into matching personal-library entries
+  const allSystemIngredients = new Map(systemLibraries.flatMap(l => l.ingredients).map(i => [i.id, i]))
+  libs = libs.map(l => {
+    if (l.id === MY_LIBRARY_ID) {
+      return {
+        ...l,
+        ingredients: l.ingredients.map(i => {
+          const sys = allSystemIngredients.get(i.id)
+          if (!sys) return i
+          return { ...i, unit: sys.unit, ...(sys.weightPerUnit != null ? { weightPerUnit: sys.weightPerUnit } : {}) }
+        }),
+      }
+    }
+    return l
+  })
+
   // Ensure personal library exists
   if (!libs.find(l => l.id === MY_LIBRARY_ID)) {
     // Migrate legacy data if present

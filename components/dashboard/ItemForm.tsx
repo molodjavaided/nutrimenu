@@ -247,7 +247,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               id: newId,
               ingredientRefId: comp.ingredientId,
               name: ref?.name || `Неизвестный ингредиент (${comp.ingredientId})`,
-              unit: (comp.unit || ref?.unit || 'г') as IngredientItem['unit'],
+              unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
             }
           })
           setIngredients(loadedIngredients)
@@ -308,7 +308,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             id: newId,
             ingredientRefId: comp.ingredientId,
             name: ref?.name || `ID: ${comp.ingredientId}`,
-            unit: (comp.unit || ref?.unit || 'г') as IngredientItem['unit'],
+            unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
           }
         })
         setIngredients(loadedIngredients)
@@ -857,11 +857,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                               <input
                                 type="number"
                                 inputMode={isCount ? 'numeric' : 'decimal'}
-                                step={isCount ? 1 : undefined}
-                                min={isCount ? 0 : undefined}
+                                step={isCount ? 1 : 0.1}
+                                min={0}
                                 value={amount || ''}
-                                onChange={e => updateAmount(ingredient.id, size.id, Number(e.target.value))}
-                                placeholder="0"
+                                onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+                                placeholder={isCount ? 'шт' : '0'}
                                 className="w-24 h-9 px-2 rounded-lg text-sm outline-none text-center"
                                 style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                               />

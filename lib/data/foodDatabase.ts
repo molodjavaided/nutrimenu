@@ -10,6 +10,7 @@ export interface FoodItem {
   fats: number
   carbs: number
   unit: '100g' | '100ml'
+  weightPerPiece?: number  // if set, ingredient is sold by piece (шт); value = grams per piece
   note?: string
 }
 
@@ -131,9 +132,9 @@ export const initialFoodDatabase: FoodCategory[] = [
     id: 'cat_6',
     title: 'Яйца и Молочные продукты',
     items: [
-      { id: '6_1',  name: 'Яйцо куриное С0',            calories: 155, proteins: 12.7, fats: 10.6, carbs: 0.7,  unit: '100g' },
-      { id: '6_2',  name: 'Яйцо куриное С1',            calories: 155, proteins: 12.7, fats: 10.6, carbs: 0.7,  unit: '100g' },
-      { id: '6_3',  name: 'Яйцо перепелиное',           calories: 158, proteins: 13.1, fats: 11.1, carbs: 0.4,  unit: '100g' },
+      { id: '6_1',  name: 'Яйцо куриное С0',            calories: 155, proteins: 12.7, fats: 10.6, carbs: 0.7,  unit: '100g', weightPerPiece: 70 },
+      { id: '6_2',  name: 'Яйцо куриное С1',            calories: 155, proteins: 12.7, fats: 10.6, carbs: 0.7,  unit: '100g', weightPerPiece: 60 },
+      { id: '6_3',  name: 'Яйцо перепелиное',           calories: 158, proteins: 13.1, fats: 11.1, carbs: 0.4,  unit: '100g', weightPerPiece: 12 },
       { id: '6_4',  name: 'Яичный белок (жидкий)',      calories: 44,  proteins: 11.1, fats: 0.0,  carbs: 0.0,  unit: '100g' },
       { id: '6_5',  name: 'Яичный желток',              calories: 322, proteins: 15.8, fats: 26.5, carbs: 3.6,  unit: '100g' },
       { id: '6_6',  name: 'Масло сливочное 82.5%',      calories: 748, proteins: 0.5,  fats: 82.5, carbs: 0.8,  unit: '100g' },
@@ -313,10 +314,12 @@ export const initialFoodDatabase: FoodCategory[] = [
 // ─── Converter: FoodCategory[] → IngredientLibrary ───────────────────────────
 
 function foodItemToIngredientRef(item: FoodItem, categoryTitle: string): IngredientRef {
+  const isPiece = item.weightPerPiece != null
   return {
     id: `fd-${item.id}`,
     name: item.name,
-    unit: item.unit === '100ml' ? 'мл' : 'г',
+    unit: isPiece ? 'шт' : item.unit === '100ml' ? 'мл' : 'г',
+    ...(isPiece ? { weightPerUnit: item.weightPerPiece } : {}),
     caloriesPer100: item.calories,
     proteinPer100: item.proteins,
     fatPer100: item.fats,

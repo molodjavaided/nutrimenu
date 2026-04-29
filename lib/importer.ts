@@ -20,6 +20,8 @@ export interface ParsedDish {
 export interface ImportResult {
   dishes: ParsedDish[]
   errors: string[]
+  /** Raw 2D string arrays per sheet — sent to /api/validate-ttk for AI correction. */
+  rawSheets?: Array<{ name: string; rows: string[][] }>
 }
 
 export interface BuildResult {
@@ -49,6 +51,13 @@ export interface IngredientMatch {
   candidates: IngredientCandidate[]
   /** Pre-selected choice: candidate id (score ≥ 0.60) or 'new' */
   autoPreselect: string | 'new'
+  /** Dishes (and their categories) that use this ingredient — for grouped UI display */
+  usedByDishes: Array<{ name: string; category: string; kind: 'dish' | 'preparation' }>
+  /**
+   * True when the imported name is a generic oil term (e.g. "Растительное масло").
+   * The UI should show ALL available oil candidates instead of the top-3.
+   */
+  isOilSubstitution?: boolean
 }
 
 // ─── Classification helpers ────────────────────────────────────
@@ -431,9 +440,31 @@ export async function parseFile(file: File): Promise<ImportResult> {
     // cellStyles: true → reads bold/italic font info for dish-header detection
     const wb = XLSX.read(new Uint8Array(buffer), { cellStyles: true })
     const dishes: ParsedDish[] = []
+    const rawSheets: Array<{ name: string; rows: string[][] }> = []
+
     for (const sheetName of wb.SheetNames) {
       const ws = wb.Sheets[sheetName] as Record<string, XLSXCell | unknown>
       const category = sheetName.trim() || 'Основное'
+
+      // Capture raw rows for AI validation
+      const wsTyped = ws as Record<string, unknown> & { '!ref'?: string }
+      if (wsTyped['!ref']) {
+        const XLSX2 = XLSX as { utils: XLSXUtils }
+        const range = XLSX2.utils.decode_range(wsTyped['!ref'])
+        const rows: string[][] = []
+        for (let r = range.s.r; r <= range.e.r; r++) {
+          const row: string[] = []
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            const addr = XLSX2.utils.encode_cell({ r, c })
+            const cell = (ws as Record<string, XLSXCell>)[addr]
+            const v = cell?.v
+            row.push(v != null ? String(v).trim() : '')
+          }
+          rows.push(row)
+        }
+        rawSheets.push({ name: sheetName, rows })
+      }
+
       // Route constructor / modifier sheets to the horizontal parser
       if (/конструктор|модификатор/i.test(sheetName)) {
         dishes.push(...parseConstructorSheet(ws, category, XLSX.utils))
@@ -441,8 +472,7 @@ export async function parseFile(file: File): Promise<ImportResult> {
         dishes.push(...parseTTKSheet(ws, category, XLSX.utils))
       }
     }
-    // Deduplicate across sheets by id — defensive guard against UUID collisions
-    // or any edge case where the same object reference ends up in multiple sheets
+    // Deduplicate across sheets by id
     const seenIds = new Map<string, ParsedDish>()
     for (const d of dishes) {
       if (seenIds.has(d.id)) {
@@ -451,7 +481,7 @@ export async function parseFile(file: File): Promise<ImportResult> {
         seenIds.set(d.id, d)
       }
     }
-    return { dishes: Array.from(seenIds.values()), errors: [] }
+    return { dishes: Array.from(seenIds.values()), errors: [], rawSheets }
   }
 
   return { dishes: [], errors: [`Неподдерживаемый формат файла: ${file.name}`] }
@@ -480,6 +510,45 @@ function diceSimilarity(a: string, b: string): number {
   return (2 * intersection) / (a.length - 1 + (b.length - 1))
 }
 
+/**
+ * Returns true for common Russian adjective endings (ая, ое, ый, ой, ие, ые, ую…).
+ * Used to identify the "qualifier" words vs the noun (main ingredient) in a name.
+ */
+function isRussianAdjective(word: string): boolean {
+  return /(?:ая|ое|ый|ой|ие|ые|ую|его|ому|ем|им)$/.test(word)
+}
+
+/**
+ * Noun-aware ingredient similarity score.
+ *
+ * Problem solved: "Красная икра" scored high against "Красная чечевица" via
+ * bigram overlap on the shared adjective "красная", drowning out the fact that
+ * the nouns ("икра" vs "чечевица") are completely different.
+ *
+ * Fix: split both strings into words, classify adjectives vs nouns, then:
+ *  - If the noun sets overlap → small boost (+0.15, capped at 1.0)
+ *  - If no noun is shared at all → heavy penalty (×0.55)
+ *  - Single-word names or names with no identifiable nouns → raw Dice unchanged
+ */
+function weightedIngredientScore(query: string, candidate: string): number {
+  const base = diceSimilarity(query, candidate)
+  const words = (s: string) => s.split(/\s+/).filter(w => w.length >= 3)
+  const nouns = (ws: string[]) => ws.filter(w => !isRussianAdjective(w))
+
+  const nA = nouns(words(query))
+  const nB = nouns(words(candidate))
+
+  // Can't determine noun overlap → return raw score unchanged
+  if (nA.length === 0 || nB.length === 0) return base
+
+  const setNA = new Set(nA)
+  const nounOverlap = nB.some(w => setNA.has(w))
+
+  if (nounOverlap) return Math.min(1, base + 0.15)
+  // No shared noun between the two names — likely a false match (e.g. adjective overlap)
+  return base * 0.55
+}
+
 function fuzzyFind(name: string, refs: IngredientRef[]): IngredientRef | null {
   const norm = (s: string) => normalizeIngredientName(s).toLowerCase()
   const q = norm(name)
@@ -489,22 +558,26 @@ function fuzzyFind(name: string, refs: IngredientRef[]): IngredientRef | null {
   const exact = refs.find(r => norm(r.name) === q)
   if (exact) return exact
 
-  // 2. Substring containment (one is a prefix/suffix of the other)
+  // 2. Substring containment — only when the import name is LONGER (more specific)
+  //    than the library ref, i.e. q contains rn.
+  //    We intentionally do NOT check rn.includes(q) because that would silently
+  //    map a generic term ("рис") to the first matching entry ("Рис для суши"),
+  //    bypassing the user's ability to choose the right variant.
   const substr = refs.find(r => {
     const rn = norm(r.name)
-    return rn.length >= 3 && (rn.includes(q) || q.includes(rn))
+    return rn.length >= 3 && q.includes(rn)
   })
   if (substr) return substr
 
-  // 3. Dice similarity ≥ 0.82 — catches "Масло оливковое" ↔ "Масло оливковое"
-  //    with minor typos or word-order differences
+  // 3. Noun-weighted Dice similarity ≥ 0.82 — catches minor typos / word-order
+  //    differences while penalising adjective-only overlap ("красная икра" ≠ "красная чечевица")
   let best: IngredientRef | null = null
   let bestScore = 0.82
   for (const r of refs) {
     const rn = norm(r.name)
-    // Skip if lengths differ by more than 40% — fast pre-filter
+    // Fast pre-filter: skip if raw lengths differ by more than 40%
     if (Math.abs(rn.length - q.length) > Math.max(rn.length, q.length) * 0.4) continue
-    const score = diceSimilarity(q, rn)
+    const score = weightedIngredientScore(q, rn)
     if (score > bestScore) { bestScore = score; best = r }
   }
   return best
@@ -733,12 +806,19 @@ export function dishKey(dish: ParsedDish): string {
 // Scans imported dishes for ingredients that have fuzzy-but-not-exact
 // matches in the library, so the user can confirm before import.
 
+/** Regex that recognises generic vegetable/unspecified oil terms during import. */
+const OIL_SUBSTITUTION_RE = /^(?:масло\s+растительн|растительн\w*\s+масл)/i
+
 /**
  * Returns ingredients that need user confirmation:
  * - fuzzyFind would NOT auto-link them (no exact/high-confidence match)
- * - but dice similarity ≥ 0.40 with at least one library entry
+ * - but noun-weighted Dice similarity ≥ 0.40 with at least one library entry,
+ *   OR the name is a generic oil term (→ isOilSubstitution)
  *
- * Ingredients with no candidates are silently created as new refs.
+ * Each result includes usedByDishes so the UI can render a grouped hierarchy:
+ *   [Dish header] → [ingredient cards for that dish]
+ *
+ * Ingredients with no candidates and no oil flag are silently created as new refs.
  * Ingredients with an exact match are silently reused.
  */
 export function detectIngredientMatches(
@@ -747,23 +827,65 @@ export function detectIngredientMatches(
 ): IngredientMatch[] {
   const norm = (s: string) => normalizeIngredientName(s).toLowerCase()
 
-  // Collect unique ingredients (first occurrence wins for unit/name display)
-  const seen = new Map<string, { importedName: string; unit: string }>()
+  // ── Collect unique ingredients; track which dishes use each ────
+  const seen = new Map<string, {
+    importedName: string
+    unit: string
+    usedByDishes: Array<{ name: string; category: string; kind: 'dish' | 'preparation' }>
+  }>()
+
   for (const dish of dishes) {
     for (const { ingredientName, unit } of dish.ingredients) {
       const key = norm(ingredientName)
-      if (key && !seen.has(key)) seen.set(key, { importedName: ingredientName, unit })
+      if (!key) continue
+      if (!seen.has(key)) {
+        seen.set(key, { importedName: ingredientName, unit, usedByDishes: [] })
+      }
+      const entry = seen.get(key)!
+      if (!entry.usedByDishes.some(d => d.name === dish.name && d.category === dish.category)) {
+        entry.usedByDishes.push({ name: dish.name, category: dish.category, kind: dish.kind })
+      }
     }
   }
 
+  // ── Build dish-order index so matches sort by first-appearing dish ─
+  const dishOrder = new Map<string, number>()
+  dishes.forEach((d, i) => {
+    const k = `${d.category}|||${d.name}`
+    if (!dishOrder.has(k)) dishOrder.set(k, i)
+  })
+
   const results: IngredientMatch[] = []
-  for (const [normalizedKey, { importedName, unit }] of seen) {
+
+  for (const [normalizedKey, { importedName, unit, usedByDishes }] of seen) {
+    // ── Special case: generic vegetable oil → show all oil options ──
+    const isOil = OIL_SUBSTITUTION_RE.test(normalizedKey)
+    if (isOil) {
+      const oilCandidates: IngredientCandidate[] = allRefs
+        .filter(r => /масл/i.test(r.name))
+        .map(r => ({ id: r.id, name: r.name, score: 1.0 }))
+      results.push({
+        importedName,
+        normalizedKey,
+        unit,
+        candidates: oilCandidates,
+        autoPreselect: 'new',  // force user to choose which oil
+        usedByDishes,
+        isOilSubstitution: true,
+      })
+      continue
+    }
+
     // Already matched (exact or auto-fuzzy) → handled silently
     if (fuzzyFind(importedName, allRefs) !== null) continue
 
-    // Find candidates with dice similarity ≥ 0.40
+    // Find candidates with noun-weighted Dice similarity ≥ 0.40
     const candidates: IngredientCandidate[] = allRefs
-      .map(ref => ({ id: ref.id, name: ref.name, score: diceSimilarity(normalizedKey, norm(ref.name)) }))
+      .map(ref => ({
+        id: ref.id,
+        name: ref.name,
+        score: weightedIngredientScore(normalizedKey, norm(ref.name)),
+      }))
       .filter(c => c.score >= 0.40)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
@@ -773,8 +895,17 @@ export function detectIngredientMatches(
     const autoPreselect: string | 'new' =
       candidates[0].score >= 0.60 ? candidates[0].id : 'new'
 
-    results.push({ importedName, normalizedKey, unit, candidates, autoPreselect })
+    results.push({ importedName, normalizedKey, unit, candidates, autoPreselect, usedByDishes })
   }
+
+  // Sort matches so they appear in dish-first order
+  results.sort((a, b) => {
+    const keyA = a.usedByDishes[0]
+      ? `${a.usedByDishes[0].category}|||${a.usedByDishes[0].name}` : ''
+    const keyB = b.usedByDishes[0]
+      ? `${b.usedByDishes[0].category}|||${b.usedByDishes[0].name}` : ''
+    return (dishOrder.get(keyA) ?? 999) - (dishOrder.get(keyB) ?? 999)
+  })
 
   return results
 }

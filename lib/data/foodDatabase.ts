@@ -35,6 +35,7 @@ export const initialFoodDatabase: FoodCategory[] = [
       { id: '1_6', name: 'Батат',                calories: 86,  proteins: 1.6,  fats: 0.1, carbs: 20.1, unit: '100g' },
       { id: '1_7', name: 'Корень сельдерея',     calories: 42,  proteins: 1.5,  fats: 0.3, carbs: 9.2,  unit: '100g' },
       { id: '1_8', name: 'Имбирь (корень)',       calories: 80,  proteins: 1.8,  fats: 0.8, carbs: 15.8, unit: '100g' },
+      { id: '1_9', name: 'Лук красный',           calories: 42,  proteins: 1.4,  fats: 0.2, carbs: 9.1,  unit: '100g' },
     ],
   },
   {
@@ -237,6 +238,11 @@ export const initialFoodDatabase: FoodCategory[] = [
       { id: '8_33', name: 'Кунжут (обжаренный)',        calories: 573, proteins: 17.7, fats: 49.6,  carbs: 12.0, unit: '100g' },
       { id: '8_34', name: 'Кедровый орех',             calories: 673, proteins: 13.7, fats: 68.0,  carbs: 13.0, unit: '100g' },
       { id: '8_35', name: 'Миндаль (обжаренный)',       calories: 579, proteins: 21.0, fats: 49.0,  carbs: 21.0, unit: '100g' },
+      { id: '8_36', name: 'Масло кокосовое',           calories: 862, proteins: 0.0,  fats: 99.8,  carbs: 0.0,  unit: '100g' },
+      { id: '8_37', name: 'Устричный соус',             calories: 100, proteins: 1.6,  fats: 0.2,   carbs: 23.5, unit: '100g' },
+      { id: '8_38', name: 'Сахарная пудра',            calories: 387, proteins: 0.0,  fats: 0.0,   carbs: 99.8, unit: '100g' },
+      { id: '8_39', name: 'Корица',                    calories: 261, proteins: 3.9,  fats: 3.2,   carbs: 57.5, unit: '100g' },
+      { id: '8_40', name: 'Лавровый лист',             calories: 314, proteins: 7.6,  fats: 8.4,   carbs: 75.0, unit: '100g' },
     ],
   },
   {
@@ -254,6 +260,7 @@ export const initialFoodDatabase: FoodCategory[] = [
       { id: '9_11', name: 'Чай Улун',                 calories: 1,   proteins: 0.0, fats: 0.0, carbs: 0.1,  unit: '100ml' },
       { id: '9_12', name: 'Чай Пуэр',                 calories: 2,   proteins: 0.2, fats: 0.0, carbs: 0.2,  unit: '100ml' },
       { id: '9_13', name: 'Чай Ройбуш',               calories: 0,   proteins: 0.0, fats: 0.0, carbs: 0.0,  unit: '100ml' },
+      { id: '9_15', name: 'Вода',                      calories: 0,   proteins: 0.0, fats: 0.0, carbs: 0.0,  unit: '100ml' },
       { id: '9_14', name: 'Вода минеральная',         calories: 0,   proteins: 0.0, fats: 0.0, carbs: 0.0,  unit: '100ml' },
     ],
   },

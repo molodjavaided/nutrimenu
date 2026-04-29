@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { SwitchRoleButton } from '@/components/SwitchRoleButton'
+import { LogOut } from 'lucide-react'
 
 const navItems = [
   {
@@ -83,10 +84,17 @@ const navItems = [
 
 export function DashboardNav() {
   const pathname = usePathname()
+  const router = useRouter()
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href
     return pathname.startsWith(href)
+  }
+
+  async function handleLogout() {
+    await fetch('/api/auth/session', { method: 'DELETE' })
+    router.push('/auth/login')
+    router.refresh()
   }
 
   return (
@@ -151,6 +159,14 @@ export function DashboardNav() {
             Смотреть меню
           </Link>
           <SwitchRoleButton variant="sidebar" />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all w-full text-left"
+            style={{ color: '#9D99B8' }}
+          >
+            <LogOut size={14} />
+            Выйти
+          </button>
         </div>
       </aside>
 

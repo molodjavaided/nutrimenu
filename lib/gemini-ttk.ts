@@ -1,14 +1,13 @@
 /**
- * Shared Gemini-based TTK validation, extraction, and PDF parsing logic.
+ * TTK validation, extraction, and PDF parsing logic.
  *
- * Modes:
- *   validateTTKDishes  — cross-checks/corrects parsed XLSX/CSV dishes against raw rows
- *   parsePDFTTK        — extracts dishes from a PDF or photo via Gemini Vision
+ * Primary AI: DeepSeek (text — XLSX, CSV, text PDFs)
+ * Fallback AI: Gemini Vision (scan PDFs and images, if GEMINI_API_KEY set)
  *
  * Both functions accept optional few-shot examples that improve accuracy over time.
  */
 
-import type { ParsedDish } from '@/lib/importer'
+import type { ParsedDish } from '@/lib/ttk-types'
 import type { TTKExample } from '@/lib/ttk-examples'
 
 export interface SheetInput {
@@ -72,24 +71,58 @@ const BASE_SYSTEM_PROMPT = `Ты — валидатор и парсер ТТК (
   - Пропущенные блюда (есть в таблице, нет в списке)
   - Обрезанные или неверно объединённые названия блюд
   - Пропущенные ингредиенты
-  - Неверный вес: 0.15 кг → 150 г; 1.5 л → 1500 мл; дробь "120/100" → берём первое число
+  - Неверный вес: 0.15 кг → 150 г; 1.5 л → 1500 мл; "120/100/100" → берём первое число (120)
   - Строки-заголовки попавшие как блюда/ингредиенты: "Наименование", "Итого", "Выход", "Брутто", "Нетто", "№", "п/п" → удалить
   - kind: блюда основного меню → "dish", ПФ/Заготовки/полуфабрикаты → "preparation"
   - Мусорные символы в именах ингредиентов (числа, точки, «---»)
+  - Если лист — список закупа (есть колонки "Закуп", "Поставщик", "Ед.изм") → верни dishes: []
 
-ФОРМАТЫ ТТК:
+ЕДИНИЦЫ ИЗМЕРЕНИЯ:
+  - г, гр, гр. → "г"
+  - кг → умножь на 1000 → "г"
+  - мл, мл. → "мл"
+  - л → умножь на 1000 → "мл"
+  - шт, шт. → "шт"
+  - шот, шота, шотов (кофейный шот) → unit: "шт" (1 шот ≈ 30мл, но храним как шт)
+  - Если единица не указана — "г"
 
-Формат A — Иерархический (чаще всего):
-  "Борщ украинский"                     ← блюдо: только 1 заполненная колонка
-  "Свёкла"  ""  ""  "150"  ""           ← ингредиент: имя в col0, вес в col3
-  "Морковь"  ""  ""  "50"   ""
+ФОРМАТЫ ТТК (встречаются на практике):
 
-Формат B — Табличный:
+Формат A — Иерархический-col0 (кухонные ТТК):
+  "Боул с Курицей"  ""  ""  ""           ← блюдо: col0 заполнен, остальные пустые
+  "Гречка/Булгур"   ""  ""  "120гр"      ← ингредиент: col0=имя, col3=вес
+  "Курица ПФ"       ""  ""  "40гр"
+
+Формат A2 — Иерархический-col1 (часть листов кухонных ТТК):
+  "Вафля сырная"    ""  ""  ""  ""        ← блюдо: col0 заполнен, остальные пустые
+  ""  "Тесто на вафлю"  ""  ""  "160гр"  ← ингредиент: col0 пустой, col1=имя, col4=вес
+  ""  "Лосось с/с"      ""  ""  "40гр"
+
+Формат B — Одна строка = блюдо (кофейни), ингредиенты multi-line в одной ячейке:
+  col0="Капучино"  col1="250мл / 350мл"  col2="Эспрессо 1 шот\nМолоко 180мл"  col4="Инструкция..."
+  → Берём только ПЕРВЫЙ вариант (первые строки до пустой строки или разделителя)
+
+Формат C — Tabular sparse (барные карты):
+  Строка-заголовок: ""  "Напиток"  "Объем"  "Состав"  "Приготовление"
+  "КЛАССИКА"  "Бамбл"  "350"  "Кофейный концентрат - 55 гр"  "1. В бокал..."
+  ""           ""        ""    "Апельсиновый сок - 170 гр"    "2. Добавить..."
+  ""           ""        ""    "Лед - 150 гр"                 ""
+  ""  "Эспрессо-тоник"  "330"  "Концентрат тоник - 45 гр"   "1. Охладить..."
+  → col0 = категория (sparse), col1 = блюдо (только в первой строке, carry-forward)
+  → col3 = ингредиент в формате "Имя - количество единица"
+
+Формат D — Таблица с заголовком:
   "Наименование"  "Брутто"  "Нетто"     ← заголовок → пропустить
-  "Молоко"        "160"     "150"        ← ингредиент блюда
+  "Молоко"        "160"     "150"        ← Нетто = финальный вес
 
-Формат C — Одна строка = блюдо:
-  "Капучино\tМолоко 150мл, Кофе 30г"
+ПРАВИЛА ПАРСИНГА ИНГРЕДИЕНТОВ:
+  - "Кофейный концентрат - 55 гр" → name: "Кофейный концентрат", netWeight: 55, unit: "г"
+  - "Молоко 180мл" → name: "Молоко", netWeight: 180, unit: "мл"
+  - "Яйцо пашот 1шт" → name: "Яйцо пашот", netWeight: 1, unit: "шт"
+  - "Эспрессо 2 шота" → name: "Эспрессо", netWeight: 2, unit: "шт"
+  - "Гречка/Булгур/Киноа 120/100/100" → name: "Гречка/Булгур/Киноа", netWeight: 120, unit: "г"
+  - "1\гр" (опечатка) → 1 г
+  - Украшения и специальные пометки ("украшение", "для подачи") — включать как ингредиенты
 
 ПРАВИЛА:
   - Верни ТОЛЬКО валидный JSON-объект без markdown, без объяснений
@@ -106,13 +139,13 @@ const BASE_SYSTEM_PROMPT = `Ты — валидатор и парсер ТТК (
       "name": "Название блюда",
       "category": "Категория / лист",
       "kind": "dish",
-      "instructions": null,
+      "instructions": "инструкция или null",
       "ingredients": [
         { "ingredientName": "Свёкла", "netWeight": 150, "unit": "г" }
       ]
     }
   ],
-  "corrections": ["Борщ: добавлен пропущенный ингредиент «Капуста» 200г", "..."]
+  "corrections": ["Боул с курицей: вес «Гречка/Булгур» взят как 120г (первое из 120/100/100)", "..."]
 }`
 
 // ─── PDF / image system prompt ──────────────────────────────────
@@ -125,11 +158,24 @@ const PDF_SYSTEM_PROMPT = `Ты — парсер ТТК (технико-техн
 ПРАВИЛА:
   - Каждое блюдо/рецепт в документе → один элемент dishes[]
   - ПФ, Заготовки, Полуфабрикаты → kind: "preparation"; остальные → kind: "dish"
-  - Таблицы с заголовками "Наименование", "Брутто", "Нетто": Нетто = вес ингредиента
-  - Единицы: кг → умножь на 1000 → г; л → умножь на 1000 → мл; шт → шт
-  - Если вес не указан → netWeight: 0
+  - Таблицы с заголовками "Наименование", "Брутто", "Нетто": используй Нетто как вес
   - Не выдумывай данных которых нет на странице
   - corrections[] — заметки о неясных местах документа
+
+ЕДИНИЦЫ:
+  - г, гр → "г"
+  - кг → умножь на 1000 → "г"
+  - мл → "мл"
+  - л → умножь на 1000 → "мл"
+  - шт → "шт"
+  - шот/шота (кофе) → unit: "шт"
+  - Не указана → "г"
+
+ОСОБЫЕ СЛУЧАИ:
+  - "120/100/100" (альтернативы) → берём первое число: 120
+  - "1\гр" (опечатка со слешем) → 1 г
+  - "Ингредиент - 55 гр" → name: "Ингредиент", netWeight: 55, unit: "г"
+  - Украшения ("1 шт (украшение)") → включать как ингредиенты с unit: "шт"
 
 СТРУКТУРА ОТВЕТА (ТОЛЬКО JSON, без markdown):
 {
@@ -148,34 +194,9 @@ const PDF_SYSTEM_PROMPT = `Ты — парсер ТТК (технико-техн
   "corrections": ["замечание о качестве документа или неясном месте"]
 }`
 
-// ─── Gemini call helper ────────────────────────────────────────
+// ─── Response parser (shared) ──────────────────────────────────
 
-async function callGemini(
-  apiKey: string,
-  systemPrompt: string,
-  contents: unknown[],
-): Promise<{ dishes: ParsedDish[]; corrections: string[] }> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 8192, temperature: 0 },
-      }),
-    },
-  )
-
-  if (!res.ok) {
-    const err = await res.text().catch(() => '')
-    throw new Error(`Gemini вернул ошибку ${res.status}: ${err.slice(0, 200)}`)
-  }
-
-  const json = await res.json()
-  const text: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-
+function parseAIResponse(text: string): { dishes: ParsedDish[]; corrections: string[] } {
   let parsed: { dishes: unknown[]; corrections: unknown[] }
   try {
     const clean = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
@@ -212,7 +233,92 @@ async function callGemini(
   return { dishes, corrections }
 }
 
+// ─── DeepSeek call helper (OpenAI-compatible, text only) ───────
+
+async function callDeepSeek(
+  apiKey: string,
+  systemPrompt: string,
+  userMessage: string,
+): Promise<{ dishes: ParsedDish[]; corrections: string[] }> {
+  const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      max_tokens: 8192,
+      temperature: 0,
+      response_format: { type: 'json_object' },
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => '')
+    const msg = `DeepSeek вернул ошибку ${res.status}: ${err.slice(0, 200)}`
+    if (res.status === 402) throw Object.assign(new Error(msg), { code: 'NO_BALANCE' })
+    throw new Error(msg)
+  }
+
+  const json = await res.json()
+  const text: string = json.choices?.[0]?.message?.content ?? ''
+  return parseAIResponse(text)
+}
+
+// ─── Gemini text call helper (XLSX / CSV / text PDF) ──────────
+
+async function callGeminiText(
+  apiKey: string,
+  systemPrompt: string,
+  userMessage: string,
+): Promise<{ dishes: ParsedDish[]; corrections: string[] }> {
+  const contents = [{ parts: [{ text: userMessage }] }]
+  return callGeminiVisionRaw(apiKey, systemPrompt, contents)
+}
+
+// ─── Gemini Vision call helper (images / scan PDFs only) ───────
+
+async function callGeminiVisionRaw(
+  apiKey: string,
+  systemPrompt: string,
+  contents: unknown[],
+): Promise<{ dishes: ParsedDish[]; corrections: string[] }> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        generationConfig: { maxOutputTokens: 8192, temperature: 0 },
+      }),
+    },
+  )
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => '')
+    throw new Error(`Gemini вернул ошибку ${res.status}: ${err.slice(0, 200)}`)
+  }
+
+  const json = await res.json()
+  const text: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  return parseAIResponse(text)
+}
+
 // ─── Public: validate / correct XLSX dishes ────────────────────
+
+/** Detect sheets that are purchase/закуп lists — skip them */
+function isPurchaseSheet(sheet: SheetInput): boolean {
+  if (!sheet.rows || sheet.rows.length === 0) return false
+  const header = sheet.rows[0].join('\t').toLowerCase()
+  return /закуп|поставщик/.test(header)
+}
 
 export async function validateTTKDishes(
   sheets: SheetInput[],
@@ -221,32 +327,82 @@ export async function validateTTKDishes(
 ): Promise<ValidationResult> {
   const systemPrompt = BASE_SYSTEM_PROMPT + buildExamplesSection(examples)
 
-  const parts: string[] = []
-  for (const sheet of sheets) {
-    parts.push(`=== Лист: "${sheet.name}" ===`)
-    if (sheet.rows && sheet.rows.length > 0) {
-      const tableText = sheet.rows.slice(0, 250).map(r => r.join('\t')).join('\n')
-      parts.push(`Сырые строки таблицы:\n${tableText}`)
-    } else {
-      parts.push('(сырые строки недоступны)')
+  // Filter junk sheets and skip empty ones
+  const validSheets = sheets.filter(s => {
+    if (!s.rows || s.rows.length < 2) return false
+    if (isPurchaseSheet(s)) return false
+    return true
+  })
+
+  if (validSheets.length === 0) return { dishes: [], corrections: [] }
+
+  // Each sheet → separate DeepSeek call (avoids token overflow on large files)
+  // Batches of 4 to stay within rate limits
+  const BATCH = 4
+  const allDishes: ParsedDish[] = []
+  const allCorrections: string[] = []
+
+  for (let i = 0; i < validSheets.length; i += BATCH) {
+    const batch = validSheets.slice(i, i + BATCH)
+    const results = await Promise.all(
+      batch.map(sheet => {
+        const parts: string[] = []
+        parts.push(`=== Лист: "${sheet.name}" ===`)
+        if (sheet.rows && sheet.rows.length > 0) {
+          const tableText = sheet.rows
+            .slice(0, 200)
+            .map(r => r.map(cell => cell.length > 300 ? cell.slice(0, 300) + '…' : cell).join('\t'))
+            .join('\n')
+          parts.push(`Сырые строки таблицы:\n${tableText}`)
+        }
+        if (sheet.dishes.length > 0) {
+          parts.push(`\nАвтопарсинг (${sheet.dishes.length} блюд):\n${JSON.stringify(sheet.dishes, null, 2)}`)
+        } else {
+          parts.push('\n(список пустой — разбери из сырых строк)')
+        }
+
+        const call = apiKey.startsWith('sk-')
+          ? callDeepSeek(apiKey, systemPrompt, parts.join('\n'))
+          : callGeminiText(apiKey, systemPrompt, parts.join('\n'))
+
+        return call
+          .catch(err => {
+            if ((err as { code?: string }).code === 'NO_BALANCE') throw err
+            return { dishes: [] as ParsedDish[], corrections: [`Лист «${sheet.name}»: ${String(err)}`] }
+          })
+      }),
+    )
+
+    for (const r of results) {
+      allDishes.push(...r.dishes)
+      allCorrections.push(...r.corrections)
     }
-    if (sheet.dishes.length > 0) {
-      parts.push(`\nАвтопарсинг (${sheet.dishes.length} блюд):\n${JSON.stringify(sheet.dishes, null, 2)}`)
-    } else {
-      parts.push('\n(список пустой — разбери из сырых строк)')
-    }
-    parts.push('')
   }
 
-  return callGemini(apiKey, systemPrompt, [{ parts: [{ text: parts.join('\n') }] }])
+  return { dishes: allDishes, corrections: allCorrections }
 }
 
-// ─── Public: extract from PDF / image ─────────────────────────
+// ─── Public: extract from PDF text (pdfjs pre-extracted) ──────
+
+export async function parsePDFTextTTK(
+  pdfText: string,
+  apiKey: string,
+  examples: TTKExample[] = [],
+): Promise<ValidationResult> {
+  const systemPrompt = PDF_SYSTEM_PROMPT + buildExamplesSection(examples)
+  const prompt = `Текст извлечён из PDF-документа с ТТК. Разбери все блюда и ингредиенты.\n\n${pdfText.slice(0, 40000)}`
+  const call = apiKey.startsWith('sk-')
+    ? callDeepSeek(apiKey, systemPrompt, prompt)
+    : callGeminiText(apiKey, systemPrompt, prompt)
+  return call
+}
+
+// ─── Public: extract from image / scan PDF (always Gemini Vision) ─
 
 export async function parsePDFTTK(
   fileBase64: string,
   mimeType: string,
-  apiKey: string,
+  geminiApiKey: string,
   examples: TTKExample[] = [],
 ): Promise<ValidationResult> {
   const systemPrompt = PDF_SYSTEM_PROMPT + buildExamplesSection(examples)
@@ -258,5 +414,5 @@ export async function parsePDFTTK(
     ],
   }]
 
-  return callGemini(apiKey, systemPrompt, contents)
+  return callGeminiVisionRaw(geminiApiKey, systemPrompt, contents)
 }

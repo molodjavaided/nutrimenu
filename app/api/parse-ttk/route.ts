@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { detectAndParse, CONFIDENCE_THRESHOLD, type StrategyResult } from '@/lib/ttk-strategies'
 import { validateTTKDishes } from '@/lib/gemini-ttk'
-import type { ParsedDish } from '@/lib/importer'
+import type { ParsedDish } from '@/lib/ttk-types'
 import type { TTKExample } from '@/lib/ttk-examples'
 
 const SHEET_ID_RE = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ─── Gemini validation/extraction ──────────────────────────
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.DEEPSEEK_API_KEY
   let allDishes: ParsedDish[] = []
   let usedAI = false
   let corrections: string[] = []

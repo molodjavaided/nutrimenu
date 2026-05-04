@@ -1,21 +1,9 @@
 import type { Category, CompositionRow, IngredientRef, MenuItem } from '@/types'
 import { resolveNutriFromComposition, resolveIngredientPer100 } from '@/lib/utils'
+import { detectAndParse } from '@/lib/ttk-strategies'
+import { type ParsedDish, normalizeIngredientName } from '@/lib/ttk-types'
 
-// ─── Public types ──────────────────────────────────────────────
-
-export interface ParsedDish {
-  /** Stable UUID assigned at parse time — use as React key */
-  id: string
-  name: string
-  category: string
-  /**
-   * 'dish'        → MenuItem in a menu category
-   * 'preparation' → composite IngredientRef in Мои ингредиенты (Pass 1)
-   */
-  kind: 'dish' | 'preparation'
-  instructions?: string
-  ingredients: Array<{ ingredientName: string; netWeight: number; unit: string }>
-}
+export type { ParsedDish }
 
 export interface ImportResult {
   dishes: ParsedDish[]
@@ -167,19 +155,7 @@ function extractWeight(raw: unknown): number {
  *  - strip "чищенный" variants
  *  - collapse whitespace
  */
-export function normalizeIngredientName(raw: string): string {
-  return raw
-    .replace(/^\s*п\/ф\s*/i, '')                          // п/ф prefix
-    .replace(/^\s*пф\s+/i, '')                            // ПФ prefix (standalone word)
-    .replace(/\s+п\/ф\s*$/i, '')                          // п/ф suffix
-    .replace(/\s+пф\s*$/i, '')                            // ПФ suffix
-    .replace(/\s*\([^)]*\)/g, '')                         // (Италия) / (охл.) / (550 г)
-    .replace(/\b(охл|зам|с\/м|конс|св|сух)\.?\b/gi, '')  // quality abbrevs
-    .replace(/\bчищен\w*\b/gi, '')                        // чищенный / чищеная
-    .replace(/\.+\s*$/, '')                               // trailing dots
-    .replace(/\s+/g, ' ')
-    .trim()
-}
+export { normalizeIngredientName } from '@/lib/ttk-types'
 
 /**
  * Try to extract a weight+unit embedded in the ingredient name itself.
@@ -446,12 +422,11 @@ export async function parseFile(file: File): Promise<ImportResult> {
       const ws = wb.Sheets[sheetName] as Record<string, XLSXCell | unknown>
       const category = sheetName.trim() || 'Основное'
 
-      // Capture raw rows for AI validation
       const wsTyped = ws as Record<string, unknown> & { '!ref'?: string }
+      const rows: string[][] = []
       if (wsTyped['!ref']) {
         const XLSX2 = XLSX as { utils: XLSXUtils }
         const range = XLSX2.utils.decode_range(wsTyped['!ref'])
-        const rows: string[][] = []
         for (let r = range.s.r; r <= range.e.r; r++) {
           const row: string[] = []
           for (let c = range.s.c; c <= range.e.c; c++) {
@@ -468,8 +443,9 @@ export async function parseFile(file: File): Promise<ImportResult> {
       // Route constructor / modifier sheets to the horizontal parser
       if (/конструктор|модификатор/i.test(sheetName)) {
         dishes.push(...parseConstructorSheet(ws, category, XLSX.utils))
-      } else {
-        dishes.push(...parseTTKSheet(ws, category, XLSX.utils))
+      } else if (rows.length > 0) {
+        const result = detectAndParse(rows, sheetName)
+        dishes.push(...result.dishes)
       }
     }
     // Deduplicate across sheets by id

@@ -35,7 +35,18 @@
       "Bash(awk '!seen[$0]++')",
       "Bash(echo \"DEV_PID=$!\")",
       "Bash(grep -v '\"error\":\"\\\\$undefined\"')",
-      "Bash(grep -vE '\"error\":\"\\\\$undefined\"|errorStyles|errorScripts|global-error')"
+      "Bash(grep -vE '\"error\":\"\\\\$undefined\"|errorStyles|errorScripts|global-error')",
+      "Read(//c/MyProjects//**)",
+      "Read(//c/MyProjects/**)",
+      "Bash(grep -v \"^$\")",
+      "Skill(gstack-upgrade)",
+      "Skill(browse)",
+      "PowerShell(npm run *)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doc-14-4k-sheets.googleusercontent.com)",
+      "Skill(claude-api)",
+      "PowerShell(taskkill *)",
+      "Skill(qa)"
     ]
   }
 }

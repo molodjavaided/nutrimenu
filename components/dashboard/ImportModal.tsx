@@ -132,10 +132,12 @@ export default function ImportModal({ onClose, onImported }: Props) {
         setRawSheets(result.rawSheets)
         setIsValidating(true)
         try {
+          const dishBySheet = new Map<string, ParsedDish[]>()
+          for (const d of result.dishes) dishBySheet.set(d.category, [...(dishBySheet.get(d.category) ?? []), d])
           const sheets = result.rawSheets.map(s => ({
             name: s.name,
             rows: s.rows,
-            dishes: result.dishes.filter(d => d.category === s.name || d.category === (s.name.trim() || 'Основное')),
+            dishes: dishBySheet.get(s.name) ?? [],
           }))
           const examples = getTTKExamples()
           const res = await fetch('/api/validate-ttk', {

@@ -9,8 +9,7 @@
  * fall back to AI parsing.
  */
 
-import type { ParsedDish } from '@/lib/importer'
-import { normalizeIngredientName } from '@/lib/importer'
+import { type ParsedDish, normalizeIngredientName } from '@/lib/ttk-types'
 
 export const CONFIDENCE_THRESHOLD = 0.45
 
@@ -36,7 +35,9 @@ function isInstruction(t: string) {
 /** Parse a weight+unit from a cell string.  Returns {amount, unit} or null. */
 function parseWeight(raw: string): { amount: number; unit: 'г' | 'мл' | 'шт' } | null {
   if (!raw) return null
-  const numM = raw.match(/(\d+[,.]?\d*)/)
+  // "120/100/100" — take first alternative
+  const slashM = raw.match(/^(\d+[,.]?\d*)\//)
+  const numM = slashM ? slashM : raw.match(/(\d+[,.]?\d*)/)
   if (!numM) return null
   const n = parseFloat(numM[1].replace(',', '.'))
   if (!n || n <= 0) return null
@@ -44,6 +45,7 @@ function parseWeight(raw: string): { amount: number; unit: 'г' | 'мл' | 'шт
   if (/\bл\.?\s*$/i.test(raw) && !/[мМ][лЛ]/.test(raw)) return { amount: n * 1000, unit: 'мл' }
   if (/[мМ][лЛ]/.test(raw)) return { amount: n, unit: 'мл' }
   if (/шт\.?/i.test(raw)) return { amount: n, unit: 'шт' }
+  if (/шот[аы]?/i.test(raw)) return { amount: n, unit: 'шт' }
   return { amount: n, unit: 'г' }
 }
 
@@ -63,6 +65,8 @@ export function strategyHierarchical(
   const dishes: ParsedDish[] = []
   let current: ParsedDish | null = null
   let totalRows = 0, parsedRows = 0
+  // Track ingredient rows with many filled columns — signals per-row format, not hierarchical
+  let richIngredientRows = 0, ingredientRows = 0
 
   function flush() { if (current) { dishes.push(current); current = null } }
 
@@ -100,6 +104,12 @@ export function strategyHierarchical(
 
     if (!current) continue
 
+    // Count non-empty cols to detect per-row format masquerading as hierarchical
+    ingredientRows++
+    // >2 filled cols with long text = likely a per-row dish row, not an ingredient
+    const longCells = nonEmpty.filter(c => c.length > 15)
+    if (nonEmpty.length >= 3 && longCells.length >= 2) richIngredientRows++
+
     // Find weight in cols 1-6
     let amount = 0; let unit: 'г' | 'мл' | 'шт' = 'г'
     for (let ci = 1; ci < cols.length && ci <= 6; ci++) {
@@ -115,8 +125,12 @@ export function strategyHierarchical(
   }
   flush()
 
+  // If >40% of ingredient rows look like per-row dish rows, this format is wrong for hierarchical
+  const richRatio = ingredientRows > 0 ? richIngredientRows / ingredientRows : 0
+  const formatPenalty = richRatio > 0.4 ? 0.15 : 1
+
   const confidence = totalRows > 0
-    ? Math.min(1, (parsedRows / totalRows) * (dishes.length > 0 ? 1 : 0))
+    ? Math.min(1, (parsedRows / totalRows) * (dishes.length > 0 ? 1 : 0)) * formatPenalty
     : 0
 
   return { strategy: 'hierarchical', dishes: dedup(dishes), confidence }
@@ -221,8 +235,8 @@ function parseInlineIngredient(raw: string): { name: string; amount: number; uni
   const s = raw.trim()
   if (!s) return null
   // "Name – 200мл" or "Name 200г" or "Name: 200 г"
-  const m = s.match(/^(.+?)\s*[-–—:]\s*(\d+[,.]?\d*)\s*(кг|л\b|мл|гр?|г|шт)\.?\s*$/i)
-    ?? s.match(/^(.+?)\s+(\d+[,.]?\d*)\s*(кг|л\b|мл|гр?|г|шт)\.?\s*$/i)
+  const m = s.match(/^(.+?)\s*[-–—:]\s*(\d+[,.]?\d*)\s*(кг|л\b|мл|гр?|г|шот[аы]?|шт)\.?\s*(?:\(.*\))?\s*$/i)
+    ?? s.match(/^(.+?)\s+(\d+[,.]?\d*)\s*(кг|л\b|мл|гр?|г|шот[аы]?|шт)\.?\s*(?:\(.*\))?\s*$/i)
   if (!m) return { name: normalizeIngredientName(s), amount: 0, unit: 'г' }
   const n = parseFloat(m[2].replace(',', '.'))
   const rawU = m[3].toLowerCase()
@@ -230,6 +244,7 @@ function parseInlineIngredient(raw: string): { name: string; amount: number; uni
   if (/кг/.test(rawU)) { return { name: normalizeIngredientName(m[1]), amount: n * 1000, unit: 'г' } }
   if (/^л$/.test(rawU)) { return { name: normalizeIngredientName(m[1]), amount: n * 1000, unit: 'мл' } }
   if (/мл/.test(rawU)) unit = 'мл'
+  else if (/шот/.test(rawU)) unit = 'шт'
   else if (/шт/.test(rawU)) unit = 'шт'
   return { name: normalizeIngredientName(m[1]), amount: n, unit }
 }
@@ -243,12 +258,34 @@ export function strategyPerRow(
   let parsedRows = 0, totalRows = 0
   const dishes: ParsedDish[] = []
 
-  // Skip header rows
+  // Skip category header row (row 0 with only col 0 filled and no ingredient-like content)
   let startRow = 0
-  for (let r = 0; r < Math.min(rows.length, 5); r++) {
-    if (rows[r].some(c => isSkip(c) || /^(напит|блюд|наимен)/i.test(c.trim()))) {
+  for (let r = 0; r < Math.min(rows.length, 3); r++) {
+    const row = rows[r]
+    const nonEmpty = row.filter(c => c.trim())
+    // Single filled cell that looks like a section header — skip it
+    if (nonEmpty.length === 1 && /^[А-ЯЁ\s,]+$/.test(nonEmpty[0].trim()) && nonEmpty[0].trim().length > 3) {
+      startRow = r + 1
+    }
+    if (row.some(c => isSkip(c) || /^(напит|блюд|наимен)/i.test(c.trim()))) {
       startRow = r + 1; break
     }
+  }
+
+  /** True if a cell looks like an ingredient list (not a volume/size column) */
+  function looksLikeIngredients(cell: string): boolean {
+    if (!cell.trim()) return false
+    const lines = cell.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) return false
+    // Pure volume line: just "350 мл", "ТУ ГО 450мл", "Чайник 550мл" — no real ingredient name
+    const pureVolumeRe = /^(ту\s*го|чайник|стакан)?\s*\d+\s*(мл|л)\s*\.?\s*$/i
+    // Ingredient line: has a word (ingredient name) followed somewhere by a digit+unit
+    const ingredientRe = /[а-яёА-ЯЁ]{3,}.{0,30}\d/
+    const ingLines = lines.filter(l => ingredientRe.test(l) && !pureVolumeRe.test(l))
+    const volLines = lines.filter(l => pureVolumeRe.test(l))
+    // Treat as ingredients only if at least one ingredient-like line and
+    // ingredient lines outnumber pure volume lines
+    return ingLines.length > 0 && ingLines.length >= volLines.length
   }
 
   for (let r = startRow; r < rows.length; r++) {
@@ -257,20 +294,44 @@ export function strategyPerRow(
     totalRows++
 
     const col0 = row[0]?.trim() ?? ''
-    const col1 = row[1]?.trim() ?? ''
-    const col2 = row[2]?.trim() ?? ''
-    const col3 = row[3]?.trim() ?? ''
+
+    // Skip rows where col 0 is ALL-CAPS category header (no other ingredient-like cols)
+    if (/^[А-ЯЁ\s,\/\-–]+$/.test(col0) && col0.length > 4 && row.slice(1).every(c => !c.trim())) continue
 
     // col 0 is dish name (strip serial number)
     const dishName = stripSerial(col0)
     if (!dishName || isSkip(dishName)) continue
 
-    // Detect ingredient cell: prefer col2, fallback col1 if it looks like ingredients
-    const ingCell = col2 || (col1.includes('\n') || col1.includes(';') ? col1 : '')
-    const instCell = col3 || (!ingCell && col2 ? col2 : '')
+    // Find ingredient cell: scan cols 2, 3, 4 — take first that looks like ingredients
+    // Fallback to col 1 if it has newlines (some formats put ingredients there)
+    const col1 = row[1]?.trim() ?? ''
+    let ingCell = ''
+    let instCell = ''
+    for (let ci = 2; ci <= 4; ci++) {
+      const cell = row[ci]?.trim() ?? ''
+      if (looksLikeIngredients(cell)) {
+        ingCell = cell
+        // Instruction is the next col after ingredients
+        instCell = row[ci + 1]?.trim() ?? ''
+        break
+      }
+    }
+    if (!ingCell && (col1.includes('\n') || col1.includes(';'))) {
+      ingCell = col1
+    }
+    if (!instCell) {
+      // Try to find instruction in remaining cols (long text without weight patterns)
+      for (let ci = 2; ci <= 5; ci++) {
+        const cell = row[ci]?.trim() ?? ''
+        if (cell.length > 30 && !looksLikeIngredients(cell)) { instCell = cell; break }
+      }
+    }
 
-    const rawIngredients = ingCell
-      ? ingCell.split(ING_SPLIT_RE).map(s => s.trim()).filter(Boolean)
+    // Take only the first variant block (before first double-newline)
+    const firstVariantBlock = ingCell.split(/\n\s*\n/)[0] ?? ingCell
+
+    const rawIngredients = firstVariantBlock
+      ? firstVariantBlock.split(ING_SPLIT_RE).map(s => s.trim()).filter(Boolean)
       : []
 
     if (rawIngredients.length === 0 && !ingCell) continue
@@ -302,6 +363,90 @@ export function strategyPerRow(
   return { strategy: 'per-row', dishes: dedup(dishes), confidence }
 }
 
+// ─── Strategy D: Tabular sparse (Floo-style) ──────────────────
+// Header row has column labels (Напиток / Состав / Приготовление).
+// Dish name in col 1 only on first ingredient row (sparse — carry forward).
+// Each subsequent row is one ingredient in col 3 ("Name - amount unit").
+// Category in col 0 (sparse — carry forward).
+
+export function strategyTabularSparse(
+  rows: string[][],
+  sheetName: string,
+): StrategyResult {
+  // Detect header row with "Состав" or "Напиток"/"Блюдо" column
+  let headerIdx = -1
+  let nameCol = -1, ingCol = -1, instCol = -1, catCol = -1
+
+  for (let r = 0; r < Math.min(rows.length, 8); r++) {
+    const row = rows[r]
+    const nc = row.findIndex(c => /напит|блюд|наимен/i.test(c))
+    const ic = row.findIndex(c => /состав|ингред/i.test(c))
+    if (ic !== -1) {
+      headerIdx = r
+      nameCol = nc !== -1 ? nc : (ic > 0 ? ic - 1 : -1)
+      ingCol = ic
+      catCol = nameCol > 0 ? nameCol - 1 : -1
+      instCol = row.findIndex(c => /приготовл|инструк/i.test(c))
+      break
+    }
+  }
+
+  if (headerIdx === -1 || ingCol === -1) {
+    return { strategy: 'tabular-sparse', dishes: [], confidence: 0 }
+  }
+
+  const dishes: ParsedDish[] = []
+  let currentName = ''
+  let currentCategory = sheetName
+  let currentDish: ParsedDish | null = null
+  let parsedRows = 0, totalRows = 0
+
+  for (let r = headerIdx + 1; r < rows.length; r++) {
+    const row = rows[r]
+    if (row.every(c => !c.trim())) continue
+    totalRows++
+
+    const cat = catCol >= 0 ? row[catCol]?.trim() : ''
+    const name = nameCol >= 0 ? row[nameCol]?.trim() : ''
+    const ingRaw = ingCol >= 0 ? row[ingCol]?.trim() : ''
+    const inst = instCol >= 0 ? row[instCol]?.trim() : ''
+
+    if (cat) currentCategory = cat
+    if (name && name !== currentName) {
+      currentName = name
+      currentDish = {
+        id: crypto.randomUUID(),
+        name: stripSerial(name),
+        category: currentCategory,
+        kind: /пф|заготовк|полуфабрик/i.test(name) ? 'preparation' : 'dish',
+        instructions: inst || undefined,
+        ingredients: [],
+      }
+      dishes.push(currentDish)
+    }
+
+    if (!currentDish || !ingRaw) continue
+
+    const parsed = parseInlineIngredient(ingRaw)
+    if (parsed && parsed.name.length > 1) {
+      currentDish.ingredients.push({
+        ingredientName: parsed.name,
+        netWeight: parsed.amount,
+        unit: parsed.unit,
+      })
+      if (inst && !currentDish.instructions) currentDish.instructions = inst
+      parsedRows++
+    }
+  }
+
+  const ingRatio = dishes.length > 0
+    ? dishes.filter(d => d.ingredients.length > 0).length / dishes.length
+    : 0
+  const confidence = totalRows > 0 ? (parsedRows / totalRows) * ingRatio * 1.1 : 0
+
+  return { strategy: 'tabular-sparse', dishes: dedup(dishes), confidence }
+}
+
 // ─── Orchestrator ──────────────────────────────────────────────
 
 export function detectAndParse(
@@ -312,6 +457,7 @@ export function detectAndParse(
     strategyHierarchical(rows, sheetName),
     strategyColumnar(rows, sheetName),
     strategyPerRow(rows, sheetName),
+    strategyTabularSparse(rows, sheetName),
   ]
 
   // Pick the strategy with highest confidence and at least one dish

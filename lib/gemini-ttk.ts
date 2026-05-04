@@ -70,8 +70,10 @@ const BASE_SYSTEM_PROMPT = `Ты — валидатор и парсер ТТК (
 ОШИБКИ КОТОРЫЕ НУЖНО ИСПРАВИТЬ:
   - Пропущенные блюда (есть в таблице, нет в списке)
   - Обрезанные или неверно объединённые названия блюд
+  - Опечатки в названиях блюд: "Горяий" → "Горячий", "колличество" → не исправляй (это в инструкции), исправляй только имена блюд
   - Пропущенные ингредиенты
   - Неверный вес: 0.15 кг → 150 г; 1.5 л → 1500 мл; "120/100/100" → берём первое число (120)
+  - Диапазон веса: "от 17 до 19 гр" → берём среднее: 18 г; "17-19 гр" → 18 г
   - Строки-заголовки попавшие как блюда/ингредиенты: "Наименование", "Итого", "Выход", "Брутто", "Нетто", "№", "п/п" → удалить
   - kind: блюда основного меню → "dish", ПФ/Заготовки/полуфабрикаты → "preparation"
   - Мусорные символы в именах ингредиентов (числа, точки, «---»)
@@ -289,7 +291,7 @@ async function callGeminiVisionRaw(
   contents: unknown[],
 ): Promise<{ dishes: ParsedDish[]; corrections: string[] }> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -350,6 +352,7 @@ export async function validateTTKDishes(
         parts.push(`=== Лист: "${sheet.name}" ===`)
         if (sheet.rows && sheet.rows.length > 0) {
           const tableText = sheet.rows
+            .filter(r => r.some(c => c.trim()))
             .slice(0, 200)
             .map(r => r.map(cell => cell.length > 300 ? cell.slice(0, 300) + '…' : cell).join('\t'))
             .join('\n')

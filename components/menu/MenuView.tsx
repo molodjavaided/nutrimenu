@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Category, MenuItem, TrackerItem, Venue } from '@/types'
 import { resolveNutri } from '@/lib/utils'
 import { SelectedModifiers, SelectedVariants } from '@/types'
@@ -210,6 +211,19 @@ const resolved = {
           )}
         </div>
       </div>
+
+      {/* Owner login link */}
+      {trackerItems.length === 0 && (
+        <div className="py-8 flex justify-center">
+          <Link
+            href="/auth/login"
+            className="text-xs px-3 py-1.5 rounded-full transition-all active:scale-95"
+            style={{ color: '#B0A6DF', background: 'rgba(176,166,223,0.1)' }}
+          >
+            Войти как владелец
+          </Link>
+        </div>
+      )}
 
       {/* Bottom sheet */}
       <DishSheet

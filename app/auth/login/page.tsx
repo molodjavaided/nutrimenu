@@ -6,8 +6,6 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { hashPassword } from '@/lib/auth'
-import { getCredentials } from '@/lib/credentialsStore'
 
 const schema = z.object({
   email: z.string().email('Введите корректный email'),
@@ -28,26 +26,17 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      const creds = getCredentials()
-      if (!creds) {
-        setError('Аккаунт не найден. Сначала зарегистрируйте заведение.')
-        return
-      }
-      if (creds.email.toLowerCase() !== data.email.toLowerCase()) {
-        setError('Неверный email или пароль')
-        return
-      }
-      const hash = await hashPassword(data.password)
-      if (hash !== creds.passwordHash) {
-        setError('Неверный email или пароль')
-        return
-      }
-      await fetch('/api/auth/session', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email }),
+        body: JSON.stringify(data),
       })
-      router.push('/dashboard')
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Ошибка входа')
+        return
+      }
+      router.push(json.redirectTo ?? '/dashboard')
       router.refresh()
     } finally {
       setLoading(false)
@@ -102,6 +91,12 @@ export default function LoginPage() {
             {error}
           </div>
         )}
+
+        <div className="flex justify-end">
+          <Link href="/auth/forgot-password" className="text-xs" style={{ color: '#7a748f' }}>
+            Забыли пароль?
+          </Link>
+        </div>
 
         <button
           type="submit"

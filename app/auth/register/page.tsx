@@ -6,9 +6,6 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { hashPassword } from '@/lib/auth'
-import { saveCredentials } from '@/lib/credentialsStore'
-import { getVenue, saveVenue } from '@/lib/store'
 
 const schema = z.object({
   venueName: z.string().min(2, 'Минимум 2 символа'),
@@ -21,19 +18,9 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-function makeSlug(name: string): string {
-  const id = Math.random().toString(36).slice(2, 7)
-  const base = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .slice(0, 20)
-    .replace(/-+$/, '')
-  return base ? `${base}-${id}` : `venue-${id}`
-}
-
 export default function RegisterPage() {
   const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -42,26 +29,22 @@ export default function RegisterPage() {
 
   async function onSubmit(data: FormData) {
     setLoading(true)
+    setError(null)
     try {
-      const passwordHash = await hashPassword(data.password)
-      saveCredentials({ email: data.email.toLowerCase(), passwordHash })
-
-      const existing = getVenue()
-      if (!existing) {
-        saveVenue({
-          id: crypto.randomUUID(),
-          name: data.venueName,
-          slug: makeSlug(data.venueName),
-        })
-      } else if (!existing.name) {
-        saveVenue({ ...existing, name: data.venueName })
-      }
-
-      await fetch('/api/auth/session', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email }),
+        body: JSON.stringify({
+          venueName: data.venueName,
+          email: data.email,
+          password: data.password,
+        }),
       })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Ошибка регистрации')
+        return
+      }
       router.push('/dashboard')
       router.refresh()
     } finally {
@@ -142,6 +125,15 @@ export default function RegisterPage() {
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.confirm.message}</p>
           )}
         </div>
+
+        {error && (
+          <div
+            className="px-4 py-3 rounded-xl text-sm"
+            style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
+          >
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"

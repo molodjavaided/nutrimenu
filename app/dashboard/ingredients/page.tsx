@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { IngredientLibrary, IngredientRef } from '@/types'
-import { getLibraries, saveLibraryIngredients, initLibraries, MY_LIBRARY_ID } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
+
+const MY_LIBRARY_ID = 'my-library'
 import { SearchInput } from '@/components/ui/SearchInput'
 import IngredientFormModal from '@/components/dashboard/IngredientFormModal'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
@@ -33,9 +34,13 @@ export default function IngredientsPage() {
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const libs = initLibraries(systemLibraries)
-    setLibraries(libs)
-    setActiveLibId(MY_LIBRARY_ID)
+    fetch('/api/ingredients')
+      .then(r => r.ok ? r.json() : [])
+      .then((personalIngredients: IngredientRef[]) => {
+        const personalLib = { id: MY_LIBRARY_ID, name: 'Мои ингредиенты', isSystem: false, ingredients: personalIngredients }
+        setLibraries([...systemLibraries, personalLib])
+        setActiveLibId(MY_LIBRARY_ID)
+      })
   }, [])
 
   // Clear selection when switching libraries
@@ -50,26 +55,37 @@ export default function IngredientsPage() {
 
   const allRefs = libraries.flatMap(l => l.ingredients)
 
-  function saveIngredients(updated: IngredientRef[]) {
-    saveLibraryIngredients(activeLibId, updated)
+  function updateLocalLib(updated: IngredientRef[]) {
     setLibraries(libs => libs.map(l =>
       l.id === activeLibId ? { ...l, ingredients: updated } : l
     ))
   }
 
-  function handleSave(ing: IngredientRef) {
+  async function handleSave(ing: IngredientRef) {
     const isEdit = ingredients.some(i => i.id === ing.id)
     if (isEdit) {
-      saveIngredients(ingredients.map(i => i.id === ing.id ? ing : i))
+      await fetch(`/api/ingredients/${ing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ing),
+      })
+      updateLocalLib(ingredients.map(i => i.id === ing.id ? ing : i))
     } else {
-      saveIngredients([...ingredients, ing])
+      const res = await fetch('/api/ingredients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ing),
+      })
+      const saved = await res.json()
+      updateLocalLib([...ingredients, saved])
     }
     setModalTarget(undefined)
     setBarcodePreFill(null)
   }
 
-  function handleDelete(id: string) {
-    saveIngredients(ingredients.filter(i => i.id !== id))
+  async function handleDelete(id: string) {
+    await fetch(`/api/ingredients/${id}`, { method: 'DELETE' })
+    updateLocalLib(ingredients.filter(i => i.id !== id))
     setConfirmDeleteId(null)
   }
 
@@ -95,10 +111,12 @@ export default function IngredientsPage() {
     }
   }
 
-  function handleBulkDeleteRequest() {
+  async function handleBulkDeleteRequest() {
     if (confirmBulkDelete) {
       // Second click — actually delete
-      saveIngredients(ingredients.filter(i => !selectedIds.has(i.id)))
+      const toDelete = [...selectedIds]
+      await Promise.all(toDelete.map(id => fetch(`/api/ingredients/${id}`, { method: 'DELETE' })))
+      updateLocalLib(ingredients.filter(i => !selectedIds.has(i.id)))
       setSelectedIds(new Set())
       setConfirmBulkDelete(false)
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)

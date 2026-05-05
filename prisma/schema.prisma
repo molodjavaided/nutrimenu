@@ -1,0 +1,113 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VenueStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+}
+
+model User {
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  passwordHash       String
+  role               UserRole             @default(OWNER)
+  createdAt          DateTime             @default(now())
+  venue              Venue?
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+model Venue {
+  id           String      @id @default(cuid())
+  slug         String      @unique
+  name         String
+  address      String?
+  description  String?
+  workingHours String?
+  logo         String?
+  tags         String[]    @default([])
+  status         VenueStatus @default(PENDING)
+  allowAdminEdit Boolean     @default(false)
+  ownerId        String      @unique
+  owner        User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  categories  Category[]
+  ingredients IngredientRef[]
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  venueId   String
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int        @default(0)
+  items     MenuItem[]
+}
+
+model MenuItem {
+  id             String   @id @default(cuid())
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  venueId        String
+  name           String
+  description    String?
+  photo          String?
+  weight         Float    @default(0)
+  weightUnit     String   @default("г")
+  calories       Float    @default(0)
+  protein        Float    @default(0)
+  fat            Float    @default(0)
+  carbs          Float    @default(0)
+  isAvailable    Boolean  @default(true)
+  sizes          Json?
+  composition    Json?
+  variantGroups  Json?
+  modifierGroups Json?
+  sortOrder      Int      @default(0)
+}
+
+model IngredientRef {
+  id             String  @id @default(cuid())
+  venueId        String?
+  venue          Venue?  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name           String
+  unit           String  @default("г")
+  weightPerUnit  Float?
+  caloriesPer100 Float   @default(0)
+  proteinPer100  Float   @default(0)
+  fatPer100      Float   @default(0)
+  carbsPer100    Float   @default(0)
+  category       String?
+  isSystem       Boolean @default(false)
+  type           String  @default("mono")
+  composition    Json?
+  instructions   String?
+
+  @@index([venueId])
+  @@index([isSystem])
+}

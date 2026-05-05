@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
-import { getCategories, saveCategories, getItemById, initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import IngredientPickerModal from './IngredientPickerModal'
@@ -188,6 +187,37 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   // Шаг 1: Ручное редактирование КБЖУ для размеров
   const [manualNutri, setManualNutri] = useState<Record<string, { calories: number; protein: number; fat: number; carbs: number; isManual: boolean }>>({})
 
+  // ─── Инлайн создание категории ───────────────────────────
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim()) return
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCategoryName.trim() }),
+    })
+    if (res.ok) {
+      const cat = await res.json()
+      setCategories(prev => [...prev, cat])
+      setCategoryId(cat.id)
+    }
+    setNewCategoryName('')
+    setAddingCategory(false)
+  }
+
+  // ─── Режим формы ─────────────────────────────────────────
+  const [mode, setMode] = useState<'quick' | 'detailed'>('quick')
+
+  // Быстрый режим: КБЖУ вручную
+  const [quickWeight, setQuickWeight] = useState<number>(0)
+  const [quickWeightUnit, setQuickWeightUnit] = useState<'г' | 'мл'>('г')
+  const [quickCalories, setQuickCalories] = useState<number>(0)
+  const [quickProtein, setQuickProtein] = useState<number>(0)
+  const [quickFat, setQuickFat] = useState<number>(0)
+  const [quickCarbs, setQuickCarbs] = useState<number>(0)
+
   // ─── Шаг 2: Варианты для гостя (крупа, белок, начинка) ───
   const [variantGroups, setVariantGroups] = useState<VariantOption[]>([])
 
@@ -200,15 +230,28 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
   // ─── Загрузка справочников (один раз) ─────────────────────
   useEffect(() => {
-    const libs = initLibraries(systemLibraries)
-    setLibraries(libs)
-    setIngredientRefs(libs.flatMap(l => l.ingredients))
-    setCategories(getCategories())
-    setIsReady(true)
+    Promise.all([
+      fetch('/api/categories').then(r => r.ok ? r.json() : []),
+      fetch('/api/ingredients').then(r => r.ok ? r.json() : []),
+    ]).then(([cats, personalIngredients]) => {
+      setCategories(cats)
+      // Merge system libraries with personal ingredients from DB
+      const personalLib = {
+        id: 'my-library',
+        name: 'Мои ингредиенты',
+        isSystem: false,
+        ingredients: personalIngredients,
+      }
+      const allLibs = [...systemLibraries, personalLib]
+      setLibraries(allLibs)
+      setIngredientRefs(allLibs.flatMap((l: { ingredients: IngredientRef[] }) => l.ingredients))
+      setIsReady(true)
+    })
   }, [])
 
   // ─── Загрузка существующего блюда ─────────────────────────
-  useEffect(() => {
+  useEffect(() => { void loadItem() }, [isReady, ingredientRefs, itemId])
+  async function loadItem() {
     if (!isReady) {
       console.log('Ждём загрузки справочника...')
       return
@@ -223,7 +266,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     console.log('Загружаем блюдо, справочник ингредиентов готов. ingredientRefs:', ingredientRefs)
 
-    const found = getItemById(itemId)
+    const found = await fetch(`/api/items/${itemId}`).then(r => r.ok ? r.json() : null).then(item => item ? { item, categoryId: item.categoryId } : null)
     console.log('Найденное блюдо:', found)
 
     if (found) {
@@ -231,15 +274,33 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       setDescription(found.item.description ?? '')
       setCategoryId(found.categoryId)
 
+      const hasComposition = (found.item.sizes?.length > 0 && found.item.sizes[0]?.composition?.length > 0)
+        || (found.item.composition?.length > 0)
+
+      if (!hasComposition) {
+        // Quick mode — load flat КБЖУ
+        setMode('quick')
+        setQuickWeight(found.item.weight ?? 0)
+        setQuickWeightUnit((found.item.weightUnit ?? 'г') as 'г' | 'мл')
+        setQuickCalories(found.item.calories ?? 0)
+        setQuickProtein(found.item.protein ?? 0)
+        setQuickFat(found.item.fat ?? 0)
+        setQuickCarbs(found.item.carbs ?? 0)
+        isInitialLoad.current = false
+        return
+      }
+
+      setMode('detailed')
+
       // Загрузка размеров и граммовок (шаг 1)
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
 
         if (compositionData.length > 0) {
-          const loadedIngredients = compositionData.map((comp) => {
+          const loadedIngredients = compositionData.map((comp: { ingredientId: string; unit?: string; amount: number }) => {
             const newId = crypto.randomUUID()
             const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
             ingredientIdMap.set(comp.ingredientId, newId)
@@ -273,14 +334,14 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           setSizes([{
             id: sizesData[0].id,
             name: sizesData[0].name || '',
-            unit: sizesData[0].weightUnit || 'г'
+            unit: (sizesData[0].weightUnit || 'г') as 'г' | 'мл'
           }])
         } else {
           setHasMultipleSizes(true)
           setSizes(sizesData.map(s => ({
             id: s.id,
             name: s.name || `${s.weight}${s.weightUnit}`,
-            unit: s.weightUnit || 'г'
+            unit: (s.weightUnit || 'г') as 'г' | 'мл'
           })))
         }
 
@@ -297,7 +358,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
         // Flat composition — imported dish without a sizes structure
-        const compositionData = found.item.composition
+        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number }>
         const ingredientIdMap = new Map<string, string>()
 
         const loadedIngredients = compositionData.map(comp => {
@@ -362,7 +423,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     }
 
     isInitialLoad.current = false
-  }, [itemId, ingredientRefs, isReady])
+  }
 
   // ─── Функции для шага 2 (Варианты) ────────────────────────
   const addVariantGroup = useCallback(() => {
@@ -457,8 +518,45 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   }, [ingredients, amounts, ingredientRefs, manualNutri])
 
   // ─── Сохранение ────────────────────────────────────────────
-  const handleSave = useCallback(() => {
-    if (!name || !categoryId || ingredients.length === 0) return
+  const handleSave = useCallback(async () => {
+    if (!name || !categoryId) return
+
+    // ─── Быстрый режим ────────────────────────────────────
+    if (mode === 'quick') {
+      const quickItem = {
+        id: itemId ?? crypto.randomUUID(),
+        name,
+        description: description || undefined,
+        weight: quickWeight,
+        weightUnit: quickWeightUnit,
+        calories: quickCalories,
+        protein: quickProtein,
+        fat: quickFat,
+        carbs: quickCarbs,
+        isAvailable: true,
+        composition: [],
+        sizes: [],
+        variantGroups: [],
+        categoryId,
+      }
+      if (isEdit) {
+        await fetch(`/api/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(quickItem),
+        })
+      } else {
+        await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(quickItem),
+        })
+      }
+      router.push('/dashboard/menu')
+      return
+    }
+
+    if (ingredients.length === 0) return
 
     // Сохраняем размеры (шаг 1)
     const sizesToSave: SizeOption[] = sizes.map(size => {
@@ -562,23 +660,20 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       isAvailable: true,
     }
 
-    const cats = getCategories()
-    let updated: Category[]
-
     if (isEdit) {
-      updated = cats.map(c => ({
-        ...c,
-        items: (c.items ?? []).map(i => i.id === itemId ? newItem : i),
-      }))
+      await fetch(`/api/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newItem, categoryId }),
+      })
     } else {
-      updated = cats.map(c =>
-        c.id === categoryId
-          ? { ...c, items: [...(c.items ?? []), newItem] }
-          : c
-      )
+      await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newItem, categoryId }),
+      })
     }
 
-    saveCategories(updated)
     router.push('/dashboard/menu')
   }, [name, categoryId, description, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, isEdit, itemId, router, calculateNutriForSize])
 
@@ -676,17 +771,77 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         {isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
       </h1>
 
+      {/* ─── Переключатель режима ─── */}
+      <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#EAE7F8' }}>
+        {(['quick', 'detailed'] as const).map(m => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+            style={mode === m
+              ? { background: '#2C2950', color: '#FEFEF2' }
+              : { color: '#6B6490' }
+            }
+          >
+            {m === 'quick' ? 'Быстро' : 'С составом'}
+          </button>
+        ))}
+      </div>
+
       {/* ==================== ШАГ 1 ==================== */}
       <div className="mb-8">
         <h2 className="text-lg font-medium mb-4" style={{ color: '#2C2950' }}>Основное</h2>
 
         {/* Категория */}
         <FormField label="Категория" required>
-          <FormSelect value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full">
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </FormSelect>
+          {addingCategory ? (
+            <div className="flex gap-2">
+              <FormInput
+                autoFocus
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateCategory()
+                  if (e.key === 'Escape') setAddingCategory(false)
+                }}
+                placeholder="Название категории"
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="px-3 h-10 rounded-xl text-sm font-medium"
+                style={{ background: '#2C2950', color: '#FEFEF2' }}
+              >
+                Создать
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddingCategory(false)}
+                className="px-3 h-10 rounded-xl text-sm"
+                style={{ background: '#EAE7F8', color: '#6B6490' }}
+              >
+                Отмена
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <FormSelect value={categoryId} onChange={e => setCategoryId(e.target.value)} className="flex-1">
+                {categories.length === 0 && <option value="">— нет категорий —</option>}
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </FormSelect>
+              <button
+                type="button"
+                onClick={() => setAddingCategory(true)}
+                className="px-3 h-10 rounded-xl text-sm whitespace-nowrap"
+                style={{ background: '#EAE7F8', color: '#6B6490', border: '0.5px dashed rgba(176,166,223,0.6)' }}
+              >
+                + Новая
+              </button>
+            </div>
+          )}
         </FormField>
 
         {/* Название */}
@@ -709,8 +864,60 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           />
         </FormField>
 
+        {/* ─── Быстрый режим: вес + КБЖУ вручную ─── */}
+        {mode === 'quick' && (
+          <>
+            <FormField label="Вес порции">
+              <div className="flex gap-2">
+                <FormInput
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  value={quickWeight || ''}
+                  onChange={e => setQuickWeight(Number(e.target.value))}
+                  placeholder="0"
+                  className="flex-1"
+                />
+                <FormSelect
+                  value={quickWeightUnit}
+                  onChange={e => setQuickWeightUnit(e.target.value as 'г' | 'мл')}
+                  className="w-24"
+                >
+                  <option value="г">г</option>
+                  <option value="мл">мл</option>
+                </FormSelect>
+              </div>
+            </FormField>
+
+            <FormField label="КБЖУ на порцию" required>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'Калории', value: quickCalories, set: setQuickCalories },
+                  { label: 'Белки', value: quickProtein, set: setQuickProtein },
+                  { label: 'Жиры', value: quickFat, set: setQuickFat },
+                  { label: 'Углеводы', value: quickCarbs, set: setQuickCarbs },
+                ].map(({ label, value, set }) => (
+                  <div key={label}>
+                    <p className="text-xs mb-1" style={{ color: '#6B6490' }}>{label}</p>
+                    <FormInput
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={0.1}
+                      value={value || ''}
+                      onChange={e => set(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full"
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormField>
+          </>
+        )}
+
         {/* Состав */}
-        <FormField label="Состав" required>
+        {mode === 'detailed' && <FormField label="Состав" required>
           <div className="space-y-2">
             {ingredients.map(ing => (
               <div key={ing.id} className="flex items-center gap-2">
@@ -733,9 +940,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               Выбрать из справочника
             </button>
           </div>
-        </FormField>
+        </FormField>}
 
         {/* Размер порции */}
+        {mode === 'detailed' && <>
         <FormField label="Размер порции" required>
           <div className="space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -931,9 +1139,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             </div>
           </div>
         )}
+      </>}
       </div>
 
       {/* ==================== ШАГ 2 ==================== */}
+      {mode === 'detailed' && <>
       <div className="mb-8">
         <h2 className="text-lg font-medium mb-4" style={{ color: '#2C2950' }}>Выборы для гостя</h2>
         <p className="text-sm mb-4" style={{ color: '#6B6490' }}>
@@ -1110,6 +1320,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           + Добавить группу вариантов
         </button>
       </div>
+      </>}
 
       {/* Кнопки */}
       <div className="flex justify-between pt-4 border-t" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
@@ -1140,6 +1351,12 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           alreadyAddedIds={ingredients.map(i => i.ingredientRefId)}
           onSelect={ref => addIngredient(ref.id)}
           onClose={() => setPickerOpen(false)}
+          onIngredientCreated={ref => {
+            setIngredientRefs(prev => [...prev, ref])
+            setLibraries(prev => prev.map(l =>
+              l.id === 'my-library' ? { ...l, ingredients: [...l.ingredients, ref] } : l
+            ))
+          }}
         />
       )}
 

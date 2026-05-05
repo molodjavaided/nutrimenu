@@ -7,6 +7,9 @@ export interface Venue {
   description?: string
   workingHours?: string
   tags?: string[]
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  rejectionReason?: string | null
+  allowAdminEdit?: boolean
 }
 
 export interface Category {

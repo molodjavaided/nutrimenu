@@ -2,51 +2,72 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { getCategories, getVenue } from '@/lib/store'
 import { Category, Venue } from '@/types'
-
-// IDs that were hardcoded in the old mockCategories — used to detect stale data
-const STALE_CATEGORY_IDS = new Set([
-  'drinks-classic', 'drinks-author', 'drinks-tea',
-  'food-tortilla', 'food-bowl', 'food-main',
-  'food-breakfast', 'food-kids', 'sweets',
-])
-
-function isStaleData(categories: Category[], venue: Venue | null): boolean {
-  if (!venue) return false
-  return venue.id === '1' && venue.slug === 'utro' && categories.some(c => STALE_CATEGORY_IDS.has(c.id))
-}
 
 export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [venue, setVenue] = useState<Venue | null>(null)
-  const [stale, setStale] = useState(false)
-
-  function loadData() {
-    const cats = getCategories()
-    const v = getVenue()
-    setCategories(cats)
-    setVenue(v)
-    setStale(isStaleData(cats, v))
-  }
-
-  function clearStaleData() {
-    localStorage.removeItem('nutrimenu_categories')
-    localStorage.removeItem('nutrimenu_venue')
-    loadData()
-  }
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadData()
-    // Cross-tab sync
-    window.addEventListener('storage', loadData)
-    // Same-tab sync (dispatched by menu/item pages after mutations)
-    window.addEventListener('nutrimenu:updated', loadData)
-    return () => {
-      window.removeEventListener('storage', loadData)
-      window.removeEventListener('nutrimenu:updated', loadData)
-    }
+    Promise.all([
+      fetch('/api/venue').then(r => r.ok ? r.json() : null),
+      fetch('/api/categories').then(r => r.ok ? r.json() : null),
+    ]).then(([v, c]) => {
+      if (v) setVenue(v)
+      if (c) setCategories(c)
+      setLoading(false)
+    })
   }, [])
+
+  if (loading) return <div className="p-6" />
+
+  if (venue?.status === 'PENDING') {
+    return (
+      <div className="p-6 sm:p-10 flex flex-col items-center text-center max-w-md mx-auto mt-12">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5" style={{ background: '#EAE7F8' }}>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="12" stroke="#B0A6DF" strokeWidth="2"/>
+            <path d="M16 10v7M16 21v1.5" stroke="#B0A6DF" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <h1 className="text-lg font-semibold mb-2" style={{ color: '#2C2950' }}>Заявка на рассмотрении</h1>
+        <p className="text-sm leading-relaxed" style={{ color: '#6B6490' }}>
+          Мы проверяем данные вашего заведения. Обычно это занимает 1–2 рабочих дня.
+          Как только заявка будет одобрена — вы сразу получите доступ к дашборду.
+        </p>
+        <p className="text-xs mt-4" style={{ color: '#9D99B8' }}>
+          Вопросы? Напишите на{' '}
+          <a href="mailto:support@nutrimenu.app" className="underline">support@nutrimenu.app</a>
+        </p>
+      </div>
+    )
+  }
+
+  if (venue?.status === 'REJECTED') {
+    return (
+      <div className="p-6 sm:p-10 flex flex-col items-center text-center max-w-md mx-auto mt-12">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5" style={{ background: '#FEE2E2' }}>
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="12" stroke="#DC2626" strokeWidth="2"/>
+            <path d="M11 11l10 10M21 11l-10 10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <h1 className="text-lg font-semibold mb-2" style={{ color: '#2C2950' }}>Заявка отклонена</h1>
+        {venue.rejectionReason && (
+          <div className="w-full rounded-xl px-4 py-3 mb-3 text-left text-sm" style={{ background: '#FEE2E2', color: '#7F1D1D' }}>
+            {venue.rejectionReason}
+          </div>
+        )}
+        <p className="text-sm leading-relaxed" style={{ color: '#6B6490' }}>
+          Если вы считаете, что это ошибка, свяжитесь с нами.
+        </p>
+        <p className="text-xs mt-4" style={{ color: '#9D99B8' }}>
+          <a href="mailto:support@nutrimenu.app" className="underline">support@nutrimenu.app</a>
+        </p>
+      </div>
+    )
+  }
 
   const totalDishes = categories.reduce((sum, c) => sum + (c.items?.length ?? 0), 0)
   const venueName = venue?.name ?? ''
@@ -54,26 +75,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 sm:p-8">
-
-      {/* Stale data banner */}
-      {stale && (
-        <div
-          className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3 mb-5"
-          style={{ background: 'rgba(226,75,74,0.08)', border: '0.5px solid rgba(226,75,74,0.25)' }}
-        >
-          <p className="text-sm" style={{ color: '#C0392B' }}>
-            Обнаружены демо-данные из старой версии. Очистить?
-          </p>
-          <button
-            onClick={clearStaleData}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ background: '#E24B4A', color: '#fff' }}
-          >
-            Очистить
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         {venueName ? (

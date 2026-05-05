@@ -18,16 +18,6 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { Category } from '@/types'
-import {
-  getCategories,
-  saveCategories,
-  addCategory,
-  deleteCategory,
-  updateCategory,
-  reorderCategories,
-  deleteItem,
-  reorderItems,
-} from '@/lib/store'
 import SortableCategory from '@/components/dashboard/SortableCategory'
 import ImportModal from '@/components/dashboard/ImportModal'
 
@@ -42,70 +32,76 @@ export default function MenuPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  useEffect(() => {
-    setCategories(getCategories())
-  }, [])
+  async function loadCategories() {
+    const res = await fetch('/api/categories')
+    if (res.ok) setCategories(await res.json())
+  }
 
-  function handleAddCategory() {
+  useEffect(() => { loadCategories() }, [])
+
+  async function handleAddCategory() {
     if (!newCatName.trim()) return
-    const updated = [...categories, {
-      id: crypto.randomUUID(),
-      name: newCatName.trim(),
-      venueId: '1',
-      order: categories.length,
-      items: [],
-    }]
-    setCategories(updated)
-    saveCategories(updated)
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCatName.trim() }),
+    })
+    if (res.ok) {
+      const cat = await res.json()
+      setCategories(prev => [...prev, cat])
+    }
     setNewCatName('')
     setAddingCat(false)
   }
 
-  function handleRenameCategory(id: string, name: string) {
-    const updated = categories.map(c => c.id === id ? { ...c, name } : c)
-    setCategories(updated)
-    saveCategories(updated)
+  async function handleRenameCategory(id: string, name: string) {
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+    await fetch(`/api/categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
   }
 
-  function handleDeleteCategory(id: string) {
-    const updated = categories.filter(c => c.id !== id)
-    setCategories(updated)
-    saveCategories(updated)
+  async function handleDeleteCategory(id: string) {
+    setCategories(prev => prev.filter(c => c.id !== id))
+    await fetch(`/api/categories/${id}`, { method: 'DELETE' })
   }
 
-  function handleDeleteItem(categoryId: string, itemId: string) {
-    const updated = categories.map(c =>
-      c.id === categoryId
-        ? { ...c, items: (c.items ?? []).filter(i => i.id !== itemId) }
-        : c
-    )
-    setCategories(updated)
-    saveCategories(updated)
+  async function handleDeleteItem(categoryId: string, itemId: string) {
+    setCategories(prev => prev.map(c =>
+      c.id === categoryId ? { ...c, items: (c.items ?? []).filter(i => i.id !== itemId) } : c
+    ))
+    await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
   }
 
-  function handleReorderItems(categoryId: string, activeId: string, overId: string) {
+  async function handleReorderItems(categoryId: string, activeId: string, overId: string) {
     const cat = categories.find(c => c.id === categoryId)
     if (!cat) return
     const items = cat.items ?? []
     const oldIndex = items.findIndex(i => i.id === activeId)
     const newIndex = items.findIndex(i => i.id === overId)
     const reordered = arrayMove(items, oldIndex, newIndex)
-    const updated = categories.map(c =>
-      c.id === categoryId ? { ...c, items: reordered } : c
-    )
-    setCategories(updated)
-    saveCategories(updated)
+    setCategories(prev => prev.map(c => c.id === categoryId ? { ...c, items: reordered } : c))
+    await fetch('/api/items/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reordered.map((item, i) => ({ id: item.id, sortOrder: i }))),
+    })
   }
 
-  function handleDragEndCategories(event: DragEndEvent) {
+  async function handleDragEndCategories(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
     const oldIndex = categories.findIndex(c => c.id === active.id)
     const newIndex = categories.findIndex(c => c.id === over.id)
-    const reordered = arrayMove(categories, oldIndex, newIndex)
-    const withOrder = reordered.map((c, i) => ({ ...c, order: i }))
-    setCategories(withOrder)
-    reorderCategories(withOrder)
+    const reordered = arrayMove(categories, oldIndex, newIndex).map((c, i) => ({ ...c, order: i }))
+    setCategories(reordered)
+    await fetch('/api/categories', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reordered.map((c, i) => ({ id: c.id, sortOrder: i }))),
+    })
   }
 
   return (
@@ -152,7 +148,7 @@ export default function MenuPage() {
         <ImportModal
           onClose={() => setShowImport(false)}
           onImported={() => {
-            setCategories(getCategories())
+            loadCategories()
             setShowImport(false)
           }}
         />

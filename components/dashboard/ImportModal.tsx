@@ -12,18 +12,7 @@ import {
   type ParsedDish,
   type IngredientMatch,
 } from '@/lib/importer'
-import {
-  getCategories,
-  saveCategories,
-  getAllIngredients,
-  getIngredients,
-  saveLibraryIngredients,
-  MY_LIBRARY_ID,
-  getVenue,
-  createImportBackup,
-  rollbackImport,
-  clearImportBackup,
-} from '@/lib/store'
+import { Category, IngredientRef } from '@/types'
 import { getTTKExamples, saveTTKExample } from '@/lib/ttk-examples'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
 
@@ -50,6 +39,14 @@ function buildButtonLabel(dishCount: number, prepCount: number): string {
 }
 
 export default function ImportModal({ onClose, onImported }: Props) {
+  const [existingCategories, setExistingCategories] = useState<Category[]>([])
+  const [existingIngredients, setExistingIngredients] = useState<IngredientRef[]>([])
+
+  useEffect(() => {
+    fetch('/api/categories').then(r => r.ok ? r.json() : []).then(setExistingCategories)
+    fetch('/api/ingredients').then(r => r.ok ? r.json() : []).then(setExistingIngredients)
+  }, [])
+
   const [step, setStep] = useState<'upload' | 'preview' | 'matching' | 'success'>('upload')
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -77,7 +74,6 @@ export default function ImportModal({ onClose, onImported }: Props) {
   useEffect(() => {
     if (step !== 'success') return
     if (countdown <= 0) {
-      clearImportBackup()
       onImported(savedDishCount)
       return
     }
@@ -95,12 +91,10 @@ export default function ImportModal({ onClose, onImported }: Props) {
   }, [confirmDelete])
 
   const handleSuccessClose = useCallback(() => {
-    clearImportBackup()
     onImported(savedDishCount)
   }, [savedDishCount, onImported])
 
   const handleUndo = useCallback(() => {
-    rollbackImport()
     onImported(0)
   }, [onImported])
 
@@ -159,8 +153,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
         }
       }
 
-      const existing = getCategories()
-      const allIngr = getAllIngredients()
+      const existing = existingCategories
+      const allIngr = existingIngredients
       const found = detectConflicts(finalDishes, existing)
       const defaultRes = new Map<string, 'skip' | 'overwrite'>()
       for (const key of found) defaultRes.set(key, 'overwrite')
@@ -223,8 +217,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
         return
       }
 
-      const existing = getCategories()
-      const allIngr = getAllIngredients()
+      const existing = existingCategories
+      const allIngr = existingIngredients
       const found = detectConflicts(parsedDishes, existing)
       const defaultRes = new Map<string, 'skip' | 'overwrite'>()
       for (const key of found) defaultRes.set(key, 'overwrite')
@@ -293,8 +287,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
         return
       }
 
-      const existing = getCategories()
-      const allIngr = getAllIngredients()
+      const existing = existingCategories
+      const allIngr = existingIngredients
       const found = detectConflicts(parsedDishes, existing)
       const defaultRes = new Map<string, 'skip' | 'overwrite'>()
       for (const key of found) defaultRes.set(key, 'overwrite')
@@ -331,31 +325,31 @@ export default function ImportModal({ onClose, onImported }: Props) {
   const handleImport = async () => {
     setIsSaving(true)
     await new Promise(resolve => setTimeout(resolve, 0))
-    createImportBackup()
-
-    const existing = getCategories()
-    const allIngredients = getAllIngredients()
-    const venue = getVenue()
-    const venueId = venue?.id ?? '1'
 
     const { categories, preparations, newIngredients } = buildImportedCategories(
       dishes,
-      allIngredients,
-      existing,
+      existingIngredients,
+      existingCategories,
       resolutions,
-      venueId,
+      'venue',
       ingredientDecisions,
     )
 
     const allToLibrary = [...preparations, ...newIngredients]
-    if (allToLibrary.length > 0) {
-      const existingPersonal = getIngredients()
-      const replacedIds = new Set(allToLibrary.map(r => r.id))
-      const kept = existingPersonal.filter(r => !replacedIds.has(r.id))
-      saveLibraryIngredients(MY_LIBRARY_ID, [...kept, ...allToLibrary])
-    }
 
-    saveCategories(categories)
+    const overwriteCategoryIds = Array.from(resolutions.entries())
+      .filter(([, v]) => v === 'overwrite')
+      .map(([k]) => {
+        const cat = existingCategories.find(c => c.name === k.split('::')[0])
+        return cat?.id
+      })
+      .filter((id): id is string => !!id)
+
+    await fetch('/api/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories, ingredients: allToLibrary, overwriteCategoryIds }),
+    })
 
     // Save few-shot examples for future AI imports
     if (importSource === 'file' && rawSheets.length > 0) {

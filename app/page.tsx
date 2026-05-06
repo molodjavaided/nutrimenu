@@ -31,22 +31,14 @@ export default function RootPage() {
             </svg>
             Найти заведение
           </Link>
-
-          <Link
-            href="/auth/login"
-            className="w-full h-13 rounded-2xl flex items-center justify-center gap-2 font-medium text-sm transition-all active:scale-[0.98]"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-              <path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            Войти как владелец
-          </Link>
         </div>
 
         <p className="text-xs text-center" style={{ color: '#B0A6DF' }}>
-          Нет аккаунта?{' '}
+          Владелец заведения?{' '}
+          <Link href="/auth/login" style={{ color: '#7C3AED' }} className="font-medium">
+            Войти
+          </Link>
+          {' · '}
           <Link href="/auth/register" style={{ color: '#7C3AED' }} className="font-medium">
             Зарегистрироваться
           </Link>

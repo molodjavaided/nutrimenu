@@ -202,6 +202,14 @@ export function DashboardNav() {
             </Link>
           )
         })}
+        <button
+          onClick={handleLogout}
+          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
+          style={{ color: '#9D99B8' }}
+        >
+          <LogOut size={20} />
+          <span className="text-[10px] font-medium">Выйти</span>
+        </button>
       </nav>
     </>
   )

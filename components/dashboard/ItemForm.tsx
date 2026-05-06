@@ -169,6 +169,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [categoryId, setCategoryId] = useState(initialCategoryId ?? '')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [photo, setPhoto] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -272,6 +274,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     if (found) {
       setName(found.item.name)
       setDescription(found.item.description ?? '')
+      setPhoto(found.item.photo ?? '')
       setCategoryId(found.categoryId)
 
       const hasComposition = (found.item.sizes?.length > 0 && found.item.sizes[0]?.composition?.length > 0)
@@ -527,6 +530,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         id: itemId ?? crypto.randomUUID(),
         name,
         description: description || undefined,
+        photo: photo || undefined,
         weight: quickWeight,
         weightUnit: quickWeightUnit,
         calories: quickCalories,
@@ -862,6 +866,65 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             rows={3}
             placeholder="Состав, особенности приготовления..."
           />
+        </FormField>
+
+        {/* Фото */}
+        <FormField label="Фото блюда (необязательно)">
+          <div className="flex items-center gap-3">
+            {photo ? (
+              <div className="relative shrink-0">
+                <img
+                  src={photo}
+                  alt="Фото блюда"
+                  className="w-20 h-20 rounded-xl object-cover"
+                  style={{ border: '0.5px solid rgba(255,255,255,0.5)' }}
+                />
+                <button
+                  onClick={() => setPhoto('')}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                  style={{ background: '#9D99B8', color: '#fff' }}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div
+                className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0 text-2xl"
+                style={{ background: 'rgba(255,255,255,0.4)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
+              >
+                🍽️
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              <label
+                className="cursor-pointer flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-all"
+                style={{ background: '#EAE7F8', color: '#2C2950' }}
+              >
+                {photoUploading ? 'Загружаем...' : photo ? 'Заменить фото' : 'Загрузить фото'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={photoUploading}
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setPhotoUploading(true)
+                    const form = new FormData()
+                    form.append('file', file)
+                    const res = await fetch('/api/upload', { method: 'POST', body: form })
+                    if (res.ok) {
+                      const { url } = await res.json()
+                      setPhoto(url)
+                    }
+                    setPhotoUploading(false)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <p className="text-xs" style={{ color: '#9D99B8' }}>JPG, PNG, WebP · до 5 МБ</p>
+            </div>
+          </div>
         </FormField>
 
         {/* ─── Быстрый режим: вес + КБЖУ вручную ─── */}

@@ -27,7 +27,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
       >
         {/* Фото */}
         <div
-          className="w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl"
+          className="w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden"
           style={{
             background: 'rgba(255,255,255,0.6)',
             backdropFilter: 'blur(8px)',
@@ -35,7 +35,10 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
             border: '0.5px solid rgba(255,255,255,0.5)',
           }}
         >
-          🍽️
+          {item.photo
+            ? <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+            : '🍽️'
+          }
         </div>
 
         {/* Инфо */}

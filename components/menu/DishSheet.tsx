@@ -254,7 +254,10 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
             border: '0.5px solid rgba(255,255,255,0.5)',
           }}
         >
-          🍽️
+          {item.photo
+            ? <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+            : '🍽️'
+          }
         </div>
 
         {/* Название */}

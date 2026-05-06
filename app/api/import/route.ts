@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 
+type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
+
 const ingredientSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   const { categories, ingredients, overwriteCategoryIds } = parsed.data
 
-  await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx: TransactionClient) => {
     // Save/update personal ingredients
     for (const ing of ingredients) {
       await tx.ingredientRef.upsert({

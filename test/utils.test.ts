@@ -12,7 +12,8 @@ const baseItem: MenuItem = {
   id: 'test-item',
   name: 'Test',
   description: '',
-  category: 'hot',
+  categoryId: 'hot',
+  venueId: 'venue-1',
   calories: 300,
   protein: 20,
   fat: 10,
@@ -22,7 +23,7 @@ const baseItem: MenuItem = {
   variantGroups: [],
   modifierGroups: [],
   composition: [],
-  available: true,
+  isAvailable: true,
 }
 
 describe('roundNutri', () => {
@@ -53,6 +54,7 @@ describe('resolveNutri — variant groups', () => {
       {
         id: 'size',
         label: 'Размер',
+        required: true,
         options: [
           { id: 'small', label: 'Маленький', calories: 200, protein: 12, fat: 7, carbs: 20, weight: 180, weightUnit: 'г' },
           { id: 'large', label: 'Большой', calories: 400, protein: 28, fat: 14, carbs: 40, weight: 350, weightUnit: 'г' },
@@ -79,6 +81,7 @@ describe('resolveNutri — variant groups', () => {
         {
           id: 'size',
           label: 'Размер',
+          required: false,
           options: [
             { id: 'small', label: 'Маленький', calories: 0, protein: 0, fat: 0, carbs: 0, weight: 180, weightUnit: 'г' },
           ],
@@ -101,8 +104,8 @@ describe('resolveNutri — modifier groups addon', () => {
         multi: true,
         required: false,
         modifiers: [
-          { id: 'cheese', label: 'Сыр', calories: 50, protein: 3, fat: 4, carbs: 1 },
-          { id: 'sauce', label: 'Соус', calories: 30, protein: 0, fat: 3, carbs: 2 },
+          { id: 'cheese', label: 'Сыр', calories: 50, protein: 3, fat: 4, carbs: 1, weight: 20, weightUnit: 'г' },
+          { id: 'sauce', label: 'Соус', calories: 30, protein: 0, fat: 3, carbs: 2, weight: 30, weightUnit: 'мл' },
         ],
       },
     ],
@@ -131,8 +134,8 @@ describe('resolveNutri — required modifier group (ingredient replacement)', ()
         multi: false,
         required: true,
         modifiers: [
-          { id: 'cow', label: 'Коровье', calories: 100, protein: 5, fat: 6, carbs: 8 },
-          { id: 'oat', label: 'Овсяное', calories: 120, protein: 4, fat: 5, carbs: 14 },
+          { id: 'cow', label: 'Коровье', calories: 100, protein: 5, fat: 6, carbs: 8, weight: 200, weightUnit: 'мл' },
+          { id: 'oat', label: 'Овсяное', calories: 120, protein: 4, fat: 5, carbs: 14, weight: 200, weightUnit: 'мл' },
         ],
       },
     ],
@@ -168,8 +171,30 @@ describe('resolveNutri — bowl special logic', () => {
 describe('calcNutriTotal', () => {
   it('sums tracker items by quantity', () => {
     const items: TrackerItem[] = [
-      { id: '1', itemId: 'a', name: 'A', resolvedCalories: 100, resolvedProtein: 10, resolvedFat: 5, resolvedCarbs: 15, quantity: 2, selectedVariants: {}, selectedModifiers: {} },
-      { id: '2', itemId: 'b', name: 'B', resolvedCalories: 200, resolvedProtein: 20, resolvedFat: 8, resolvedCarbs: 30, quantity: 1, selectedVariants: {}, selectedModifiers: {} },
+      {
+        menuItem: { ...baseItem, id: 'a' },
+        quantity: 2,
+        selectedVariants: {},
+        selectedModifiers: {},
+        resolvedCalories: 100,
+        resolvedProtein: 10,
+        resolvedFat: 5,
+        resolvedCarbs: 15,
+        resolvedWeight: 250,
+        resolvedWeightUnit: 'г',
+      },
+      {
+        menuItem: { ...baseItem, id: 'b' },
+        quantity: 1,
+        selectedVariants: {},
+        selectedModifiers: {},
+        resolvedCalories: 200,
+        resolvedProtein: 20,
+        resolvedFat: 8,
+        resolvedCarbs: 30,
+        resolvedWeight: 300,
+        resolvedWeightUnit: 'г',
+      },
     ]
     const total = calcNutriTotal(items)
     expect(total.calories).toBe(400)
@@ -186,11 +211,11 @@ describe('calcNutriTotal', () => {
 
 describe('resolveIngredientPer100', () => {
   const flour: IngredientRef = {
-    id: 'flour', name: 'Мука', type: 'mono',
+    id: 'flour', name: 'Мука', type: 'mono', unit: 'г',
     caloriesPer100: 340, proteinPer100: 11, fatPer100: 1.5, carbsPer100: 70,
   }
   const butter: IngredientRef = {
-    id: 'butter', name: 'Масло', type: 'mono',
+    id: 'butter', name: 'Масло', type: 'mono', unit: 'г',
     caloriesPer100: 750, proteinPer100: 0.5, fatPer100: 82, carbsPer100: 1,
   }
 
@@ -201,7 +226,7 @@ describe('resolveIngredientPer100', () => {
 
   it('computes composite ingredient per-100g correctly', () => {
     const dough: IngredientRef = {
-      id: 'dough', name: 'Тесто', type: 'composite',
+      id: 'dough', name: 'Тесто', type: 'composite', unit: 'г',
       caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0,
       composition: [
         { ingredientId: 'flour', amount: 200, unit: 'г' },
@@ -216,27 +241,26 @@ describe('resolveIngredientPer100', () => {
 
   it('handles circular dependency without infinite loop', () => {
     const circularA: IngredientRef = {
-      id: 'a', name: 'A', type: 'composite',
+      id: 'a', name: 'A', type: 'composite', unit: 'г',
       caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0,
       composition: [{ ingredientId: 'b', amount: 100, unit: 'г' }],
     }
     const circularB: IngredientRef = {
-      id: 'b', name: 'B', type: 'composite',
+      id: 'b', name: 'B', type: 'composite', unit: 'г',
       caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0,
       composition: [{ ingredientId: 'a', amount: 100, unit: 'г' }],
     }
-    // Should not throw or loop forever
     expect(() => resolveIngredientPer100(circularA, [circularA, circularB])).not.toThrow()
   })
 })
 
 describe('resolveNutriFromComposition', () => {
   const chicken: IngredientRef = {
-    id: 'chicken', name: 'Курица', type: 'mono',
+    id: 'chicken', name: 'Курица', type: 'mono', unit: 'г',
     caloriesPer100: 165, proteinPer100: 31, fatPer100: 3.6, carbsPer100: 0,
   }
   const rice: IngredientRef = {
-    id: 'rice', name: 'Рис', type: 'mono',
+    id: 'rice', name: 'Рис', type: 'mono', unit: 'г',
     caloriesPer100: 130, proteinPer100: 2.7, fatPer100: 0.3, carbsPer100: 28,
   }
 
@@ -256,7 +280,7 @@ describe('resolveNutriFromComposition', () => {
 
   it('applies ingredient replacement from modifiers', () => {
     const tofu: IngredientRef = {
-      id: 'tofu', name: 'Тофу', type: 'mono',
+      id: 'tofu', name: 'Тофу', type: 'mono', unit: 'г',
       caloriesPer100: 76, proteinPer100: 8, fatPer100: 4.2, carbsPer100: 1.9,
     }
     const result = resolveNutriFromComposition(
@@ -274,7 +298,7 @@ describe('resolveNutriFromComposition', () => {
           multi: false,
           required: false,
           modifiers: [
-            { id: 'tofu', label: 'Тофу', calories: 76, protein: 8, fat: 4.2, carbs: 1.9 },
+            { id: 'tofu', label: 'Тофу', calories: 76, protein: 8, fat: 4.2, carbs: 1.9, weight: 150, weightUnit: 'г' },
           ],
         },
       ],
@@ -286,7 +310,7 @@ describe('resolveNutriFromComposition', () => {
 
   it('handles шт unit with weightPerUnit', () => {
     const egg: IngredientRef = {
-      id: 'egg', name: 'Яйцо', type: 'mono',
+      id: 'egg', name: 'Яйцо', type: 'mono', unit: 'шт',
       caloriesPer100: 155, proteinPer100: 13, fatPer100: 11, carbsPer100: 1.1,
       weightPerUnit: 60,
     }

@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       where: { venueId },
       select: { id: true, sortOrder: true },
     })
-    const existingIds = new Set(existingCats.map(c => c.id))
+    const existingIds = new Set(existingCats.map((c: { id: string }) => c.id))
     let nextOrder = existingCats.length
 
     for (const cat of categories) {

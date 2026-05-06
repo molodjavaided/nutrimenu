@@ -42,6 +42,10 @@
 - Заполнить `ANTHROPIC_API_KEY=sk-ant-...` в `.env.local`
 - Протестировать Google Sheets импорт с таблицей `15rOivm_9jZYw4LdH3OXPxF0B9nHKQfsT` (кофейное меню, ~20 напитков, формат: одна строка на напиток, ингредиенты в одной ячейке)
 
+## 📋 Backlog (после MVP + user testing)
+
+- **React Query (TanStack Query)** — заменить `useEffect` + `useState` для fetch во всех dashboard страницах. Даст кэш, auto-refetch, loading/error states, сократит код ~30%. Делать только после того как MVP прошёл тесты пользователей.
+
 ## 🛠️ Следующие каналы (не начаты)
 
 - **Канал 4:** PDF / Фото → AI Vision → JSON → review (высокая сложность)

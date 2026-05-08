@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 import { LogOut } from 'lucide-react'
@@ -85,6 +86,13 @@ const navItems = [
 export function DashboardNav() {
   const pathname = usePathname()
   const router = useRouter()
+  const [venueSlug, setVenueSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/venue').then(r => r.ok ? r.json() : null).then(v => {
+      if (v?.slug) setVenueSlug(v.slug)
+    })
+  }, [])
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href
@@ -148,7 +156,7 @@ export function DashboardNav() {
         {/* Ссылка на гостевое меню + смена роли */}
         <div className="px-3 py-4 flex flex-col gap-1" style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
           <Link
-            href="/menu/utro"
+            href={venueSlug ? `/menu/${venueSlug}` : '#'}
             target="_blank"
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all bg-lavender-light text-text-secondary hover:bg-lavender hover:text-text-primary"
           >

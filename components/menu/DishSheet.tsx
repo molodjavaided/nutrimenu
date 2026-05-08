@@ -252,6 +252,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           style={{
             background: 'rgba(139,92,246,0.06)',
             border: '0.5px solid rgba(255,255,255,0.5)',
+            WebkitMaskImage: '-webkit-radial-gradient(white, black)',
           }}
         >
           {item.photo

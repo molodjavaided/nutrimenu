@@ -410,9 +410,16 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
             onAdd={() => setQuantity(q => q + 1)}
             onRemove={() => setQuantity(q => Math.max(1, q - 1))}
           />
-          <span className="text-sm text-text-secondary">
-            {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-secondary">
+              {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
+            </span>
+            {item.price != null && (
+              <span className="text-sm font-semibold" style={{ color: '#2C2950' }}>
+                {item.price} ₽
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Кнопка */}

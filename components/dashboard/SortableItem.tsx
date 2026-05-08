@@ -14,6 +14,21 @@ interface Props {
 
 export default function SortableItem({ item, categoryId, onDelete }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [available, setAvailable] = useState(item.isAvailable)
+  const [toggling, setToggling] = useState(false)
+
+  async function toggleAvailable() {
+    if (toggling) return
+    setToggling(true)
+    const next = !available
+    setAvailable(next)
+    await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...item, isAvailable: next }),
+    }).catch(() => setAvailable(!next))
+    setToggling(false)
+  }
 
   const {
     attributes,
@@ -75,11 +90,37 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
           <span className="text-xs" style={{ color: '#9D99B8' }}>
             {item.calories} ккал · {item.weight} {item.weightUnit}
           </span>
+          {!available && (
+            <span className="text-xs px-1.5 py-0.5 rounded-md" style={{ background: '#FEE2E2', color: '#DC2626' }}>
+              скрыто
+            </span>
+          )}
         </div>
       </div>
 
       {/* Кнопки */}
       <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={toggleAvailable}
+          disabled={toggling}
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity"
+          style={{ color: available ? '#22C55E' : '#9D99B8' }}
+          title={available ? 'Скрыть от гостей' : 'Показать гостям'}
+        >
+          {available ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2"/>
+              <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2"/>
+              <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+              <path d="M2 2l10 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+          )}
+        </button>
+
         <Link
           href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
           className="w-7 h-7 rounded-lg flex items-center justify-center"

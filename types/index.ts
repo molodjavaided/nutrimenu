@@ -109,6 +109,7 @@ export interface MenuItem {
   name: string
   description?: string
   photo?: string
+  price?: number
   weight: number
   weightUnit: 'г' | 'мл'
   calories: number

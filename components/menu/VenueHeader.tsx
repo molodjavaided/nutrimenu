@@ -3,9 +3,10 @@ import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 
 interface Props {
   venue: Venue
+  isOwner?: boolean
 }
 
-export default function VenueHeader({ venue }: Props) {
+export default function VenueHeader({ venue, isOwner = false }: Props) {
   return (
     <div className="px-4 pt-5 pb-1">
       <div className="flex items-start justify-between mb-3">
@@ -36,7 +37,7 @@ export default function VenueHeader({ venue }: Props) {
           </div>
         </div>
 
-        <SwitchRoleButton variant="menu" />
+        {isOwner && <SwitchRoleButton variant="menu" />}
       </div>
 
       {venue.tags && venue.tags.length > 0 && (

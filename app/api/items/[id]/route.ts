@@ -38,6 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       name: data.name,
       description: data.description ?? null,
       photo: data.photo ?? null,
+      price: data.price ?? null,
       weight: data.weight ?? 0,
       weightUnit: data.weightUnit ?? 'г',
       calories: data.calories ?? 0,

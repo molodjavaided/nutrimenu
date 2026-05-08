@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       name: rest.name,
       description: rest.description ?? null,
       photo: rest.photo ?? null,
+      price: rest.price ?? null,
       weight: rest.weight ?? 0,
       weightUnit: rest.weightUnit ?? 'г',
       calories: rest.calories ?? 0,

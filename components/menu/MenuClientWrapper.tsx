@@ -14,19 +14,25 @@ export default function MenuClientWrapper({ slug }: Props) {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
+  const [isOwner, setIsOwner] = useState(false)
+
   useEffect(() => {
-    fetch(`/api/menu/${slug}`)
-      .then(r => {
+    Promise.all([
+      fetch(`/api/menu/${slug}`).then(r => {
         if (r.status === 404) { setNotFound(true); return null }
         return r.json()
-      })
-      .then(data => {
-        if (data) {
-          setVenue(data.venue)
-          setCategories(data.categories)
+      }),
+      fetch('/api/venue').then(r => r.ok ? r.json() : null),
+    ]).then(([data, sessionVenue]) => {
+      if (data) {
+        setVenue(data.venue)
+        setCategories(data.categories)
+        if (sessionVenue && data.venue && sessionVenue.id === data.venue.id) {
+          setIsOwner(true)
         }
-      })
-      .finally(() => setLoading(false))
+        fetch(`/api/menu/${slug}/view`, { method: 'POST' }).catch(() => {})
+      }
+    }).finally(() => setLoading(false))
   }, [slug])
 
   if (loading) {
@@ -49,5 +55,5 @@ export default function MenuClientWrapper({ slug }: Props) {
     )
   }
 
-  return <MenuView venue={venue} categories={categories} />
+  return <MenuView venue={venue} categories={categories} isOwner={isOwner} />
 }

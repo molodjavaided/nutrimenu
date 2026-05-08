@@ -16,9 +16,10 @@ import { SearchInput } from '@/components/ui/SearchInput'
 interface Props {
   venue: Venue
   categories: Category[]
+  isOwner?: boolean
 }
 
-export default function MenuView({ venue, categories }: Props) {
+export default function MenuView({ venue, categories, isOwner = false }: Props) {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [trackerItems, setTrackerItems] = useState<TrackerItem[]>([])
@@ -157,7 +158,7 @@ const resolved = {
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto">
 
-        <VenueHeader venue={venue} />
+        <VenueHeader venue={venue} isOwner={isOwner} />
 
         {/* Sticky: поиск + табы */}
         <div

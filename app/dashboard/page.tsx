@@ -8,14 +8,17 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [venue, setVenue] = useState<Venue | null>(null)
   const [loading, setLoading] = useState(true)
+  const [views, setViews] = useState<{ total: number; today: number; week: number } | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/venue').then(r => r.ok ? r.json() : null),
       fetch('/api/categories').then(r => r.ok ? r.json() : null),
-    ]).then(([v, c]) => {
+      fetch('/api/venue/views').then(r => r.ok ? r.json() : null),
+    ]).then(([v, c, vw]) => {
       if (v) setVenue(v)
       if (c) setCategories(c)
+      if (vw) setViews(vw)
       setLoading(false)
     })
   }, [])
@@ -152,7 +155,7 @@ export default function DashboardPage() {
         {[
           { label: 'Категорий', value: categories.length, sub: 'в меню' },
           { label: 'Блюд',      value: totalDishes,        sub: 'позиций' },
-          { label: 'Просмотров', value: '—',               sub: 'скоро' },
+          { label: 'Просмотров', value: views?.total ?? '—', sub: 'за всё время' },
         ].map(({ label, value, sub }) => (
           <div
             key={label}

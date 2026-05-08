@@ -168,9 +168,12 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryId, setCategoryId] = useState(initialCategoryId ?? '')
   const [name, setName] = useState('')
+  const [price, setPrice] = useState('')
+  const [isAvailable, setIsAvailable] = useState(true)
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState('')
   const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoError, setPhotoError] = useState('')
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -273,6 +276,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     if (found) {
       setName(found.item.name)
+      setPrice(found.item.price != null ? String(found.item.price) : '')
+      setIsAvailable(found.item.isAvailable ?? true)
       setDescription(found.item.description ?? '')
       setPhoto(found.item.photo ?? '')
       setCategoryId(found.categoryId)
@@ -529,6 +534,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       const quickItem = {
         id: itemId ?? crypto.randomUUID(),
         name,
+        price: price ? parseFloat(price) : undefined,
         description: description || undefined,
         photo: photo || undefined,
         weight: quickWeight,
@@ -537,7 +543,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         protein: quickProtein,
         fat: quickFat,
         carbs: quickCarbs,
-        isAvailable: true,
+        isAvailable,
         composition: [],
         sizes: [],
         variantGroups: [],
@@ -649,6 +655,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     const newItem = {
       id: itemId ?? crypto.randomUUID(),
       name,
+      price: price ? parseFloat(price) : undefined,
       description: description || undefined,
       weight: sizesToSave[0].weight,
       weightUnit: sizesToSave[0].weightUnit,
@@ -661,7 +668,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
       categoryId,
       venueId: '1',
-      isAvailable: true,
+      isAvailable,
     }
 
     if (isEdit) {
@@ -858,6 +865,22 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           />
         </FormField>
 
+        {/* Цена */}
+        <FormField label="Цена (необязательно)">
+          <div className="relative">
+            <FormInput
+              type="number"
+              min="0"
+              step="0.01"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              placeholder="0"
+              className="w-full pr-10"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: '#9D99B8' }}>₽</span>
+          </div>
+        </FormField>
+
         {/* Описание */}
         <FormField label="Описание (необязательно)">
           <FormTextarea
@@ -867,6 +890,25 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             placeholder="Состав, особенности приготовления..."
           />
         </FormField>
+
+        {/* Доступность */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-sm font-medium" style={{ color: '#2C2950' }}>Показывать гостям</p>
+            <p className="text-xs" style={{ color: '#9D99B8' }}>Скрытые блюда не видны на публичном меню</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAvailable(v => !v)}
+            className="w-11 h-6 rounded-full transition-colors relative shrink-0"
+            style={{ background: isAvailable ? '#8B5CF6' : '#E2E8F0' }}
+          >
+            <span
+              className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+              style={{ transform: isAvailable ? 'translateX(20px)' : 'translateX(2px)' }}
+            />
+          </button>
+        </div>
 
         {/* Фото */}
         <FormField label="Фото блюда (необязательно)">
@@ -898,9 +940,17 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             <div className="flex flex-col gap-2">
               <label
                 className="cursor-pointer flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-all"
-                style={{ background: '#EAE7F8', color: '#2C2950' }}
+                style={{ background: '#EAE7F8', color: '#2C2950', opacity: photoUploading ? 0.6 : 1 }}
               >
-                {photoUploading ? 'Загружаем...' : photo ? 'Заменить фото' : 'Загрузить фото'}
+                {photoUploading ? (
+                  <>
+                    <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    </svg>
+                    Загружаем...
+                  </>
+                ) : photo ? 'Заменить фото' : 'Загрузить фото'}
                 <input
                   type="file"
                   accept="image/*"
@@ -910,18 +960,30 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                     const file = e.target.files?.[0]
                     if (!file) return
                     setPhotoUploading(true)
-                    const form = new FormData()
-                    form.append('file', file)
-                    const res = await fetch('/api/upload', { method: 'POST', body: form })
-                    if (res.ok) {
-                      const { url } = await res.json()
-                      setPhoto(url)
+                    setPhotoError('')
+                    try {
+                      const form = new FormData()
+                      form.append('file', file)
+                      const res = await fetch('/api/upload', { method: 'POST', body: form })
+                      if (res.ok) {
+                        const { url } = await res.json()
+                        setPhoto(url)
+                      } else {
+                        const data = await res.json().catch(() => ({}))
+                        setPhotoError(data.error ?? 'Ошибка загрузки')
+                      }
+                    } catch {
+                      setPhotoError('Нет соединения')
+                    } finally {
+                      setPhotoUploading(false)
+                      e.target.value = ''
                     }
-                    setPhotoUploading(false)
-                    e.target.value = ''
                   }}
                 />
               </label>
+              {photoError && (
+                <p className="text-xs" style={{ color: '#DC2626' }}>{photoError}</p>
+              )}
               <p className="text-xs" style={{ color: '#9D99B8' }}>JPG, PNG, WebP · до 5 МБ</p>
             </div>
           </div>
@@ -1396,11 +1458,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         </button>
         <button
           onClick={handleSave}
-          disabled={!name || !categoryId || ingredients.length === 0}
+          disabled={!name || !categoryId || (mode === 'detailed' && ingredients.length === 0)}
           className="px-6 py-2.5 rounded-xl text-sm font-medium"
           style={{
-            background: name && categoryId && ingredients.length ? '#B0A6DF' : '#EAE7F8',
-            color: name && categoryId && ingredients.length ? '#2C2950' : '#9D99B8',
+            background: name && categoryId && (mode === 'quick' || ingredients.length > 0) ? '#B0A6DF' : '#EAE7F8',
+            color: name && categoryId && (mode === 'quick' || ingredients.length > 0) ? '#2C2950' : '#9D99B8',
           }}
         >
           {isEdit ? 'Сохранить' : 'Добавить блюдо'}

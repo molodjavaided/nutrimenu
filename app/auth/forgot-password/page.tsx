@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
             </p>
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" {...register('email')} />
+              <Input id="email" type="email" autoComplete="email" style={{ fontSize: 16 }} {...register('email')} />
               {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>

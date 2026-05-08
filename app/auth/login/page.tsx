@@ -59,7 +59,7 @@ export default function LoginPage() {
             placeholder="owner@cafe.ru"
             autoComplete="email"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.email && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.email.message}</p>
@@ -76,7 +76,7 @@ export default function LoginPage() {
             placeholder="••••••••"
             autoComplete="current-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.password && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.password.message}</p>

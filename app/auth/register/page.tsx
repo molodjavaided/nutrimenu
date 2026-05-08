@@ -68,7 +68,7 @@ export default function RegisterPage() {
             placeholder="Кафе «Утро»"
             autoComplete="organization"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.venueName && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.venueName.message}</p>
@@ -85,7 +85,7 @@ export default function RegisterPage() {
             placeholder="owner@cafe.ru"
             autoComplete="email"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.email && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.email.message}</p>
@@ -102,7 +102,7 @@ export default function RegisterPage() {
             placeholder="Минимум 6 символов"
             autoComplete="new-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.password && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.password.message}</p>
@@ -119,7 +119,7 @@ export default function RegisterPage() {
             placeholder="••••••••"
             autoComplete="new-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950' }}
+            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
           />
           {errors.confirm && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.confirm.message}</p>

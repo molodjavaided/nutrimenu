@@ -63,12 +63,12 @@ export default function ResetPasswordPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1">
             <Label htmlFor="password">Новый пароль</Label>
-            <Input id="password" type="password" autoComplete="new-password" {...register('password')} />
+            <Input id="password" type="password" autoComplete="new-password" style={{ fontSize: 16 }} {...register('password')} />
             {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
           </div>
           <div className="space-y-1">
             <Label htmlFor="confirm">Повторите пароль</Label>
-            <Input id="confirm" type="password" autoComplete="new-password" {...register('confirm')} />
+            <Input id="confirm" type="password" autoComplete="new-password" style={{ fontSize: 16 }} {...register('confirm')} />
             {errors.confirm && <p className="text-red-500 text-xs">{errors.confirm.message}</p>}
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}

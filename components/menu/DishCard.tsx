@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { NutritionGrid } from '@/components/ui/NutritionGrid'
 import { QuantityControl } from '@/components/ui/QuantityControl'
@@ -27,7 +28,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
       >
         {/* Фото */}
         <div
-          className="w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden"
+          className="relative w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden"
           style={{
             background: 'rgba(255,255,255,0.6)',
             backdropFilter: 'blur(8px)',
@@ -37,7 +38,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
           }}
         >
           {item.photo
-            ? <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="64px" />
             : '🍽️'
           }
         </div>

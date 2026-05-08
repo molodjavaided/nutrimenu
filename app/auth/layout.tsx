@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -5,7 +7,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       style={{ backgroundColor: '#FEFEF2' }}
     >
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2.5 mb-10">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: '#2C2950' }}
@@ -15,7 +18,19 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
-          <span className="text-lg font-bold" style={{ color: '#2C2950' }}>NutriMenu</span>
+            <span className="text-lg font-bold" style={{ color: '#2C2950' }}>NutriMenu</span>
+          </div>
+          <Link
+            href="/venues"
+            className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"
+            style={{ color: '#7a748f' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3"/>
+              <path d="M9.5 9.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+            Искать заведение
+          </Link>
         </div>
         {children}
       </div>

@@ -2,54 +2,60 @@
 
 ## 🚀 Current Task
 
-- **Goal:** Ввод ТТК — 4 канала (Вручную / XLSX / Google Sheets / PDF+Фото)
+- **Goal:** MVP Pre-Deploy — остались SEO, онбординг, email при одобрении, PDF import
 - **Status:** In Progress
-- **Last Action:** Реализован канал Google Sheets с гибридным парсером (эвристика → AI fallback)
-- **Immediate Next Step:** Протестировать импорт через Google Sheets с реальной таблицей пользователя, при необходимости дотюнить стратегии парсинга
+- **Last Action:** Полный анализ кодовой базы 2026-05-07. Build успешен, TypeScript ошибок нет.
+- **Immediate Next Step:** SEO публичного меню — `generateMetadata` + OG + JSON-LD в `app/menu/[slug]/page.tsx`
 
-## 🧠 Context & Logic (Keep for next session)
+## ✅ Завершённые задачи MVP
 
-- **Current Stack:** Next.js 16 (App Router), Tailwind v4, LocalStorage.
-- **Critical Logic:** Nutrition calculation uses `resolveNutri()` in `lib/utils.ts`.
+| Задача | Где реализовано |
+|--------|----------------|
+| QR-код | `app/dashboard/page.tsx` ~строка 158 |
+| Статус заявки PENDING/REJECTED | `app/dashboard/page.tsx` строки 25, 47 |
+| Сброс пароля | `/api/auth/forgot-password`, `/api/auth/reset-password`, страницы `/auth/*` |
+| Загрузка фото | `/api/upload` (Vercel Blob), `ItemForm` |
+| Rate limiting | `lib/ratelimit.ts` → Upstash Redis, подключён в 3 auth маршрутах |
+| TTK: Вручную / XLSX / Google Sheets | `lib/ttk-strategies.ts`, `app/api/parse-ttk/route.ts`, `ImportModal.tsx` |
 
-## 📦 Что сделано в этой сессии
+## ❌ Незавершённые задачи MVP
 
-### Канал 3: Google Sheets (готов, нужно тестирование)
+1. **SEO публичного меню** — `app/menu/[slug]/page.tsx` без `generateMetadata`, OG, JSON-LD
+2. **Онбординг** — нет checklist на `/dashboard` для новых владельцев
+3. **Email при одобрении** — `app/api/admin/venues/[id]/route.ts` не шлёт письмо
 
-**Новые файлы:**
-- `app/api/sheets/route.ts` — старый прокси (GET, возвращает XLSX бинарник). Сейчас НЕ используется в UI, но оставлен.
-- `app/api/parse-ttk/route.ts` — **основной endpoint** (POST `{ url }`). Скачивает XLSX, запускает стратегии, делает AI fallback, возвращает `{ dishes, errors, strategy, usedAI }`.
-- `lib/ttk-strategies.ts` — три стратегии парсинга + оркестратор:
-  - `strategyHierarchical` — блюдо = строка только в col 0, ингредиенты ниже (текущий TTK формат)
-  - `strategyColumnar` — таблица с заголовком, поиск колонок по имени
-  - `strategyPerRow` — одна строка = одно блюдо, ингредиенты в одной ячейке через `\n`/`;`/`,`
-  - `detectAndParse` — запускает все три, берёт с лучшим confidence
-  - `CONFIDENCE_THRESHOLD = 0.45` — ниже этого → AI fallback
+## ❌ Незавершённые (отдельный трек)
 
-**Изменённые файлы:**
-- `components/dashboard/ImportModal.tsx` — добавлена вкладка "Google Таблица" (переключатель Файл / Google Таблица). `handleSheetsUrl` вызывает `/api/parse-ttk`, результат идёт в стандартный флоу Preview → Matching → Success.
-- `.env.local` — добавлена строка `ANTHROPIC_API_KEY=` (пустая, нужно заполнить)
-- `package.json` — установлен `@anthropic-ai/sdk`
+4. **TTK Канал 4: PDF / Фото → AI Vision** — не начат (высокая сложность)
+5. **Тестирование Google Sheets** — нужен `ANTHROPIC_API_KEY` в `.env.local`
 
-### AI Fallback (claude-haiku-4-5-20251001)
-- Вызывается из `app/api/parse-ttk/route.ts` если confidence < 0.45
-- Использует прямой fetch к Anthropic API (без SDK, чтобы не тянуть лишнее в Edge)
-- Возвращает `ParsedDish[]` из JSON-ответа Claude
-- В UI показывается `ℹ️ Таблица распознана с помощью AI`
+## 🧠 Архитектура (актуально)
 
-## 🔑 Нужно от пользователя
+- **Stack:** Next.js 16 App Router, Tailwind v4, Prisma + Neon Postgres, JWT сессии (jose + bcryptjs)
+- **Auth:** `lib/auth.ts` — `getSession()`, `getEffectiveVenueId()` (поддержка импersonation)
+- **DB:** `lib/db.ts` — Prisma singleton с Neon adapter
+- **Nutrition:** `resolveNutri()` в `lib/utils.ts` — мержит варианты + модификаторы
+- **Import:** `lib/ttk-strategies.ts` — 4 стратегии + AI fallback через Claude/Gemini
 
-- Заполнить `ANTHROPIC_API_KEY=sk-ant-...` в `.env.local`
-- Протестировать Google Sheets импорт с таблицей `15rOivm_9jZYw4LdH3OXPxF0B9nHKQfsT` (кофейное меню, ~20 напитков, формат: одна строка на напиток, ингредиенты в одной ячейке)
+## 📦 Полная карта функций
 
-## 📋 Backlog (после MVP + user testing)
+### lib/utils.ts
+`cn`, `roundNutri`, `resolveNutri`, `buildVariantLabel`, `calcNutriTotal`, `resolveIngredientPer100`, `resolveNutriFromComposition`
 
-- **React Query (TanStack Query)** — заменить `useEffect` + `useState` для fetch во всех dashboard страницах. Даст кэш, auto-refetch, loading/error states, сократит код ~30%. Делать только после того как MVP прошёл тесты пользователей.
+### lib/store.ts
+`createImportBackup`, `rollbackImport`, `clearImportBackup`, `getVenue`, `saveVenue`, `getCategories`, `saveCategories`, `addCategory`, `updateCategory`, `deleteCategory`, `reorderCategories`, `addItem`, `updateItem`, `deleteItem`, `reorderItems`, `getItemById`, `getLibraries`, `saveLibraries`, `initLibraries`, `getAllIngredients`, `saveLibraryIngredients`, `getIngredients`, `saveIngredients`, `addIngredient`, `updateIngredient`, `deleteIngredient`, `deduplicateLibraryIngredients`
 
-## 🛠️ Следующие каналы (не начаты)
+### lib/auth.ts
+`hashPassword`, `verifyPassword`, `createSessionToken`, `verifySessionToken`, `getSession`, `getEffectiveVenueId`, `setSessionCookie`
 
-- **Канал 4:** PDF / Фото → AI Vision → JSON → review (высокая сложность)
+### lib/ttk-strategies.ts
+`strategyHierarchical`, `strategyColumnar`, `strategyPerRow`, `strategyTabularSparse`, `detectAndParse`
 
-## 🐛 Known Issues
+### lib/claude-ttk.ts
+`validateTTKDishes`, `parsePDFTTK`
 
-- Таблица пользователя (кофейное меню) парсилась неверно старым парсером — именно поэтому добавили гибридную систему. После заполнения API ключа нужно проверить что `strategyPerRow` или AI fallback правильно распознаёт формат.
+### lib/gemini-ttk.ts
+`validateTTKDishes`, `parsePDFTextTTK`, `parsePDFTTK`
+
+### lib/importer.ts
+`parseFile`, `buildImportedCategories`, `detectConflicts`, `dishKey`, `detectIngredientMatches`

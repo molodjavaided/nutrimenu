@@ -73,6 +73,13 @@ export default function DashboardPage() {
   const venueName = venue?.name ?? ''
   const venueAddress = [venue?.address, venue?.workingHours].filter(Boolean).join(' · ')
 
+  const onboardingSteps = [
+    { done: !!venue?.name, label: 'Заполните данные заведения', href: '/dashboard/settings', hint: 'Название, адрес, часы работы' },
+    { done: categories.length > 0, label: 'Создайте первую категорию', href: '/dashboard/menu', hint: 'Например: Завтраки, Напитки, Десерты' },
+    { done: totalDishes > 0, label: 'Добавьте первое блюдо', href: '/dashboard/item/new', hint: 'С составом и КБЖУ' },
+  ]
+  const onboardingDone = onboardingSteps.every(s => s.done)
+
   return (
     <div className="p-4 sm:p-8">
       {/* Header */}
@@ -97,6 +104,48 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Onboarding checklist */}
+      {!onboardingDone && (
+        <div className="mb-6 rounded-2xl p-4 sm:p-5"
+          style={{ background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '0.5px solid rgba(176,166,223,0.4)', boxShadow: '0 8px 24px rgba(139,92,246,0.08)' }}>
+          <p className="text-sm font-medium mb-3" style={{ color: '#2C2950' }}>
+            С чего начать
+            <span className="ml-2 text-xs font-normal" style={{ color: '#9D99B8' }}>
+              {onboardingSteps.filter(s => s.done).length} / {onboardingSteps.length}
+            </span>
+          </p>
+          <div className="flex flex-col gap-2">
+            {onboardingSteps.map((step, i) => (
+              <Link key={i} href={step.done ? '#' : step.href}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all"
+                style={{ background: step.done ? 'transparent' : 'rgba(139,92,246,0.05)', cursor: step.done ? 'default' : 'pointer' }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: step.done ? '#8B5CF6' : 'transparent', border: step.done ? 'none' : '1.5px solid #B0A6DF' }}>
+                  {step.done && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm" style={{ color: step.done ? '#9D99B8' : '#2C2950', textDecoration: step.done ? 'line-through' : 'none' }}>
+                    {step.label}
+                  </p>
+                  {!step.done && (
+                    <p className="text-xs" style={{ color: '#9D99B8' }}>{step.hint}</p>
+                  )}
+                </div>
+                {!step.done && (
+                  <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M5 3l4 4-4 4" stroke="#B0A6DF" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">

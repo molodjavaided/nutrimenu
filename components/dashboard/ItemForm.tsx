@@ -687,7 +687,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     }
 
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, isEdit, itemId, router, calculateNutriForSize])
+  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, isEdit, itemId, router, calculateNutriForSize])
 
   // ─── Функции для шага 1 ───────────────────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
@@ -905,8 +905,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             style={{ background: isAvailable ? '#8B5CF6' : '#E2E8F0' }}
           >
             <span
-              className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
-              style={{ transform: isAvailable ? 'translateX(20px)' : 'translateX(2px)' }}
+              className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+              style={{ transform: isAvailable ? 'translateX(18px)' : 'translateX(0px)' }}
             />
           </button>
         </div>

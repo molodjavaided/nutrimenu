@@ -21,8 +21,8 @@ export async function GET() {
     select: { date: true, count: true },
   })
 
-  const today = rows.find(r => r.date.getTime() === todayStart.getTime())?.count ?? 0
-  const week = rows.reduce((s, r) => s + r.count, 0)
+  const today = rows.find((r: { date: Date; count: number }) => r.date.getTime() === todayStart.getTime())?.count ?? 0
+  const week = rows.reduce((s: number, r: { count: number }) => s + r.count, 0)
 
   const totalRow = await db.menuView.aggregate({
     where: { venueId },

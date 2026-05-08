@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
@@ -563,6 +564,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           body: JSON.stringify(quickItem),
         })
       }
+      toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
       router.push('/dashboard/menu')
       return
     }
@@ -686,6 +688,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       })
     }
 
+    toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
   }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, isEdit, itemId, router, calculateNutriForSize])
 
@@ -1089,7 +1092,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <FormInput
                   value={sizes[0]?.name || ''}
                   onChange={e => updateSizeName(sizes[0]?.id || 'default', e.target.value)}
-                  placeholder="Название размера (например: Стандартный)"
+                  placeholder="Название (необязательно, например: Стандартный)"
                   className="flex-1"
                 />
                 <FormSelect

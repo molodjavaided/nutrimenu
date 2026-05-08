@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { IngredientLibrary, IngredientRef } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 
@@ -79,6 +80,7 @@ export default function IngredientsPage() {
       const saved = await res.json()
       updateLocalLib([...ingredients, saved])
     }
+    toast.success(isEdit ? 'Ингредиент сохранён' : 'Ингредиент добавлен')
     setModalTarget(undefined)
     setBarcodePreFill(null)
   }

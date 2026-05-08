@@ -245,7 +245,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                   onChange={e => setName(e.target.value)}
                   placeholder={mode === 'composite' ? 'Соус тартар' : 'Молоко классическое'}
                   className="h-11 px-3 rounded-xl text-sm outline-none"
-                  style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                 />
               </div>
 
@@ -279,7 +279,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                         }
                       }}
                       className="h-11 px-2 rounded-xl text-sm outline-none"
-                      style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                     >
                       {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                       <option disabled>──────────</option>

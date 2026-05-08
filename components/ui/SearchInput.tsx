@@ -27,7 +27,8 @@ export function SearchInput({ value, onChange, placeholder = 'Поиск...', cl
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-muted"
+        style={{ fontSize: 16 }}
+        className="flex-1 bg-transparent outline-none text-text-primary placeholder:text-text-muted"
       />
       {value.length > 0 && (
         <button

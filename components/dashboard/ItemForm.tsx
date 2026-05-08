@@ -79,7 +79,7 @@ function FormInput({ className, style, ...props }: ComponentProps<'input'>) {
     <input
       {...props}
       className={cn('h-10 px-3 rounded-xl text-sm outline-none', className)}
-      style={{ ...inputStyle, ...style }}
+      style={{ fontSize: 16, ...inputStyle, ...style }}
     />
   )
 }
@@ -89,7 +89,7 @@ function FormSelect({ className, style, children, ...props }: ComponentProps<'se
     <select
       {...props}
       className={cn('h-10 px-3 rounded-xl text-sm outline-none', className)}
-      style={{ ...inputStyle, ...style }}
+      style={{ fontSize: 16, ...inputStyle, ...style }}
     >
       {children}
     </select>
@@ -101,7 +101,7 @@ function FormTextarea({ className, style, ...props }: ComponentProps<'textarea'>
     <textarea
       {...props}
       className={cn('w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none', className)}
-      style={{ ...inputStyle, ...style }}
+      style={{ fontSize: 16, ...inputStyle, ...style }}
     />
   )
 }
@@ -240,6 +240,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       fetch('/api/ingredients').then(r => r.ok ? r.json() : []),
     ]).then(([cats, personalIngredients]) => {
       setCategories(cats)
+      if (cats.length > 0 && !initialCategoryId) setCategoryId(cats[0].id)
       // Merge system libraries with personal ingredients from DB
       const personalLib = {
         id: 'my-library',

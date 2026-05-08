@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Venue } from '@/types'
 import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 
@@ -8,7 +9,17 @@ interface Props {
 
 export default function VenueHeader({ venue, isOwner = false }: Props) {
   return (
-    <div className="px-4 pt-5 pb-1">
+    <div className="px-4 pt-4 pb-1">
+      <Link
+        href="/venues"
+        className="inline-flex items-center gap-1.5 mb-3 text-xs transition-opacity active:opacity-60"
+        style={{ color: '#9D99B8' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Все заведения
+      </Link>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div

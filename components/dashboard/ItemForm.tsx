@@ -1165,54 +1165,97 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
         {/* Таблица ингредиентов × размеров */}
         {ingredients.length > 0 && sizes.length > 0 && (
-          <div className="mb-5 overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="text-left py-2 px-3 text-sm font-medium" style={{ color: '#6B6490' }}>Ингредиент</th>
-                  {sizes.map(size => (
-                    <th key={size.id} className="text-center py-2 px-2 text-sm font-medium" style={{ color: '#6B6490' }}>
-                      {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {ingredients.map(ingredient => {
-                  const unit = ingredient.unit
-                  const isCount = unit === 'шт'
-                  return (
-                    <tr key={ingredient.id}>
-                      <td className="py-2 px-3 text-sm" style={{ color: '#2C2950' }}>
-                        {ingredient.name}
-                        <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>({unit})</span>
-                      </td>
-                      {sizes.map(size => {
-                        const amount = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)?.amount || 0
-                        return (
-                          <td key={size.id} className="py-1 px-2">
-                            <div className="flex items-center gap-1 justify-center">
-                              <input
-                                type="number"
-                                inputMode={isCount ? 'numeric' : 'decimal'}
-                                step={isCount ? 1 : 0.1}
-                                min={0}
-                                value={amount || ''}
-                                onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
-                                placeholder={isCount ? 'шт' : '0'}
-                                className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
-                                style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
-                              />
-                              <span className="text-xs" style={{ color: '#9D99B8' }}>{unit}</span>
-                            </div>
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="mb-5">
+            {/* Mobile: стек по размерам */}
+            <div className="md:hidden space-y-3">
+              {sizes.map(size => (
+                <div key={size.id} className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(176,166,223,0.3)' }}>
+                  <div className="px-3 py-2 text-xs font-medium" style={{ background: '#EAE7F8', color: '#534AB7' }}>
+                    {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')} ({size.unit})
+                  </div>
+                  <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
+                    {ingredients.map(ingredient => {
+                      const unit = ingredient.unit
+                      const isCount = unit === 'шт'
+                      const amount = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)?.amount || 0
+                      return (
+                        <div key={ingredient.id} className="flex items-center justify-between px-3 py-2 gap-3" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
+                          <span className="text-sm flex-1 min-w-0 truncate" style={{ color: '#2C2950' }}>
+                            {ingredient.name}
+                            <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>({unit})</span>
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <input
+                              type="number"
+                              inputMode={isCount ? 'numeric' : 'decimal'}
+                              step={isCount ? 1 : 0.1}
+                              min={0}
+                              value={amount || ''}
+                              onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+                              placeholder={isCount ? 'шт' : '0'}
+                              className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
+                              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                            />
+                            <span className="text-xs w-4" style={{ color: '#9D99B8' }}>{unit}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: таблица */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left py-2 px-3 text-sm font-medium" style={{ color: '#6B6490' }}>Ингредиент</th>
+                    {sizes.map(size => (
+                      <th key={size.id} className="text-center py-2 px-2 text-sm font-medium" style={{ color: '#6B6490' }}>
+                        {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ingredients.map(ingredient => {
+                    const unit = ingredient.unit
+                    const isCount = unit === 'шт'
+                    return (
+                      <tr key={ingredient.id}>
+                        <td className="py-2 px-3 text-sm" style={{ color: '#2C2950' }}>
+                          {ingredient.name}
+                          <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>({unit})</span>
+                        </td>
+                        {sizes.map(size => {
+                          const amount = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)?.amount || 0
+                          return (
+                            <td key={size.id} className="py-1 px-2">
+                              <div className="flex items-center gap-1 justify-center">
+                                <input
+                                  type="number"
+                                  inputMode={isCount ? 'numeric' : 'decimal'}
+                                  step={isCount ? 1 : 0.1}
+                                  min={0}
+                                  value={amount || ''}
+                                  onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+                                  placeholder={isCount ? 'шт' : '0'}
+                                  className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
+                                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                                />
+                                <span className="text-xs" style={{ color: '#9D99B8' }}>{unit}</span>
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -1316,7 +1359,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
             {/* Заменяет ингредиент из состава */}
             {ingredients.length > 0 && (
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="text-xs shrink-0" style={{ color: '#6B6490' }}>Заменяет:</span>
                 <select
                   value={group.replacesIngredientRefId || ''}
@@ -1335,7 +1378,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   })}
                 </select>
                 {replacedAmountsPerSize && (
-                  <div className="flex items-center gap-1 flex-wrap shrink-0">
+                  <div className="flex items-center gap-1 flex-wrap">
                     {replacedAmountsPerSize.map(({ size, amount }) => (
                       <span key={size.id} className="px-2 py-0.5 rounded-lg text-xs"
                         style={{ background: '#D8D4F0', color: '#534AB7' }}>

@@ -263,32 +263,35 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="rounded-t-2xl px-5 pt-3 max-w-lg mx-auto overflow-y-auto bg-background"
+        className="rounded-t-2xl max-w-lg mx-auto flex flex-col bg-background"
         style={{
           border: 'none',
           maxHeight: '90vh',
-          paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
           background: 'rgba(255,255,255,0.88)',
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
           boxShadow: '0 -8px 40px rgba(139,92,246,0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
         }}
       >
-        {/* Sticky шапка: handle + крестик */}
-        <div className="sticky top-0 z-10 flex items-center justify-between pb-3"
-          style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)' }}>
-          <div className="w-9 h-1 rounded-full mx-auto" style={{ background: 'rgba(139,92,246,0.25)' }} />
-          <SheetClose
-            className="absolute right-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-            style={{ background: 'rgba(176,166,223,0.15)', color: '#9D99B8' }}
-            aria-label="Закрыть"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </SheetClose>
+        {/* Header: handle + крестик — вне скролл-области, всегда виден */}
+        <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
+          <div className="flex-1" />
+          <div className="w-9 h-1 rounded-full" style={{ background: 'rgba(139,92,246,0.25)' }} />
+          <div className="flex-1 flex justify-end">
+            <SheetClose
+              className="w-10 h-10 flex items-center justify-center rounded-full"
+              style={{ background: 'rgba(176,166,223,0.15)', color: '#9D99B8' }}
+              aria-label="Закрыть"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </SheetClose>
+          </div>
         </div>
 
+        {/* Скролл-область */}
+        <div className="overflow-y-auto flex-1 px-5" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
 
         {/* Фото */}
         <div
@@ -536,6 +539,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         >
           {isValid ? 'Добавить в рацион' : 'Выберите параметры'}
         </button>
+        </div>{/* конец скролл-области */}
       </SheetContent>
     </Sheet>
   )

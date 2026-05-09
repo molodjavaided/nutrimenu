@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { NutritionGrid } from '@/components/ui/NutritionGrid'
 import { QuantityControl } from '@/components/ui/QuantityControl'
@@ -37,8 +38,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
           }}
         >
           {item.photo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={item.photo} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
+            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="64px" />
             : '🍽️'
           }
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
 import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
@@ -282,15 +283,14 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
 
         {/* Фото */}
         <div
-          className="w-full h-48 rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
+          className="relative w-full h-48 rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
           style={{
             background: 'rgba(139,92,246,0.06)',
             border: '0.5px solid rgba(255,255,255,0.5)',
           }}
         >
           {item.photo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
             : '🍽️'
           }
         </div>

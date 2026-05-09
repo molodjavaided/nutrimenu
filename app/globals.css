@@ -123,6 +123,10 @@
     font-size: max(16px, 1em);
   }
 
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
   body {
     @apply text-foreground;
     font-family: var(--font-sans);

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
 import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
+import { glassSheet } from '@/lib/styles'
 import { initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
 import { QuantityControl } from '@/components/ui/QuantityControl'
@@ -257,14 +258,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         side="bottom"
         showCloseButton={false}
         className="rounded-t-2xl max-w-lg mx-auto flex flex-col bg-background"
-        style={{
-          border: 'none',
-          maxHeight: '90vh',
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
-          boxShadow: '0 -8px 40px rgba(139,92,246,0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
-        }}
+        style={{ border: 'none', maxHeight: '90vh', ...glassSheet }}
       >
         {/* Header: handle + крестик — вне скролл-области, всегда виден */}
         <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">

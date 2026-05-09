@@ -1,14 +1,8 @@
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
+import { glassInput } from '@/lib/styles'
 
-const inputStyle = {
-  background: 'rgba(255,255,255,0.6)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  border: '0.5px solid rgba(255,255,255,0.5)',
-  color: 'var(--color-text-primary)',
-  boxShadow: '0 1px 4px rgba(139,92,246,0.06)',
-}
+const inputStyle = { ...glassInput, color: 'var(--color-text-primary)' }
 
 export function FormField({ label, required = false, children }: {
   label: string

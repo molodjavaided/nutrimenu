@@ -922,6 +922,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   alt="Фото блюда"
                   className="w-20 h-20 rounded-xl object-cover"
                   style={{ border: '0.5px solid rgba(255,255,255,0.5)' }}
+                  onError={() => {
+                    console.error('Photo failed to load:', photo)
+                    setPhotoError('Не удалось загрузить картинку')
+                  }}
                 />
                 <button
                   onClick={() => setPhoto('')}
@@ -967,14 +971,16 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       const form = new FormData()
                       form.append('file', file)
                       const res = await fetch('/api/upload', { method: 'POST', body: form })
-                      if (res.ok) {
-                        const { url } = await res.json()
-                        setPhoto(url)
+                      const data = await res.json().catch(() => ({}))
+                      if (res.ok && data.url) {
+                        console.log('Photo uploaded:', data.url)
+                        setPhoto(data.url)
                       } else {
-                        const data = await res.json().catch(() => ({}))
-                        setPhotoError(data.error ?? 'Ошибка загрузки')
+                        console.error('Upload failed:', res.status, data)
+                        setPhotoError(data.error ?? `Ошибка загрузки (${res.status})`)
                       }
-                    } catch {
+                    } catch (err) {
+                      console.error('Upload error:', err)
                       setPhotoError('Нет соединения')
                     } finally {
                       setPhotoUploading(false)

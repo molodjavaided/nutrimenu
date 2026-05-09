@@ -23,11 +23,21 @@ export async function POST(req: NextRequest) {
   const ext = file.name.split('.').pop() ?? 'jpg'
   const filename = `dishes/${session.venueId}/${Date.now()}.${ext}`
 
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error('BLOB_READ_WRITE_TOKEN is not set in environment')
+    return NextResponse.json(
+      { error: 'Vercel Blob не настроен. Добавьте BLOB_READ_WRITE_TOKEN в переменные окружения.' },
+      { status: 500 }
+    )
+  }
+
   try {
-    const blob = await put(filename, file, { access: 'public' })
+    const blob = await put(filename, file, { access: 'public', addRandomSuffix: true })
+    console.log('Blob uploaded:', blob.url)
     return NextResponse.json({ url: blob.url })
   } catch (err) {
-    console.error('Blob upload error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Blob upload error:', message, err)
+    return NextResponse.json({ error: `Не удалось загрузить: ${message}` }, { status: 500 })
   }
 }

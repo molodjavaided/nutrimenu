@@ -7,6 +7,7 @@ import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/t
 import { systemLibraries } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import { FormField, FormInput, FormSelect, FormTextarea, NutriFields } from '@/components/ui/form-fields'
+import { RemoveButton } from '@/components/ui/RemoveButton'
 import IngredientPickerModal from './IngredientPickerModal'
 
 // Типы для API-ответа (raw JSON, без строгой валидации на клиенте)
@@ -71,29 +72,6 @@ interface VariantChoice {
 }
 
 // ─── Local sub-components ────────────────────────────────────
-
-function RemoveButton({ onClick, size = 'md', variant = 'default' }: {
-  onClick: () => void
-  size?: 'sm' | 'md'
-  variant?: 'default' | 'light'
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'rounded-lg flex items-center justify-center shrink-0',
-        size === 'sm' ? 'w-7 h-7' : 'w-8 h-8',
-      )}
-      style={{
-        color: '#9D99B8',
-        background: variant === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(139,92,246,0.08)',
-        border: '0.5px solid rgba(255,255,255,0.5)',
-      }}
-    >
-      ✕
-    </button>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────
 

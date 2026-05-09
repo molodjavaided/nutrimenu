@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Category } from '@/types'
+import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import SortableItem from './SortableItem'
 
 interface Props {
@@ -37,7 +38,6 @@ export default function SortableCategory({
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(category.name)
   const [expanded, setExpanded] = useState(true)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -136,35 +136,7 @@ export default function SortableCategory({
               </svg>
             </button>
 
-            {confirmDelete ? (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onDelete(category.id)}
-                  className="px-2 h-7 rounded-lg text-xs font-medium"
-                  style={{ background: '#E24B4A', color: '#fff' }}
-                >
-                  Удалить
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-2 h-7 rounded-lg text-xs"
-                  style={{ background: '#EAE7F8', color: '#6B6490' }}
-                >
-                  Отмена
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                style={{ color: '#6B6490' }}
-                title="Удалить категорию"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4M8.5 6v4M3 3.5l.7 8h6.6l.7-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            )}
+            <ConfirmDeleteButton onConfirm={() => onDelete(category.id)} title="Удалить категорию" />
 
             <button
               onClick={() => setExpanded(e => !e)}

@@ -167,7 +167,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
         style={{ background: 'rgba(44,41,80,0.45)', backdropFilter: 'blur(3px)' }}
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
@@ -489,7 +489,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
           {/* ── Footer ── */}
           <div
             className="flex gap-2 px-5 py-4"
-            style={{ borderTop: '0.5px solid rgba(176,166,223,0.2)' }}
+            style={{ borderTop: '0.5px solid rgba(176,166,223,0.2)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           >
             <button
               onClick={onClose}

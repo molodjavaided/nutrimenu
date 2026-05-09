@@ -131,4 +131,14 @@
     background-attachment: fixed;
     min-height: 100vh;
   }
+
+  .dashboard-main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .dashboard-main {
+      padding-bottom: 0;
+    }
+  }
 }

@@ -283,7 +283,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
 
         {/* Фото */}
         <div
-          className="relative w-full h-48 rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
+          className="relative w-full aspect-[4/3] rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
           style={{
             background: 'rgba(139,92,246,0.06)',
             border: '0.5px solid rgba(255,255,255,0.5)',

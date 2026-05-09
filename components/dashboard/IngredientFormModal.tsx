@@ -418,7 +418,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                       return (
                         <div
                           key={row.ingredientId}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                          className="flex items-center gap-3 px-3 py-3 rounded-xl"
                           style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.25)' }}
                         >
                           {/* Composite badge icon */}
@@ -447,7 +447,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                               inputMode="decimal"
                               value={row.amount || ''}
                               onChange={e => updateAmount(row.ingredientId, Number(e.target.value))}
-                              className="w-16 h-8 px-2 rounded-lg text-sm text-center outline-none"
+                              className="w-20 h-10 px-2 rounded-lg text-sm text-center outline-none"
                               style={{ background: 'rgba(176,166,223,0.15)', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
                             />
                             <span className="text-xs w-4" style={{ color: '#9D99B8' }}>{row.unit}</span>
@@ -456,7 +456,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                           {/* Remove */}
                           <button
                             onClick={() => removeComponent(row.ingredientId)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                             style={{ background: 'rgba(226,75,74,0.08)', color: '#E24B4A' }}
                           >
                             <svg width="12" height="12" viewBox="0 0 14 14" fill="none">

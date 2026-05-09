@@ -119,16 +119,17 @@ function NutriFields({ nutri, onChange }: {
   onChange: (field: string, value: number) => void
 }) {
   return (
-    <div className="flex gap-4 text-sm flex-wrap items-center">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {NUTRI_FIELDS.map(({ key, label, step }) => (
-        <div key={key} className="flex items-center gap-2">
+        <div key={key} className="flex flex-col gap-1">
           <span className="text-xs" style={{ color: '#6B6490' }}>{label}</span>
           <input
             type="number"
+            inputMode="decimal"
             value={nutri[key]}
             onChange={e => onChange(key, Number(e.target.value))}
             step={step}
-            className="w-20 h-8 px-2 rounded-lg text-sm outline-none text-center"
+            className="h-11 w-full px-3 rounded-xl text-sm outline-none text-center"
             style={{ background: 'rgba(255,255,255,0.7)', border: '0.5px solid rgba(255,255,255,0.5)', color: '#2C2950' }}
           />
         </div>
@@ -777,7 +778,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   }, [ingredients, amounts])
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
       <button onClick={() => router.back()} className="mb-4 text-sm" style={{ color: '#6B6490' }}>
         ← Назад
       </button>
@@ -1132,12 +1133,12 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                         value={size.name}
                         onChange={e => updateSizeName(size.id, e.target.value)}
                         placeholder={idx === 0 ? "Средний" : "Большой"}
-                        className="w-28 h-9 px-2 rounded-lg"
+                        className="w-28 h-11 px-2 rounded-lg"
                       />
                       <FormSelect
                         value={size.unit}
                         onChange={e => updateSizeUnit(size.id, e.target.value as 'г' | 'мл')}
-                        className="w-20 h-9 px-2 rounded-lg"
+                        className="w-20 h-11 px-2 rounded-lg"
                       >
                         <option value="г">г</option>
                         <option value="мл">мл</option>
@@ -1199,7 +1200,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                                 value={amount || ''}
                                 onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
                                 placeholder={isCount ? 'шт' : '0'}
-                                className="w-24 h-9 px-2 rounded-lg text-sm outline-none text-center"
+                                className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
                                 style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
                               />
                               <span className="text-xs" style={{ color: '#9D99B8' }}>{unit}</span>
@@ -1299,7 +1300,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 value={group.label}
                 onChange={e => updateVariantGroup(group.id, { label: e.target.value })}
                 placeholder="Название группы (Крупа / Белок / Молоко)"
-                className="flex-1 h-9 px-3 rounded-lg text-sm outline-none"
+                className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
                 style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
               />
               <label className="flex items-center gap-2 text-xs cursor-pointer shrink-0" style={{ color: '#6B6490' }}>
@@ -1320,7 +1321,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <select
                   value={group.replacesIngredientRefId || ''}
                   onChange={e => updateVariantGroup(group.id, { replacesIngredientRefId: e.target.value || undefined })}
-                  className="flex-1 h-8 px-2 rounded-lg text-sm outline-none"
+                  className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
                   style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
                 >
                   <option value="">— не привязано (ручной ввод) —</option>
@@ -1356,70 +1357,73 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   : opt.calories
 
                 return (
-                  <div key={opt.id} className="flex items-center gap-2 p-2 rounded-xl" style={{ background: '#FEFEF2' }}>
-                    <button
-                      onClick={() => setVariantPickerTarget({ groupId: group.id, optionId: opt.id })}
-                      className="flex-1 h-8 px-3 rounded-lg text-sm text-left truncate transition-colors"
-                      style={{
-                        background: '#EAE7F8',
-                        border: '0.5px solid rgba(176,166,223,0.3)',
-                        color: selectedRef ? '#2C2950' : '#9D99B8',
-                      }}
-                    >
-                      {selectedRef ? selectedRef.name : '— Выбрать ингредиент'}
-                    </button>
-
-                    {replacedAmountsPerSize ? (
-                      // Объёмы унаследованы от заменяемого ингредиента — только чтение
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {replacedAmountsPerSize.map(({ size, amount }) => (
-                          <span key={size.id} className="px-2 py-1 rounded-lg text-xs"
-                            style={{ background: '#EAE7F8', color: '#534AB7' }}>
-                            {size.name || (sizes.length === 1 ? 'порция' : size.id)}: {amount} {size.unit}
-                          </span>
-                        ))}
-                        <span className="text-xs" style={{ color: '#9D99B8' }}>из состава</span>
-                      </div>
-                    ) : (
-                      // Ручной ввод (группа не привязана к составу)
-                      <div className="flex">
-                        <input
-                          type="number"
-                          value={opt.weight || ''}
-                          onChange={e => {
-                            const newWeight = Number(e.target.value)
-                            updateVariantOption(group.id, opt.id, { weight: newWeight })
-                            if (selectedRef) {
-                              const ratio = newWeight / 100
-                              updateVariantOption(group.id, opt.id, {
-                                calories: Math.round(selectedRef.caloriesPer100 * ratio),
-                                protein: Math.round(selectedRef.proteinPer100 * ratio * 10) / 10,
-                                fat: Math.round(selectedRef.fatPer100 * ratio * 10) / 10,
-                                carbs: Math.round(selectedRef.carbsPer100 * ratio * 10) / 10,
-                              })
-                            }
-                          }}
-                          placeholder="100"
-                          className="w-20 h-8 px-2 rounded-l-lg text-sm outline-none text-center"
-                          style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
-                        />
-                        <select
-                          value={opt.weightUnit}
-                          onChange={e => updateVariantOption(group.id, opt.id, { weightUnit: e.target.value as 'г' | 'мл' })}
-                          className="w-16 h-8 px-1 rounded-r-lg text-sm outline-none"
-                          style={{ background: '#D8D4F0', border: '0.5px solid rgba(176,166,223,0.3)', color: '#534AB7' }}
-                        >
-                          <option value="г">г</option>
-                          <option value="мл">мл</option>
-                        </select>
-                      </div>
-                    )}
-
-                    <div className="text-xs shrink-0" style={{ color: '#534AB7', minWidth: '56px' }}>
-                      {displayCalories > 0 && `${displayCalories} ккал`}
+                  <div key={opt.id} className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: '#FEFEF2' }}>
+                    {/* Строка 1: ингредиент + удалить */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setVariantPickerTarget({ groupId: group.id, optionId: opt.id })}
+                        className="flex-1 h-10 px-3 rounded-lg text-sm text-left truncate transition-colors"
+                        style={{
+                          background: '#EAE7F8',
+                          border: '0.5px solid rgba(176,166,223,0.3)',
+                          color: selectedRef ? '#2C2950' : '#9D99B8',
+                        }}
+                      >
+                        {selectedRef ? selectedRef.name : '— Выбрать ингредиент'}
+                      </button>
+                      <RemoveButton size="sm" onClick={() => removeVariantOption(group.id, opt.id)} />
                     </div>
 
-                    <RemoveButton size="sm" onClick={() => removeVariantOption(group.id, opt.id)} />
+                    {/* Строка 2: вес / унаследованные объёмы + ккал */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {replacedAmountsPerSize ? (
+                        <>
+                          {replacedAmountsPerSize.map(({ size, amount }) => (
+                            <span key={size.id} className="px-2 py-1 rounded-lg text-xs"
+                              style={{ background: '#EAE7F8', color: '#534AB7' }}>
+                              {size.name || (sizes.length === 1 ? 'порция' : size.id)}: {amount} {size.unit}
+                            </span>
+                          ))}
+                          <span className="text-xs" style={{ color: '#9D99B8' }}>из состава</span>
+                        </>
+                      ) : (
+                        <div className="flex">
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={opt.weight || ''}
+                            onChange={e => {
+                              const newWeight = Number(e.target.value)
+                              updateVariantOption(group.id, opt.id, { weight: newWeight })
+                              if (selectedRef) {
+                                const ratio = newWeight / 100
+                                updateVariantOption(group.id, opt.id, {
+                                  calories: Math.round(selectedRef.caloriesPer100 * ratio),
+                                  protein: Math.round(selectedRef.proteinPer100 * ratio * 10) / 10,
+                                  fat: Math.round(selectedRef.fatPer100 * ratio * 10) / 10,
+                                  carbs: Math.round(selectedRef.carbsPer100 * ratio * 10) / 10,
+                                })
+                              }
+                            }}
+                            placeholder="100"
+                            className="w-20 h-10 px-2 rounded-l-lg text-sm outline-none text-center"
+                            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
+                          />
+                          <select
+                            value={opt.weightUnit}
+                            onChange={e => updateVariantOption(group.id, opt.id, { weightUnit: e.target.value as 'г' | 'мл' })}
+                            className="w-16 h-10 px-1 rounded-r-lg text-sm outline-none"
+                            style={{ background: '#D8D4F0', border: '0.5px solid rgba(176,166,223,0.3)', color: '#534AB7' }}
+                          >
+                            <option value="г">г</option>
+                            <option value="мл">мл</option>
+                          </select>
+                        </div>
+                      )}
+                      {displayCalories > 0 && (
+                        <span className="text-xs" style={{ color: '#534AB7' }}>{displayCalories} ккал</span>
+                      )}
+                    </div>
                   </div>
                 )
               })}

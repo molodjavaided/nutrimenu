@@ -479,17 +479,17 @@ export default function ImportModal({ onClose, onImported }: Props) {
         >
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold" style={{ color: '#2C2950' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                 Импорт меню
               </h2>
               {/* Step breadcrumb */}
               {(step === 'preview' || step === 'matching') && (
-                <div className="flex items-center gap-1 text-xs" style={{ color: '#9D99B8' }}>
+                <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                   <span
                     className="px-2 py-0.5 rounded-full"
                     style={{
                       background: step === 'preview' ? 'rgba(176,166,223,0.25)' : 'transparent',
-                      color: step === 'preview' ? '#2C2950' : '#9D99B8',
+                      color: step === 'preview' ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                     }}
                   >
                     Просмотр
@@ -501,7 +501,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                         className="px-2 py-0.5 rounded-full"
                         style={{
                           background: step === 'matching' ? 'rgba(176,166,223,0.25)' : 'transparent',
-                          color: step === 'matching' ? '#2C2950' : '#9D99B8',
+                          color: step === 'matching' ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                         }}
                       >
                         Сопоставление
@@ -511,13 +511,13 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 </div>
               )}
             </div>
-            <p className="text-xs mt-0.5" style={{ color: '#6B6490' }}>{headerSubtitle}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{headerSubtitle}</p>
           </div>
           <button
             onClick={step === 'success' ? handleSuccessClose : onClose}
             className="p-1.5 rounded-lg transition-opacity hover:opacity-60"
           >
-            <X size={16} style={{ color: '#6B6490' }} />
+            <X size={16} style={{ color: 'var(--color-text-secondary)' }} />
           </button>
         </div>
 
@@ -591,7 +591,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                   <button
                     onClick={() => setConfirmDelete(false)}
                     className="px-3 py-1.5 rounded-lg text-xs transition-opacity hover:opacity-70"
-                    style={{ background: 'rgba(176,166,223,0.2)', color: '#6B6490' }}
+                    style={{ background: 'rgba(176,166,223,0.2)', color: 'var(--color-text-secondary)' }}
                   >
                     Отмена
                   </button>
@@ -607,14 +607,14 @@ export default function ImportModal({ onClose, onImported }: Props) {
               </>
             ) : (
               <>
-                <span className="text-xs" style={{ color: '#6B6490' }}>
-                  Выбрано: <span className="font-medium" style={{ color: '#2C2950' }}>{selectedIds.size}</span>
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  Выбрано: <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{selectedIds.size}</span>
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSelectedIds(new Set())}
                     className="text-xs px-2.5 py-1.5 rounded-lg transition-opacity hover:opacity-70"
-                    style={{ color: '#6B6490' }}
+                    style={{ color: 'var(--color-text-secondary)' }}
                   >
                     Сбросить
                   </button>
@@ -623,7 +623,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
                     style={{
                       background: 'rgba(176,166,223,0.2)',
-                      color: '#2C2950',
+                      color: 'var(--color-text-primary)',
                       border: '0.5px solid rgba(176,166,223,0.4)',
                     }}
                   >
@@ -649,7 +649,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 setConfirmDelete(false)
               }}
               className="px-4 py-2 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: '#6B6490' }}
+              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
             >
               Назад
             </button>
@@ -658,7 +658,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 onClick={() => setStep('matching')}
                 disabled={importCount === 0}
                 className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
-                style={{ background: '#B0A6DF', color: '#2C2950' }}
+                style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
               >
                 Сопоставление ингредиентов
                 <ChevronRight size={14} />
@@ -668,7 +668,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 onClick={handleImport}
                 disabled={importCount === 0 || isSaving}
                 className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
-                style={{ background: '#B0A6DF', color: '#2C2950' }}
+                style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
               >
                 {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
               </button>
@@ -685,7 +685,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
             <button
               onClick={() => setStep('preview')}
               className="px-4 py-2 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: '#6B6490' }}
+              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
             >
               Назад
             </button>
@@ -699,7 +699,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
                 onClick={handleImport}
                 disabled={undecidedCount > 0 || isSaving}
                 className="px-5 py-2 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
-                style={{ background: '#B0A6DF', color: '#2C2950' }}
+                style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
               >
                 {isSaving ? 'Сохранение…' : buildButtonLabel(dishImportCount, prepCount)}
               </button>
@@ -763,8 +763,8 @@ function UploadStep({
             onClick={() => setTab(id)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all"
             style={tab === id
-              ? { background: '#fff', color: '#2C2950', boxShadow: '0 1px 4px rgba(44,41,80,0.1)' }
-              : { color: '#6B6490' }}
+              ? { background: '#fff', color: 'var(--color-text-primary)', boxShadow: '0 1px 4px rgba(44,41,80,0.1)' }
+              : { color: 'var(--color-text-secondary)' }}
           >
             {icon}{label}
           </button>
@@ -787,7 +787,7 @@ function UploadStep({
               <>
                 <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
                   style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }} />
-                <p className="text-sm" style={{ color: '#6B6490' }}>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                   {isValidating ? 'AI проверяет данные…' : 'AI читает документ…'}
                 </p>
               </>
@@ -798,10 +798,10 @@ function UploadStep({
                   <FileText size={24} style={{ color: '#B0A6DF' }} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium" style={{ color: '#2C2950' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
                     Перетащите PDF или фото сюда
                   </p>
-                  <p className="text-xs mt-1" style={{ color: '#6B6490' }}>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
                     или нажмите чтобы выбрать · PDF, JPG, PNG, WebP
                   </p>
                 </div>
@@ -825,8 +825,8 @@ function UploadStep({
           >
             <div className="flex items-start gap-3">
               <Info size={14} className="mt-0.5 shrink-0" style={{ color: '#B0A6DF' }} />
-              <div className="text-xs space-y-1" style={{ color: '#6B6490' }}>
-                <p className="font-medium" style={{ color: '#2C2950' }}>Как работает AI-распознавание</p>
+              <div className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>Как работает AI-распознавание</p>
                 <p>Gemini читает документ визуально и извлекает блюда с ингредиентами.</p>
                 <p>Чем больше ТТК вы импортируете — тем точнее становится распознавание:</p>
                 <p style={{ color: '#2A9D5C' }}>каждый подтверждённый импорт сохраняется как пример для AI.</p>
@@ -854,7 +854,7 @@ function UploadStep({
                   className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
                   style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }}
                 />
-                <p className="text-sm" style={{ color: '#6B6490' }}>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                   {isValidating ? 'AI проверяет данные…' : 'Обрабатываем файл…'}
                 </p>
               </>
@@ -867,10 +867,10 @@ function UploadStep({
                   <Upload size={24} style={{ color: '#B0A6DF' }} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium" style={{ color: '#2C2950' }}>
+                  <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
                     Перетащите файл сюда
                   </p>
-                  <p className="text-xs mt-1" style={{ color: '#6B6490' }}>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
                     или нажмите чтобы выбрать · XLSX, XLS, CSV
                   </p>
                 </div>
@@ -895,12 +895,12 @@ function UploadStep({
           >
             <div className="flex items-start gap-3">
               <FileSpreadsheet size={16} className="mt-0.5 shrink-0" style={{ color: '#B0A6DF' }} />
-              <div className="space-y-1 text-xs" style={{ color: '#6B6490' }}>
-                <p className="font-medium" style={{ color: '#2C2950' }}>Формат файла</p>
+              <div className="space-y-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>Формат файла</p>
                 <p>Каждая строка — один ингредиент одного блюда. Нужные колонки:</p>
                 <code
                   className="block rounded-lg px-3 py-2 text-xs mt-1 font-mono leading-relaxed"
-                  style={{ background: 'rgba(176,166,223,0.15)', color: '#2C2950' }}
+                  style={{ background: 'rgba(176,166,223,0.15)', color: 'var(--color-text-primary)' }}
                 >
                   Dish Name · Category · Ingredient Name · Net Weight (g) · Instructions
                 </code>
@@ -912,7 +912,7 @@ function UploadStep({
             <button
               onClick={e => { e.stopPropagation(); onDownloadTemplate() }}
               className="flex items-center gap-2 text-xs font-medium transition-opacity hover:opacity-70"
-              style={{ color: '#2C2950' }}
+              style={{ color: 'var(--color-text-primary)' }}
             >
               <Download size={13} />
               Скачать шаблон CSV
@@ -927,10 +927,10 @@ function UploadStep({
           >
             <div className="flex items-start gap-3">
               <Info size={15} className="mt-0.5 shrink-0" style={{ color: '#B0A6DF' }} />
-              <div className="text-xs space-y-1" style={{ color: '#6B6490' }}>
-                <p className="font-medium" style={{ color: '#2C2950' }}>Как подготовить Google Таблицу</p>
+              <div className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>Как подготовить Google Таблицу</p>
                 <p>1. Откройте таблицу в Google Таблицах</p>
-                <p>2. Файл → Поделиться → <span className="font-medium" style={{ color: '#2C2950' }}>Все, у кого есть ссылка</span></p>
+                <p>2. Файл → Поделиться → <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>Все, у кого есть ссылка</span></p>
                 <p>3. Вставьте ссылку ниже</p>
               </div>
             </div>
@@ -946,7 +946,7 @@ function UploadStep({
               style={{
                 background: 'rgba(234,231,248,0.6)',
                 border: '0.5px solid rgba(176,166,223,0.5)',
-                color: '#2C2950',
+                color: 'var(--color-text-primary)',
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter' && sheetsInput.trim()) onSheetsUrl(sheetsInput.trim())
@@ -956,12 +956,12 @@ function UploadStep({
               onClick={() => { if (sheetsInput.trim()) onSheetsUrl(sheetsInput.trim()) }}
               disabled={!sheetsInput.trim() || isLoading}
               className="w-full py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
-              style={{ background: '#B0A6DF', color: '#2C2950' }}
+              style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin inline-block"
-                    style={{ borderColor: '#2C2950', borderTopColor: 'transparent' }} />
+                    style={{ borderColor: 'var(--color-text-primary)', borderTopColor: 'transparent' }} />
                   Загружаем…
                 </span>
               ) : 'Загрузить таблицу'}
@@ -1094,7 +1094,7 @@ function PreviewStep({
           style={{
             gridTemplateColumns: '28px 1fr 110px 72px 140px',
             background: 'rgba(234,231,248,0.8)',
-            color: '#6B6490',
+            color: 'var(--color-text-secondary)',
             borderBottom: '0.5px solid rgba(176,166,223,0.3)',
           }}
         >
@@ -1134,22 +1134,22 @@ function PreviewStep({
                 <GlassCheckbox checked={isSelected} onChange={() => onSelectToggle(dish.id)} />
 
                 <div className="min-w-0 pl-1 pr-3">
-                  <p className="font-medium truncate text-sm" style={{ color: '#2C2950' }}>{dish.name}</p>
-                  <p className="text-xs truncate" style={{ color: '#6B6490' }}>{dish.category}</p>
+                  <p className="font-medium truncate text-sm" style={{ color: 'var(--color-text-primary)' }}>{dish.name}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>{dish.category}</p>
                 </div>
 
-                <span className="text-xs" style={{ color: '#6B6490' }}>
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   {dish.ingredients.length > 0 ? `${dish.ingredients.length} ингр.` : '—'}
                 </span>
 
-                <span className="text-xs" style={{ color: '#6B6490' }}>
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   {totalWeight > 0 ? `${Math.round(totalWeight)} г` : '—'}
                 </span>
 
                 {dish.kind === 'preparation' ? (
                   <span
                     className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full w-fit"
-                    style={{ background: 'rgba(176,166,223,0.2)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.4)' }}
+                    style={{ background: 'rgba(176,166,223,0.2)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(176,166,223,0.4)' }}
                   >
                     → Ингредиенты
                   </span>
@@ -1160,7 +1160,7 @@ function PreviewStep({
                       className="flex-1 h-7 rounded-lg text-xs font-medium transition-all"
                       style={{
                         background: resolution === 'overwrite' ? '#B0A6DF' : 'rgba(176,166,223,0.15)',
-                        color: resolution === 'overwrite' ? '#2C2950' : '#6B6490',
+                        color: resolution === 'overwrite' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                         border: resolution === 'overwrite' ? 'none' : '0.5px solid rgba(176,166,223,0.3)',
                       }}
                     >
@@ -1171,7 +1171,7 @@ function PreviewStep({
                       className="flex-1 h-7 rounded-lg text-xs font-medium transition-all"
                       style={{
                         background: resolution === 'skip' ? '#EAE7F8' : 'rgba(176,166,223,0.08)',
-                        color: resolution === 'skip' ? '#2C2950' : '#6B6490',
+                        color: resolution === 'skip' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                         border: '0.5px solid rgba(176,166,223,0.3)',
                       }}
                     >
@@ -1191,7 +1191,7 @@ function PreviewStep({
       </div>
 
       {uniqueDishes.some(d => d.ingredients.some(i => i.netWeight === 0)) && (
-        <p className="text-xs px-1" style={{ color: '#6B6490' }}>
+        <p className="text-xs px-1" style={{ color: 'var(--color-text-secondary)' }}>
           Ингредиенты с нулевым весом будут добавлены без учёта в состав.
         </p>
       )}
@@ -1208,7 +1208,7 @@ function UnitBadge({ unit }: { unit: string }) {
       className="text-xs px-2 py-0.5 rounded-full shrink-0"
       style={{
         background: isSpecial ? 'rgba(255,180,50,0.15)' : 'rgba(176,166,223,0.15)',
-        color: isSpecial ? '#D4830A' : '#6B6490',
+        color: isSpecial ? '#D4830A' : 'var(--color-text-secondary)',
         border: `0.5px solid ${isSpecial ? 'rgba(255,180,50,0.3)' : 'rgba(176,166,223,0.3)'}`,
       }}
     >
@@ -1239,7 +1239,7 @@ function MatchCard({
     >
       {/* Header: name + unit badge + status icon */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <span className="text-sm font-medium" style={{ color: '#2C2950' }}>{match.importedName}</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{match.importedName}</span>
         <UnitBadge unit={match.unit} />
         {isUndecided ? (
           <span className="ml-auto text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,180,50,0.2)', color: '#D4830A', border: '0.5px solid rgba(255,180,50,0.35)' }}>
@@ -1250,7 +1250,7 @@ function MatchCard({
         )}
       </div>
       {match.isOilSubstitution && (
-        <p className="text-xs mb-2" style={{ color: '#6B6490' }}>Выберите тип масла:</p>
+        <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>Выберите тип масла:</p>
       )}
       <div className="flex flex-wrap gap-2">
         {match.candidates.map(c => {
@@ -1260,7 +1260,7 @@ function MatchCard({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all active:scale-95"
               style={isSelected
                 ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 2px 8px rgba(139,92,246,0.25)' }
-                : { background: 'rgba(255,255,255,0.8)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.45)' }}
+                : { background: 'rgba(255,255,255,0.8)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(176,166,223,0.45)' }}
             >
               {isSelected && <Check size={11} />}
               <span>{c.name}</span>
@@ -1272,7 +1272,7 @@ function MatchCard({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all active:scale-95"
           style={decision === 'new'
             ? { background: '#2A9D5C', color: '#fff', boxShadow: '0 2px 8px rgba(42,157,92,0.2)' }
-            : { background: 'rgba(255,255,255,0.8)', color: '#6B6490', border: '0.5px solid rgba(176,166,223,0.45)' }}
+            : { background: 'rgba(255,255,255,0.8)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(176,166,223,0.45)' }}
         >
           {decision === 'new' && <Check size={11} />}
           + Создать новый
@@ -1316,8 +1316,8 @@ function MatchingStep({
         className="flex items-start gap-3 rounded-xl px-4 py-3"
         style={{ background: 'rgba(176,166,223,0.12)', border: '0.5px solid rgba(176,166,223,0.3)' }}
       >
-        <Info size={14} className="mt-0.5 shrink-0" style={{ color: '#6B6490' }} />
-        <p className="text-xs leading-relaxed" style={{ color: '#6B6490' }}>
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--color-text-secondary)' }} />
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           Система нашла похожие ингредиенты в вашем справочнике, но не может связать их автоматически.
           Просмотрите и выберите для каждого: использовать существующий или создать новый.
         </p>
@@ -1334,8 +1334,8 @@ function MatchingStep({
                 style={{ background: 'rgba(176,166,223,0.15)', borderLeft: '2px solid #B0A6DF' }}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold truncate" style={{ color: '#2C2950' }}>{group.dish.name}</p>
-                  <p className="text-xs truncate" style={{ color: '#9D99B8' }}>
+                  <p className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{group.dish.name}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--color-text-muted)' }}>
                     {group.dish.kind === 'preparation' ? '→ Ингредиенты · ' : ''}{group.dish.category}
                   </p>
                 </div>
@@ -1386,10 +1386,10 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
           <Check size={26} style={{ color: '#2A9D5C' }} />
         </div>
         <div className="text-center">
-          <p className="font-semibold text-base" style={{ color: '#2C2950' }}>
+          <p className="font-semibold text-base" style={{ color: 'var(--color-text-primary)' }}>
             {buildButtonLabel(dishCount, prepCount).replace('Импортировать: ', '')}
           </p>
-          <p className="text-xs mt-1" style={{ color: '#6B6490' }}>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
             {prepCount > 0 ? 'Блюда добавлены в меню, заготовки — в ингредиенты' : 'Блюда добавлены в меню'}
           </p>
           {newIngCount > 0 && (
@@ -1408,14 +1408,14 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
           className="flex items-center justify-between gap-3 px-4 py-3"
           style={{ background: 'rgba(234,231,248,0.6)' }}
         >
-          <div className="flex items-center gap-2 text-xs" style={{ color: '#6B6490' }}>
+          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
             <RotateCcw size={13} />
             <span>Отменить импорт · {countdown}с</span>
           </div>
           <button
             onClick={onUndo}
             className="text-xs font-medium px-3 py-1.5 rounded-lg transition-opacity hover:opacity-70"
-            style={{ background: 'rgba(176,166,223,0.3)', color: '#2C2950' }}
+            style={{ background: 'rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
           >
             Отменить
           </button>
@@ -1435,7 +1435,7 @@ function SuccessStep({ dishCount, prepCount, newIngCount, countdown, total, onUn
       <button
         onClick={onClose}
         className="text-sm font-medium transition-opacity hover:opacity-70"
-        style={{ color: '#6B6490' }}
+        style={{ color: 'var(--color-text-secondary)' }}
       >
         Закрыть
       </button>

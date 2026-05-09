@@ -192,13 +192,13 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
           {/* ── Header ── */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3"
             style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
-            <p className="text-base font-medium" style={{ color: '#2C2950' }}>
+            <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
               {editing ? 'Редактировать' : 'Новый ингредиент'}
             </p>
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-              style={{ background: 'rgba(176,166,223,0.2)', color: '#6B6490' }}
+              style={{ background: 'rgba(176,166,223,0.2)', color: 'var(--color-text-secondary)' }}
             >
               ✕
             </button>
@@ -219,7 +219,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all"
                   style={{
                     background: mode === m ? '#fff' : 'transparent',
-                    color: mode === m ? '#2C2950' : '#9D99B8',
+                    color: mode === m ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                     boxShadow: mode === m ? '0 1px 4px rgba(139,92,246,0.12)' : 'none',
                   }}
                 >
@@ -238,21 +238,21 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
             {/* ── Name + Category + Unit ── */}
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs" style={{ color: '#6B6490' }}>Название *</label>
+                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Название *</label>
                 <input
                   autoFocus
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder={mode === 'composite' ? 'Соус тартар' : 'Молоко классическое'}
                   className="h-11 px-3 rounded-xl text-sm outline-none"
-                  style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                  style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                 />
               </div>
 
               <div className="grid grid-cols-[1fr_88px] gap-3">
                 {/* Category */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Категория</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Категория</label>
                   {isCustomCategory ? (
                     <div className="flex gap-1">
                       <input
@@ -260,12 +260,12 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                         onChange={e => setCategory(e.target.value)}
                         placeholder="Название категории"
                         className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
-                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                       />
                       <button
                         onClick={() => { setIsCustomCategory(false); setCategory('Прочее') }}
                         className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#9D99B8' }}
+                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-muted)' }}
                       >✕</button>
                     </div>
                   ) : (
@@ -279,7 +279,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                         }
                       }}
                       className="h-11 px-2 rounded-xl text-sm outline-none"
-                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                     >
                       {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                       <option disabled>──────────</option>
@@ -290,12 +290,12 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
                 {/* Unit */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Единица</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Единица</label>
                   <select
                     value={unit}
                     onChange={e => setUnit(e.target.value as 'г' | 'мл' | 'шт')}
                     className="h-11 px-2 rounded-xl text-sm outline-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                   >
                     <option value="г">г</option>
                     <option value="мл">мл</option>
@@ -307,7 +307,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
               {/* Weight per piece — shown only when unit = шт */}
               {unit === 'шт' && (
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Вес 1 шт (г)</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Вес 1 шт (г)</label>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -315,7 +315,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                     onChange={e => setWeightPerUnit(Number(e.target.value))}
                     placeholder="60"
                     className="h-11 px-3 rounded-xl text-sm outline-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                   />
                 </div>
               )}
@@ -325,28 +325,28 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
             {mode === 'mono' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Ккал / 100 г</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Ккал / 100 г</label>
                   <input type="number" inputMode="decimal" value={calories || ''} onChange={e => setCalories(Number(e.target.value))}
                     placeholder="0" className="h-11 px-3 rounded-xl text-sm outline-none text-center"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }} />
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Белки г</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Белки г</label>
                   <input type="number" inputMode="decimal" value={protein || ''} onChange={e => setProtein(Number(e.target.value))}
                     placeholder="0" className="h-11 px-3 rounded-xl text-sm outline-none text-center"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }} />
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Жиры г</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Жиры г</label>
                   <input type="number" inputMode="decimal" value={fat || ''} onChange={e => setFat(Number(e.target.value))}
                     placeholder="0" className="h-11 px-3 rounded-xl text-sm outline-none text-center"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }} />
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }} />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Углеводы г</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Углеводы г</label>
                   <input type="number" inputMode="decimal" value={carbs || ''} onChange={e => setCarbs(Number(e.target.value))}
                     placeholder="0" className="h-11 px-3 rounded-xl text-sm outline-none text-center"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }} />
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }} />
                 </div>
               </div>
             )}
@@ -359,19 +359,19 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                   className="rounded-2xl px-4 py-3"
                   style={{ background: 'rgba(176,166,223,0.12)', border: '0.5px solid rgba(176,166,223,0.3)' }}
                 >
-                  <p className="text-xs mb-2" style={{ color: '#9D99B8' }}>
+                  <p className="text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
                     КБЖУ на 100 г · {composition.length > 0 ? `итого ~${nutri.weight} г` : 'добавьте компоненты'}
                   </p>
                   <div className="flex gap-4">
                     {[
                       { label: 'Ккал', value: nutri.cal,  color: '#534AB7' },
-                      { label: 'Б',    value: nutri.pro,  color: '#6B6490' },
-                      { label: 'Ж',    value: nutri.fat,  color: '#6B6490' },
-                      { label: 'У',    value: nutri.car,  color: '#6B6490' },
+                      { label: 'Б',    value: nutri.pro,  color: 'var(--color-text-secondary)' },
+                      { label: 'Ж',    value: nutri.fat,  color: 'var(--color-text-secondary)' },
+                      { label: 'У',    value: nutri.car,  color: 'var(--color-text-secondary)' },
                     ].map(({ label, value, color }) => (
                       <div key={label} className="flex flex-col items-center">
                         <span className="text-base font-semibold" style={{ color }}>{value}</span>
-                        <span className="text-xs" style={{ color: '#9D99B8' }}>{label}</span>
+                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
                       </div>
                     ))}
                   </div>
@@ -380,11 +380,11 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                 {/* Component list */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#9D99B8' }}>Состав</p>
+                    <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Состав</p>
                     <button
                       onClick={() => setPickerOpen(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ background: '#EAE7F8', color: '#2C2950' }}
+                      style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}
                     >
                       <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
                         <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -398,7 +398,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                       className="rounded-xl px-4 py-6 text-center"
                       style={{ background: 'rgba(176,166,223,0.08)', border: '0.5px dashed rgba(176,166,223,0.4)' }}
                     >
-                      <p className="text-sm" style={{ color: '#9D99B8' }}>Нет компонентов</p>
+                      <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Нет компонентов</p>
                       <p className="text-xs mt-1" style={{ color: '#C8C3F0' }}>Нажмите «Добавить компонент»</p>
                     </div>
                   )}
@@ -432,9 +432,9 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
                           {/* Name + contribution preview */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: '#2C2950' }}>{ref.name}</p>
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{ref.name}</p>
                             {contribution && (
-                              <p className="text-xs" style={{ color: '#9D99B8' }}>
+                              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
                                 {contribution.cal} ккал · Б {contribution.pro}г
                               </p>
                             )}
@@ -448,9 +448,9 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                               value={row.amount || ''}
                               onChange={e => updateAmount(row.ingredientId, Number(e.target.value))}
                               className="w-20 h-10 px-2 rounded-lg text-sm text-center outline-none"
-                              style={{ background: 'rgba(176,166,223,0.15)', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
+                              style={{ background: 'rgba(176,166,223,0.15)', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
                             />
-                            <span className="text-xs w-4" style={{ color: '#9D99B8' }}>{row.unit}</span>
+                            <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{row.unit}</span>
                           </div>
 
                           {/* Remove */}
@@ -472,14 +472,14 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
                 {/* Instructions */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: '#6B6490' }}>Технология приготовления</label>
+                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Технология приготовления</label>
                   <textarea
                     value={instructions}
                     onChange={e => setInstructions(e.target.value)}
                     placeholder="Опишите шаги приготовления..."
                     rows={3}
                     className="px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950', lineHeight: 1.5 }}
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)', lineHeight: 1.5 }}
                   />
                 </div>
               </>
@@ -494,7 +494,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
             <button
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: '#6B6490' }}
+              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
             >
               Отмена
             </button>
@@ -505,7 +505,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
               style={{
                 background: name.trim() && (mode !== 'composite' || composition.length > 0)
                   ? '#B0A6DF' : '#C8C3F0',
-                color: '#2C2950',
+                color: 'var(--color-text-primary)',
               }}
             >
               {editing ? 'Сохранить' : 'Добавить'}

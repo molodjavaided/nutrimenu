@@ -32,10 +32,10 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
       >
         <span className="text-sm font-medium" style={{ color: '#7C3AED' }}>Мой рацион</span>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium" style={{ color: '#2C2950' }}>
+          <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
             {Math.round(nutri.calories)} ккал
           </span>
-          <span className="text-xs" style={{ color: '#9D99B8' }}>{expanded ? '▲' : '▼'}</span>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
 
@@ -56,8 +56,8 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
           { val: percent, label: 'нормы', unit: '%' },
         ].map(({ val, label, unit }) => (
           <div key={label}>
-            <p className="text-sm font-medium" style={{ color: '#2C2950' }}>{val}{unit}</p>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>{label}</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{val}{unit}</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
           </div>
         ))}
       </div>
@@ -73,21 +73,21 @@ export default function NutriTracker({ items, nutri, onRemove }: Props) {
 
             return (
               <div key={key} className="flex items-center justify-between py-1.5">
-                <span className="text-xs flex-1 truncate" style={{ color: '#6B6490' }}>
+                <span className="text-xs flex-1 truncate" style={{ color: 'var(--color-text-secondary)' }}>
                   {fullName}
                   {quantity > 1 && (
-                    <span className="ml-1 font-medium" style={{ color: '#2C2950' }}>
+                    <span className="ml-1 font-medium" style={{ color: 'var(--color-text-primary)' }}>
                       ×{quantity}
                     </span>
                   )}
                 </span>
-                <span className="text-xs font-medium mx-2 flex-shrink-0" style={{ color: '#2C2950' }}>
+                <span className="text-xs font-medium mx-2 flex-shrink-0" style={{ color: 'var(--color-text-primary)' }}>
                   {totalKcal} ккал
                 </span>
                 <button
                   onClick={() => onRemove(key)}
                   className="text-xs w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(139,92,246,0.08)', color: '#9D99B8' }}
+                  style={{ background: 'rgba(139,92,246,0.08)', color: 'var(--color-text-muted)' }}
                 >
                   ✕
                 </button>

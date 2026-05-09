@@ -24,7 +24,7 @@ export function SwitchRoleButton({ variant = 'sidebar' }: Props) {
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
           border: '0.5px solid rgba(255,255,255,0.5)',
-          color: '#6B6490',
+          color: 'var(--color-text-secondary)',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -40,7 +40,7 @@ export function SwitchRoleButton({ variant = 'sidebar' }: Props) {
     <button
       onClick={handleSwitch}
       className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs w-full transition-all"
-      style={{ color: '#9D99B8' }}
+      style={{ color: 'var(--color-text-muted)' }}
     >
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
         <path d="M2 8a6 6 0 1012 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>

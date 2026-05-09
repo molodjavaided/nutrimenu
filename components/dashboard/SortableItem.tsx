@@ -70,7 +70,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
       {/* Инфо */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate" style={{ color: '#2C2950' }}>
+          <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
             {item.name}
           </span>
           {hasVariants && (
@@ -87,7 +87,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs" style={{ color: '#9D99B8' }}>
+          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {item.calories} ккал · {item.weight} {item.weightUnit}
           </span>
           {!available && (
@@ -104,7 +104,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
           onClick={toggleAvailable}
           disabled={toggling}
           className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity"
-          style={{ color: available ? '#22C55E' : '#9D99B8' }}
+          style={{ color: available ? '#22C55E' : 'var(--color-text-muted)' }}
           title={available ? 'Скрыть от гостей' : 'Показать гостям'}
         >
           {available ? (
@@ -124,7 +124,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
         <Link
           href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
           className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ color: '#6B6490' }}
+          style={{ color: 'var(--color-text-secondary)' }}
           title="Редактировать"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

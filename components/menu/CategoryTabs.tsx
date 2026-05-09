@@ -31,7 +31,7 @@ export default function CategoryTabs({ categories, activeCategory, onSelect }: P
                     background: 'rgba(255,255,255,0.55)',
                     backdropFilter: 'blur(8px)',
                     WebkitBackdropFilter: 'blur(8px)',
-                    color: '#6B6490',
+                    color: 'var(--color-text-secondary)',
                     border: '0.5px solid rgba(255,255,255,0.5)',
                   }
             }

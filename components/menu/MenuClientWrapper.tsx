@@ -41,7 +41,7 @@ export default function MenuClientWrapper({ slug }: Props) {
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 animate-spin"
             style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: '#9D99B8' }}>Загружаем меню...</p>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Загружаем меню...</p>
         </div>
       </div>
     )
@@ -50,7 +50,7 @@ export default function MenuClientWrapper({ slug }: Props) {
   if (notFound || !venue) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#FEFEF2' }}>
-        <p className="text-sm" style={{ color: '#6B6490' }}>Заведение не найдено</p>
+        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Заведение не найдено</p>
       </div>
     )
   }

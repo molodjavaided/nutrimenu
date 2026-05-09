@@ -18,7 +18,7 @@ const MY_LIBRARY_ID = 'my-library'
 const inputStyle = {
   background: 'rgba(255,255,255,0.6)',
   border: '0.5px solid rgba(255,255,255,0.5)',
-  color: '#2C2950',
+  color: 'var(--color-text-primary)',
 }
 
 export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSelect, onClose, allRefs, onIngredientCreated }: Props) {
@@ -197,7 +197,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4"
           style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
-          <p className="text-base font-medium" style={{ color: '#2C2950' }}>
+          <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
             {creating ? 'Новый ингредиент' : 'Выбрать ингредиент'}
           </p>
           <button
@@ -211,7 +211,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         {creating ? (
           <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
             <div>
-              <p className="text-xs mb-1" style={{ color: '#6B6490' }}>Название *</p>
+              <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Название *</p>
               <div className="flex gap-2">
                 <input
                   autoFocus
@@ -246,7 +246,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
             </div>
 
             <div>
-              <p className="text-xs mb-1" style={{ color: '#6B6490' }}>Единица измерения</p>
+              <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Единица измерения</p>
               <select
                 value={newUnit}
                 onChange={e => setNewUnit(e.target.value as 'г' | 'мл' | 'шт')}
@@ -260,7 +260,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
             </div>
 
             <div>
-              <p className="text-xs mb-2" style={{ color: '#6B6490' }}>{newUnit === 'шт' ? 'КБЖУ на 1 шт' : 'КБЖУ на 100 г'}</p>
+              <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>{newUnit === 'шт' ? 'КБЖУ на 1 шт' : 'КБЖУ на 100 г'}</p>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Калории', value: newCalories, set: setNewCalories },
@@ -269,7 +269,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                   { label: 'Углеводы', value: newCarbs, set: setNewCarbs },
                 ].map(({ label, value, set }) => (
                   <div key={label}>
-                    <p className="text-xs mb-1" style={{ color: '#9D99B8' }}>{label}</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -298,7 +298,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                   className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg whitespace-nowrap shrink-0 transition-colors"
                   style={{
                     background: activeLibId === lib.id ? 'rgba(139,92,246,0.1)' : 'transparent',
-                    color: activeLibId === lib.id ? '#7C3AED' : '#9D99B8',
+                    color: activeLibId === lib.id ? '#7C3AED' : 'var(--color-text-muted)',
                     fontWeight: activeLibId === lib.id ? 500 : 400,
                     boxShadow: activeLibId === lib.id ? 'inset 0 -2px 0 0 #8B5CF6' : 'none',
                   }}
@@ -329,10 +329,10 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Поиск..."
                   className="flex-1 bg-transparent text-sm outline-none"
-                  style={{ color: '#2C2950' }}
+                  style={{ color: 'var(--color-text-primary)' }}
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="text-xs" style={{ color: '#9D99B8' }}>✕</button>
+                  <button onClick={() => setSearch('')} className="text-xs" style={{ color: 'var(--color-text-muted)' }}>✕</button>
                 )}
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
             {/* Ingredient list */}
             <div className="overflow-y-auto flex-1 px-4 py-3">
               {categoryOrder.length === 0 && (
-                <p className="text-sm text-center py-8" style={{ color: '#9D99B8' }}>
+                <p className="text-sm text-center py-8" style={{ color: 'var(--color-text-muted)' }}>
                   {search ? 'Ничего не найдено' : 'Справочник пуст'}
                 </p>
               )}
@@ -360,7 +360,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                           onClick={() => !added && onSelect(ref)}
                           disabled={added}
                           className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors"
-                          style={{ color: added ? '#C8C3F0' : '#2C2950', cursor: added ? 'default' : 'pointer' }}
+                          style={{ color: added ? '#C8C3F0' : 'var(--color-text-primary)', cursor: added ? 'default' : 'pointer' }}
                           onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '#EAE7F8' }}
                           onMouseLeave={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '' }}
                         >
@@ -374,7 +374,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                             )}
                             <span className="truncate">{ref.name}</span>
                           </span>
-                          <span className="flex items-center gap-3 text-xs shrink-0 ml-3" style={{ color: added ? '#C8C3F0' : '#9D99B8' }}>
+                          <span className="flex items-center gap-3 text-xs shrink-0 ml-3" style={{ color: added ? '#C8C3F0' : 'var(--color-text-muted)' }}>
                             <span>{resolved.caloriesPer100} ккал</span>
                             <span>Б {resolved.proteinPer100}г</span>
                             <span>Ж {resolved.fatPer100}г</span>
@@ -399,7 +399,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
               <button
                 onClick={() => setCreating(false)}
                 className="px-4 py-2 rounded-xl text-sm"
-                style={{ color: '#6B6490', background: '#EAE7F8' }}
+                style={{ color: 'var(--color-text-secondary)', background: '#EAE7F8' }}
               >
                 ← Назад
               </button>

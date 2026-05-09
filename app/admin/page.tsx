@@ -95,7 +95,7 @@ export default function AdminPage() {
   return (
     <>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold" style={{ color: '#2C2950' }}>Заведения</h1>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Заведения</h1>
         <span className="text-sm" style={{ color: '#7a748f' }}>{venues.length} всего</span>
       </div>
 
@@ -110,7 +110,7 @@ export default function AdminPage() {
               style={{ background: '#EAE7F8' }}
             >
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate" style={{ color: '#2C2950' }}>
+                <p className="font-semibold text-sm truncate" style={{ color: 'var(--color-text-primary)' }}>
                   {venue.name}
                 </p>
                 <p className="text-xs mt-0.5 truncate" style={{ color: '#7a748f' }}>
@@ -142,7 +142,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setDeleteConfirm(null)}
                       className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                      style={{ background: '#EAE7F8', color: '#2C2950' }}
+                      style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}
                     >
                       Отмена
                     </button>

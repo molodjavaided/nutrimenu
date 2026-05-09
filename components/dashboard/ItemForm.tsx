@@ -775,11 +775,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
   return (
     <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
-      <button onClick={() => router.back()} className="mb-4 text-sm" style={{ color: '#6B6490' }}>
+      <button onClick={() => router.back()} className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         ← Назад
       </button>
 
-      <h1 className="text-xl font-medium mb-6" style={{ color: '#2C2950' }}>
+      <h1 className="text-xl font-medium mb-6" style={{ color: 'var(--color-text-primary)' }}>
         {isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
       </h1>
 
@@ -791,8 +791,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             onClick={() => setMode(m)}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             style={mode === m
-              ? { background: '#2C2950', color: '#FEFEF2' }
-              : { color: '#6B6490' }
+              ? { background: 'var(--color-text-primary)', color: '#FEFEF2' }
+              : { color: 'var(--color-text-secondary)' }
             }
           >
             {m === 'quick' ? 'Быстро' : 'С составом'}
@@ -802,7 +802,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
       {/* ==================== ШАГ 1 ==================== */}
       <div className="mb-8">
-        <h2 className="text-lg font-medium mb-4" style={{ color: '#2C2950' }}>Основное</h2>
+        <h2 className="text-lg font-medium mb-4" style={{ color: 'var(--color-text-primary)' }}>Основное</h2>
 
         {/* Категория */}
         <FormField label="Категория" required>
@@ -823,7 +823,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 type="button"
                 onClick={handleCreateCategory}
                 className="px-3 h-10 rounded-xl text-sm font-medium"
-                style={{ background: '#2C2950', color: '#FEFEF2' }}
+                style={{ background: 'var(--color-text-primary)', color: '#FEFEF2' }}
               >
                 Создать
               </button>
@@ -831,7 +831,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 type="button"
                 onClick={() => setAddingCategory(false)}
                 className="px-3 h-10 rounded-xl text-sm"
-                style={{ background: '#EAE7F8', color: '#6B6490' }}
+                style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
               >
                 Отмена
               </button>
@@ -848,7 +848,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 type="button"
                 onClick={() => setAddingCategory(true)}
                 className="px-3 h-10 rounded-xl text-sm whitespace-nowrap"
-                style={{ background: '#EAE7F8', color: '#6B6490', border: '0.5px dashed rgba(176,166,223,0.6)' }}
+                style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
               >
                 + Новая
               </button>
@@ -878,7 +878,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               placeholder="0"
               className="w-full pr-10"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: '#9D99B8' }}>₽</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--color-text-muted)' }}>₽</span>
           </div>
         </FormField>
 
@@ -895,8 +895,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         {/* Доступность */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <p className="text-sm font-medium" style={{ color: '#2C2950' }}>Показывать гостям</p>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Скрытые блюда не видны на публичном меню</p>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Показывать гостям</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Скрытые блюда не видны на публичном меню</p>
           </div>
           <button
             type="button"
@@ -926,7 +926,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <button
                   onClick={() => setPhoto('')}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs"
-                  style={{ background: '#9D99B8', color: '#fff' }}
+                  style={{ background: 'var(--color-text-muted)', color: '#fff' }}
                 >
                   ✕
                 </button>
@@ -942,7 +942,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             <div className="flex flex-col gap-2">
               <label
                 className="cursor-pointer flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-all"
-                style={{ background: '#EAE7F8', color: '#2C2950', opacity: photoUploading ? 0.6 : 1 }}
+                style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', opacity: photoUploading ? 0.6 : 1 }}
               >
                 {photoUploading ? (
                   <>
@@ -986,7 +986,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               {photoError && (
                 <p className="text-xs" style={{ color: '#DC2626' }}>{photoError}</p>
               )}
-              <p className="text-xs" style={{ color: '#9D99B8' }}>JPG, PNG, WebP · до 5 МБ</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG, WebP · до 5 МБ</p>
             </div>
           </div>
         </FormField>
@@ -1025,7 +1025,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   { label: 'Углеводы', value: quickCarbs, set: setQuickCarbs },
                 ].map(({ label, value, set }) => (
                   <div key={label}>
-                    <p className="text-xs mb-1" style={{ color: '#6B6490' }}>{label}</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
                     <FormInput
                       type="number"
                       inputMode="decimal"
@@ -1048,7 +1048,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           <div className="space-y-2">
             {ingredients.map(ing => (
               <div key={ing.id} className="flex items-center gap-2">
-                <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: '#2C2950' }}>
+                <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}>
                   {ing.name}
                 </span>
                 <RemoveButton onClick={() => removeIngredient(ing.id)} />
@@ -1059,7 +1059,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               type="button"
               onClick={() => setPickerOpen(true)}
               className="w-full h-10 px-3 rounded-xl text-sm flex items-center gap-2"
-              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#6B6490' }}
+              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-secondary)' }}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -1082,7 +1082,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   setSizes([{ id: 'default', name: '', unit: 'г' }])
                 }}
               />
-              <span className="text-sm" style={{ color: '#2C2950' }}>Один размер</span>
+              <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>Один размер</span>
             </label>
 
             {!hasMultipleSizes && (
@@ -1118,7 +1118,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   }
                 }}
               />
-              <span className="text-sm" style={{ color: '#2C2950' }}>Несколько размеров</span>
+              <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>Несколько размеров</span>
             </label>
 
             {hasMultipleSizes && (
@@ -1177,9 +1177,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       const amount = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)?.amount || 0
                       return (
                         <div key={ingredient.id} className="flex items-center justify-between px-3 py-2 gap-3" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
-                          <span className="text-sm flex-1 min-w-0 truncate" style={{ color: '#2C2950' }}>
+                          <span className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--color-text-primary)' }}>
                             {ingredient.name}
-                            <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>({unit})</span>
+                            <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>({unit})</span>
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             <input
@@ -1191,9 +1191,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                               onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
                               placeholder={isCount ? 'шт' : '0'}
                               className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
-                              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                             />
-                            <span className="text-xs w-4" style={{ color: '#9D99B8' }}>{unit}</span>
+                            <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{unit}</span>
                           </div>
                         </div>
                       )
@@ -1208,9 +1208,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-2 px-3 text-sm font-medium" style={{ color: '#6B6490' }}>Ингредиент</th>
+                    <th className="text-left py-2 px-3 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Ингредиент</th>
                     {sizes.map(size => (
-                      <th key={size.id} className="text-center py-2 px-2 text-sm font-medium" style={{ color: '#6B6490' }}>
+                      <th key={size.id} className="text-center py-2 px-2 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
                         {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')}
                       </th>
                     ))}
@@ -1222,9 +1222,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                     const isCount = unit === 'шт'
                     return (
                       <tr key={ingredient.id}>
-                        <td className="py-2 px-3 text-sm" style={{ color: '#2C2950' }}>
+                        <td className="py-2 px-3 text-sm" style={{ color: 'var(--color-text-primary)' }}>
                           {ingredient.name}
-                          <span className="text-xs ml-1" style={{ color: '#9D99B8' }}>({unit})</span>
+                          <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>({unit})</span>
                         </td>
                         {sizes.map(size => {
                           const amount = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)?.amount || 0
@@ -1240,9 +1240,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                                   onChange={e => updateAmount(ingredient.id, size.id, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
                                   placeholder={isCount ? 'шт' : '0'}
                                   className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
-                                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: '#2C2950' }}
+                                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                                 />
-                                <span className="text-xs" style={{ color: '#9D99B8' }}>{unit}</span>
+                                <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{unit}</span>
                               </div>
                             </td>
                           )
@@ -1259,7 +1259,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         {/* Итоговое КБЖУ */}
         {sizes.length > 0 && ingredients.length > 0 && (
           <div className="mb-6 p-4 rounded-xl" style={{ background: '#EAE7F8' }}>
-            <p className="text-sm font-medium mb-3" style={{ color: '#2C2950' }}>Итоговое КБЖУ (на порцию)</p>
+            <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>Итоговое КБЖУ (на порцию)</p>
             <div className="space-y-3">
               {sizes.map(size => {
                 const nutri = calculateNutriForSize(size.id)
@@ -1288,7 +1288,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                           {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')}
                         </span>
                         {totalWeight > 0 && (
-                          <span className="text-xs ml-2" style={{ color: '#9D99B8' }}>
+                          <span className="text-xs ml-2" style={{ color: 'var(--color-text-muted)' }}>
                             ({Math.round(totalWeight)} {size.unit})
                           </span>
                         )}
@@ -1315,8 +1315,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       {/* ==================== ШАГ 2 ==================== */}
       {mode === 'detailed' && <>
       <div className="mb-8">
-        <h2 className="text-lg font-medium mb-4" style={{ color: '#2C2950' }}>Выборы для гостя</h2>
-        <p className="text-sm mb-4" style={{ color: '#6B6490' }}>
+        <h2 className="text-lg font-medium mb-4" style={{ color: 'var(--color-text-primary)' }}>Выборы для гостя</h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--color-text-secondary)' }}>
           Гость сможет выбирать из этих вариантов (крупа, начинка, белок и т.д.)
         </p>
 
@@ -1341,9 +1341,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 onChange={e => updateVariantGroup(group.id, { label: e.target.value })}
                 placeholder="Название группы (Крупа / Белок / Молоко)"
                 className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
-                style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
+                style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
               />
-              <label className="flex items-center gap-2 text-xs cursor-pointer shrink-0" style={{ color: '#6B6490' }}>
+              <label className="flex items-center gap-2 text-xs cursor-pointer shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={group.required}
@@ -1357,12 +1357,12 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             {/* Заменяет ингредиент из состава */}
             {ingredients.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="text-xs shrink-0" style={{ color: '#6B6490' }}>Заменяет:</span>
+                <span className="text-xs shrink-0" style={{ color: 'var(--color-text-secondary)' }}>Заменяет:</span>
                 <select
                   value={group.replacesIngredientRefId || ''}
                   onChange={e => updateVariantGroup(group.id, { replacesIngredientRefId: e.target.value || undefined })}
                   className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
-                  style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
+                  style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
                 >
                   <option value="">— не привязано (ручной ввод) —</option>
                   {ingredients.map(ing => {
@@ -1406,7 +1406,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                         style={{
                           background: '#EAE7F8',
                           border: '0.5px solid rgba(176,166,223,0.3)',
-                          color: selectedRef ? '#2C2950' : '#9D99B8',
+                          color: selectedRef ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                         }}
                       >
                         {selectedRef ? selectedRef.name : '— Выбрать ингредиент'}
@@ -1424,7 +1424,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                               {size.name || (sizes.length === 1 ? 'порция' : size.id)}: {amount} {size.unit}
                             </span>
                           ))}
-                          <span className="text-xs" style={{ color: '#9D99B8' }}>из состава</span>
+                          <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>из состава</span>
                         </>
                       ) : (
                         <div className="flex">
@@ -1447,7 +1447,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                             }}
                             placeholder="100"
                             className="w-20 h-10 px-2 rounded-l-lg text-sm outline-none text-center"
-                            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: '#2C2950' }}
+                            style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
                           />
                           <select
                             value={opt.weightUnit}
@@ -1498,8 +1498,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       {/* ==================== ШАГ 3: Добавки для гостя ==================== */}
       {mode === 'detailed' && (
       <div className="mb-8">
-        <h2 className="text-lg font-medium mb-1" style={{ color: '#2C2950' }}>Добавки для гостя</h2>
-        <p className="text-xs mb-4" style={{ color: '#9D99B8' }}>
+        <h2 className="text-lg font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>Добавки для гостя</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--color-text-muted)' }}>
           Ингредиенты, которые гость может добавить к блюду (сахар, молоко, соус и т.д.)
         </p>
 
@@ -1515,7 +1515,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               <button
                 onClick={() => removeAddonGroup(group.id)}
                 className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-                style={{ background: '#EAE7F8', color: '#9D99B8' }}
+                style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -1531,9 +1531,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 onChange={e => updateAddonGroup(group.id, { allowCustomGrams: e.target.checked })}
                 className="w-4 h-4 rounded accent-lavender"
               />
-              <span className="text-sm" style={{ color: '#6B6490' }}>Гость вводит граммы вручную</span>
+              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Гость вводит граммы вручную</span>
             </label>
-            <p className="text-xs mb-3" style={{ color: '#9D99B8' }}>
+            <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
               {group.allowCustomGrams
                 ? 'КБЖУ хранится на 100 г — гость укажет количество и КБЖУ пересчитается'
                 : 'Гость выбирает добавку кнопкой — КБЖУ добавляется целой порцией (+100 г)'
@@ -1547,7 +1547,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   <button
                     onClick={() => setAddonPickerTarget({ groupId: group.id, addonId: addon.id })}
                     className="flex-1 h-10 px-3 rounded-xl text-sm text-left truncate"
-                    style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? '#2C2950' : '#9D99B8' }}
+                    style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
                   >
                     {ref ? ref.name : '— Выбрать ингредиент'}
                   </button>
@@ -1559,7 +1559,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   <button
                     onClick={() => removeAddon(group.id, addon.id)}
                     className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-                    style={{ background: '#EAE7F8', color: '#9D99B8' }}
+                    style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
                   >
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                       <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -1600,7 +1600,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         <button
           onClick={() => router.back()}
           className="px-4 py-2.5 rounded-xl text-sm"
-          style={{ background: '#EAE7F8', color: '#6B6490' }}
+          style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
         >
           Отмена
         </button>
@@ -1610,7 +1610,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           className="px-6 py-2.5 rounded-xl text-sm font-medium"
           style={{
             background: name && categoryId && (mode === 'quick' || ingredients.length > 0) ? '#B0A6DF' : '#EAE7F8',
-            color: name && categoryId && (mode === 'quick' || ingredients.length > 0) ? '#2C2950' : '#9D99B8',
+            color: name && categoryId && (mode === 'quick' || ingredients.length > 0) ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
           }}
         >
           {isEdit ? 'Сохранить' : 'Добавить блюдо'}

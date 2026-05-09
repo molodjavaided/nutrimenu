@@ -13,7 +13,7 @@ export default function VenueHeader({ venue, isOwner = false }: Props) {
       <Link
         href="/venues"
         className="inline-flex items-center gap-1.5 mb-3 text-xs transition-opacity active:opacity-60"
-        style={{ color: '#9D99B8' }}
+        style={{ color: 'var(--color-text-muted)' }}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -38,10 +38,10 @@ export default function VenueHeader({ venue, isOwner = false }: Props) {
             </svg>
           </div>
           <div>
-            <h1 className="font-medium text-base" style={{ color: '#2C2950' }}>
+            <h1 className="font-medium text-base" style={{ color: 'var(--color-text-primary)' }}>
               {venue.name}
             </h1>
-            <p className="text-xs" style={{ color: '#6B6490' }}>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
               {venue.address}
               {venue.workingHours && ` · ${venue.workingHours}`}
             </p>

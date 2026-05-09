@@ -34,12 +34,12 @@ export default function DashboardPage() {
             <path d="M16 10v7M16 21v1.5" stroke="#B0A6DF" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
-        <h1 className="text-lg font-semibold mb-2" style={{ color: '#2C2950' }}>Заявка на рассмотрении</h1>
-        <p className="text-sm leading-relaxed" style={{ color: '#6B6490' }}>
+        <h1 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Заявка на рассмотрении</h1>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           Мы проверяем данные вашего заведения. Обычно это занимает 1–2 рабочих дня.
           Как только заявка будет одобрена — вы сразу получите доступ к дашборду.
         </p>
-        <p className="text-xs mt-4" style={{ color: '#9D99B8' }}>
+        <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>
           Вопросы? Напишите на{' '}
           <a href="mailto:support@nutrimenu.app" className="underline">support@nutrimenu.app</a>
         </p>
@@ -56,16 +56,16 @@ export default function DashboardPage() {
             <path d="M11 11l10 10M21 11l-10 10" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
-        <h1 className="text-lg font-semibold mb-2" style={{ color: '#2C2950' }}>Заявка отклонена</h1>
+        <h1 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Заявка отклонена</h1>
         {venue.rejectionReason && (
           <div className="w-full rounded-xl px-4 py-3 mb-3 text-left text-sm" style={{ background: '#FEE2E2', color: '#7F1D1D' }}>
             {venue.rejectionReason}
           </div>
         )}
-        <p className="text-sm leading-relaxed" style={{ color: '#6B6490' }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           Если вы считаете, что это ошибка, свяжитесь с нами.
         </p>
-        <p className="text-xs mt-4" style={{ color: '#9D99B8' }}>
+        <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>
           <a href="mailto:support@nutrimenu.app" className="underline">support@nutrimenu.app</a>
         </p>
       </div>
@@ -89,16 +89,16 @@ export default function DashboardPage() {
       <div className="mb-6 sm:mb-8">
         {venueName ? (
           <>
-            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: '#2C2950' }}>
+            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>
               {venueName}
             </h1>
             {venueAddress && (
-              <p className="text-sm" style={{ color: '#6B6490' }}>{venueAddress}</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{venueAddress}</p>
             )}
           </>
         ) : (
           <>
-            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: '#9D99B8' }}>
+            <h1 className="text-xl sm:text-2xl font-medium mb-1" style={{ color: 'var(--color-text-muted)' }}>
               Название заведения
             </h1>
             <Link href="/dashboard/settings" className="text-sm underline" style={{ color: '#B0A6DF' }}>
@@ -112,9 +112,9 @@ export default function DashboardPage() {
       {!onboardingDone && (
         <div className="mb-6 rounded-2xl p-4 sm:p-5"
           style={{ background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '0.5px solid rgba(176,166,223,0.4)', boxShadow: '0 8px 24px rgba(139,92,246,0.08)' }}>
-          <p className="text-sm font-medium mb-3" style={{ color: '#2C2950' }}>
+          <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>
             С чего начать
-            <span className="ml-2 text-xs font-normal" style={{ color: '#9D99B8' }}>
+            <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>
               {onboardingSteps.filter(s => s.done).length} / {onboardingSteps.length}
             </span>
           </p>
@@ -132,11 +132,11 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm" style={{ color: step.done ? '#9D99B8' : '#2C2950', textDecoration: step.done ? 'line-through' : 'none' }}>
+                  <p className="text-sm" style={{ color: step.done ? 'var(--color-text-muted)' : 'var(--color-text-primary)', textDecoration: step.done ? 'line-through' : 'none' }}>
                     {step.label}
                   </p>
                   {!step.done && (
-                    <p className="text-xs" style={{ color: '#9D99B8' }}>{step.hint}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{step.hint}</p>
                   )}
                 </div>
                 {!step.done && (
@@ -168,16 +168,16 @@ export default function DashboardPage() {
               boxShadow: '0 8px 24px rgba(139,92,246,0.08)',
             }}
           >
-            <p className="text-xs mb-1 sm:mb-2" style={{ color: '#6B6490' }}>{label}</p>
-            <p className="text-2xl sm:text-3xl font-medium mb-0.5" style={{ color: '#2C2950' }}>{value}</p>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>{sub}</p>
+            <p className="text-xs mb-1 sm:mb-2" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
+            <p className="text-2xl sm:text-3xl font-medium mb-0.5" style={{ color: 'var(--color-text-primary)' }}>{value}</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{sub}</p>
           </div>
         ))}
       </div>
 
       {/* Quick actions */}
       <div className="mb-6">
-        <p className="text-sm font-medium mb-3" style={{ color: '#2C2950' }}>Быстрые действия</p>
+        <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>Быстрые действия</p>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Link href="/dashboard/menu"
             className="flex items-center gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all"

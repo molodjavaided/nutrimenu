@@ -11,14 +11,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: '#2C2950' }}
+            style={{ background: 'var(--color-text-primary)' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="5" stroke="#FEFEF2" strokeWidth="1.5" />
               <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
-            <span className="text-lg font-bold" style={{ color: '#2C2950' }}>NutriMenu</span>
+            <span className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>NutriMenu</span>
           </div>
           <Link
             href="/venues"

@@ -59,7 +59,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
               {item.weight} {item.weightUnit}
             </p>
             {item.price != null && (
-              <p className="text-xs font-medium" style={{ color: '#2C2950' }}>
+              <p className="text-xs font-medium" style={{ color: 'var(--color-text-primary)' }}>
                 {item.price} ₽
               </p>
             )}

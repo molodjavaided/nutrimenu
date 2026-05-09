@@ -39,11 +39,19 @@
   --color-lavender: #8B5CF6;
   --color-lavender-light: #EDE9FE;
   --color-lavender-dark: #7C3AED;
+  --color-lavender-deep: #534AB7;
+  --color-lavender-soft: #B0A6DF;
+  --color-lavender-pale: #EAE7F8;
+  --color-lavender-mid: #D8D4F0;
   --color-yellow: #F2D965;
   --color-yellow-dark: #635200;
+  --color-yellow-pale: #FFF8D6;
   --color-text-primary: #2C2950;
   --color-text-secondary: #6B6490;
   --color-text-muted: #9D99B8;
+  --color-danger: #E24B4A;
+  --color-danger-text: #DC2626;
+  --color-danger-pale: #FEE2E2;
 }
 
 :root {

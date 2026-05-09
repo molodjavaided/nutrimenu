@@ -54,12 +54,12 @@ export default function RegisterPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-1" style={{ color: '#2C2950' }}>Регистрация</h1>
+      <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Регистрация</h1>
       <p className="text-sm mb-8" style={{ color: '#7a748f' }}>Создайте аккаунт для вашего заведения</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Название заведения
           </label>
           <input
@@ -68,7 +68,7 @@ export default function RegisterPage() {
             placeholder="Кафе «Утро»"
             autoComplete="organization"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.venueName && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.venueName.message}</p>
@@ -76,7 +76,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Email
           </label>
           <input
@@ -85,7 +85,7 @@ export default function RegisterPage() {
             placeholder="owner@cafe.ru"
             autoComplete="email"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.email && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.email.message}</p>
@@ -93,7 +93,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Пароль
           </label>
           <input
@@ -102,7 +102,7 @@ export default function RegisterPage() {
             placeholder="Минимум 6 символов"
             autoComplete="new-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.password && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.password.message}</p>
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Повторите пароль
           </label>
           <input
@@ -119,7 +119,7 @@ export default function RegisterPage() {
             placeholder="••••••••"
             autoComplete="new-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.confirm && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.confirm.message}</p>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
           type="submit"
           disabled={loading}
           className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-60 mt-1"
-          style={{ background: '#2C2950', color: '#FEFEF2' }}
+          style={{ background: 'var(--color-text-primary)', color: '#FEFEF2' }}
         >
           {loading ? 'Создаём аккаунт…' : 'Создать аккаунт'}
         </button>

@@ -45,12 +45,12 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-1" style={{ color: '#2C2950' }}>Войти</h1>
+      <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Войти</h1>
       <p className="text-sm mb-8" style={{ color: '#7a748f' }}>Управление вашим заведением</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Email
           </label>
           <input
@@ -59,7 +59,7 @@ export default function LoginPage() {
             placeholder="owner@cafe.ru"
             autoComplete="email"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.email && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.email.message}</p>
@@ -67,7 +67,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#2C2950' }}>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-primary)' }}>
             Пароль
           </label>
           <input
@@ -76,7 +76,7 @@ export default function LoginPage() {
             placeholder="••••••••"
             autoComplete="current-password"
             className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-            style={{ background: '#EAE7F8', color: '#2C2950', fontSize: 16 }}
+            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', fontSize: 16 }}
           />
           {errors.password && (
             <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.password.message}</p>
@@ -102,7 +102,7 @@ export default function LoginPage() {
           type="submit"
           disabled={loading}
           className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-60"
-          style={{ background: '#2C2950', color: '#FEFEF2' }}
+          style={{ background: 'var(--color-text-primary)', color: '#FEFEF2' }}
         >
           {loading ? 'Входим…' : 'Войти'}
         </button>

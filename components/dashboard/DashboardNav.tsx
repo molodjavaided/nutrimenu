@@ -142,7 +142,7 @@ export function DashboardNav() {
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all"
                 style={{
                   background: active ? 'rgba(139,92,246,0.1)' : 'transparent',
-                  color: active ? '#7C3AED' : '#6B6490',
+                  color: active ? '#7C3AED' : 'var(--color-text-secondary)',
                   fontWeight: active ? 500 : 400,
                 }}
               >
@@ -170,7 +170,7 @@ export function DashboardNav() {
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all w-full text-left"
-            style={{ color: '#9D99B8' }}
+            style={{ color: 'var(--color-text-muted)' }}
           >
             <LogOut size={14} />
             Выйти
@@ -197,7 +197,7 @@ export function DashboardNav() {
               key={item.href}
               href={item.href}
               className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-              style={{ color: active ? '#7C3AED' : '#9D99B8' }}
+              style={{ color: active ? '#7C3AED' : 'var(--color-text-muted)' }}
             >
               {item.icon}
               <span className="text-[10px] font-medium">{item.label}</span>
@@ -214,7 +214,7 @@ export function DashboardNav() {
           href={venueSlug ? `/menu/${venueSlug}` : '#'}
           target="_blank"
           className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-          style={{ color: '#9D99B8' }}
+          style={{ color: 'var(--color-text-muted)' }}
         >
           <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
             <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -225,7 +225,7 @@ export function DashboardNav() {
         <button
           onClick={handleLogout}
           className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-          style={{ color: '#9D99B8' }}
+          style={{ color: 'var(--color-text-muted)' }}
         >
           <LogOut size={20} />
           <span className="text-[10px] font-medium">Выйти</span>

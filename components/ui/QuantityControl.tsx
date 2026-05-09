@@ -30,7 +30,7 @@ export function QuantityControl({ quantity, onAdd, onRemove, size = 'md' }: Prop
       >
         −
       </button>
-      <span className="text-xs font-medium w-5 text-center" style={{ color: '#2C2950' }}>
+      <span className="text-xs font-medium w-5 text-center" style={{ color: 'var(--color-text-primary)' }}>
         {quantity}
       </span>
       <button

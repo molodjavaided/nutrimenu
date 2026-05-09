@@ -49,7 +49,7 @@ export default function SettingsPage() {
     QRCode.toCanvas(canvasRef.current, url, {
       width: 200,
       margin: 2,
-      color: { dark: '#2C2950', light: '#FEFEF2' },
+      color: { dark: 'var(--color-text-primary)', light: '#FEFEF2' },
     })
   }, [slug])
 
@@ -90,15 +90,15 @@ export default function SettingsPage() {
   }
 
   const fieldClass = "w-full px-4 py-3 rounded-xl text-sm outline-none"
-  const fieldStyle = { background: '#EAE7F8', color: '#2C2950' }
+  const fieldStyle = { background: '#EAE7F8', color: 'var(--color-text-primary)' }
   const labelClass = "block text-sm font-medium mb-1.5"
-  const labelStyle = { color: '#2C2950' }
+  const labelStyle = { color: 'var(--color-text-primary)' }
 
   if (loading) return <div className="p-6" />
 
   return (
     <div className="p-6 max-w-lg">
-      <h1 className="text-xl font-semibold mb-6" style={{ color: '#2C2950' }}>Настройки заведения</h1>
+      <h1 className="text-xl font-semibold mb-6" style={{ color: 'var(--color-text-primary)' }}>Настройки заведения</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
         <button
           type="submit"
           className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] mt-1"
-          style={{ background: saved ? '#2A9D5C' : '#2C2950', color: '#FEFEF2' }}
+          style={{ background: saved ? '#2A9D5C' : 'var(--color-text-primary)', color: '#FEFEF2' }}
         >
           {saved ? 'Сохранено ✓' : 'Сохранить'}
         </button>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
       {/* QR code */}
       {slug && (
         <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(176,166,223,0.3)' }}>
-          <h2 className="text-sm font-semibold mb-1" style={{ color: '#2C2950' }}>QR-код для гостей</h2>
+          <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>QR-код для гостей</h2>
           <p className="text-xs mb-4" style={{ color: '#7a748f' }}>
             Распечатайте и разместите на столах — гости отсканируют и увидят меню с КБЖУ.
           </p>
@@ -149,14 +149,14 @@ export default function SettingsPage() {
               <canvas ref={canvasRef} />
             </div>
             <div className="flex flex-col gap-2 min-w-0">
-              <p className="text-xs font-mono break-all" style={{ color: '#6B6490' }}>
+              <p className="text-xs font-mono break-all" style={{ color: 'var(--color-text-secondary)' }}>
                 {typeof window !== 'undefined' ? `${window.location.origin}/menu/${slug}` : `/menu/${slug}`}
               </p>
               <button
                 type="button"
                 onClick={downloadQR}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] self-start"
-                style={{ background: '#2C2950', color: '#FEFEF2' }}
+                style={{ background: 'var(--color-text-primary)', color: '#FEFEF2' }}
               >
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                   <path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={() => setDeleteConfirm(false)}
                 className="px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
-                style={{ background: '#EAE7F8', color: '#2C2950' }}
+                style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}
               >
                 Отмена
               </button>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
 
       {/* Admin edit permission */}
       <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(176,166,223,0.3)' }}>
-        <h2 className="text-sm font-semibold mb-1" style={{ color: '#2C2950' }}>Доступ администратора</h2>
+        <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Доступ администратора</h2>
         <p className="text-xs mb-4" style={{ color: '#7a748f' }}>
           Разрешите команде NutriMenu редактировать ваше меню — например, чтобы перенести данные о КБЖУ за вас.
         </p>
@@ -245,10 +245,10 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <p className="font-medium" style={{ color: '#2C2950' }}>
+            <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>
               {allowAdminEdit ? 'Разрешено' : 'Запрещено'}
             </p>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
               {allowAdminEdit
                 ? 'Администратор может редактировать ваше меню'
                 : 'Только вы можете редактировать меню'}

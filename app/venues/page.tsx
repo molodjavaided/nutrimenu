@@ -47,13 +47,13 @@ export default function VenuesPage() {
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: '#EAE7F8' }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#2C2950' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-text-primary)' }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="5" stroke="#FEFEF2" strokeWidth="1.5"/>
               <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </div>
-          <span className="font-bold text-sm" style={{ color: '#2C2950' }}>NutriMenu</span>
+          <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>NutriMenu</span>
         </div>
         <Link
           href="/auth/login"
@@ -67,7 +67,7 @@ export default function VenuesPage() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Title */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: '#2C2950' }}>Заведения</h1>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Заведения</h1>
           <p className="text-sm" style={{ color: '#7a748f' }}>Найдите кафе или ресторан и смотрите меню с КБЖУ</p>
         </div>
 
@@ -85,10 +85,10 @@ export default function VenuesPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Название или адрес..."
             className="flex-1 bg-transparent text-sm outline-none"
-            style={{ color: '#2C2950' }}
+            style={{ color: 'var(--color-text-primary)' }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ color: '#9D99B8' }}>
+            <button onClick={() => setSearch('')} style={{ color: 'var(--color-text-muted)' }}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
@@ -104,7 +104,7 @@ export default function VenuesPage() {
           </div>
         ) : venues.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-sm" style={{ color: '#9D99B8' }}>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
               {search ? 'Ничего не найдено' : 'Заведений пока нет'}
             </p>
           </div>
@@ -123,7 +123,7 @@ export default function VenuesPage() {
                 }}
               >
                 <div className="min-w-0">
-                  <p className="font-semibold text-sm" style={{ color: '#2C2950' }}>{venue.name}</p>
+                  <p className="font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>{venue.name}</p>
                   {venue.address && (
                     <p className="text-xs mt-0.5 truncate" style={{ color: '#7a748f' }}>{venue.address}</p>
                   )}

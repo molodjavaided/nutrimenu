@@ -110,8 +110,8 @@ export default function MenuPage() {
       {/* Заголовок */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-medium mb-1 truncate" style={{ color: '#2C2950' }}>Меню</h1>
-          <p className="text-sm" style={{ color: '#6B6490' }}>
+          <h1 className="text-xl sm:text-2xl font-medium mb-1 truncate" style={{ color: 'var(--color-text-primary)' }}>Меню</h1>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
             {categories.length} категорий · {categories.reduce((s, c) => s + (c.items?.length ?? 0), 0)} позиций
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function MenuPage() {
             style={{
               background: 'rgba(176,166,223,0.2)',
               border: '0.5px solid rgba(176,166,223,0.5)',
-              color: '#2C2950',
+              color: 'var(--color-text-primary)',
             }}
           >
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -133,7 +133,7 @@ export default function MenuPage() {
           <Link
             href="/dashboard/item/new"
             className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{ background: '#B0A6DF', color: '#2C2950' }}
+            style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -196,20 +196,20 @@ export default function MenuPage() {
               style={{
                 background: '#EAE7F8',
                 border: '0.5px solid rgba(176,166,223,0.5)',
-                color: '#2C2950',
+                color: 'var(--color-text-primary)',
               }}
             />
             <button
               onClick={handleAddCategory}
               className="px-4 h-10 rounded-xl text-sm font-medium"
-              style={{ background: '#B0A6DF', color: '#2C2950' }}
+              style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
             >
               Добавить
             </button>
             <button
               onClick={() => setAddingCat(false)}
               className="px-4 h-10 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: '#6B6490' }}
+              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
             >
               Отмена
             </button>
@@ -221,7 +221,7 @@ export default function MenuPage() {
             style={{
               background: 'transparent',
               border: '0.5px dashed rgba(176,166,223,0.6)',
-              color: '#6B6490',
+              color: 'var(--color-text-secondary)',
               width: '100%',
             }}
           >

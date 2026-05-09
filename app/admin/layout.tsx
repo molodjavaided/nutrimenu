@@ -19,14 +19,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: '#2C2950' }}
+          style={{ background: 'var(--color-text-primary)' }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="4" stroke="#FEFEF2" strokeWidth="1.5" />
             <path d="M7 4.5v2.5l1.5 1" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>
-        <span className="font-bold text-sm flex-1" style={{ color: '#2C2950' }}>NutriMenu Admin</span>
+        <span className="font-bold text-sm flex-1" style={{ color: 'var(--color-text-primary)' }}>NutriMenu Admin</span>
         <button
           onClick={handleLogout}
           className="text-xs px-3 py-1.5 rounded-lg transition-all"

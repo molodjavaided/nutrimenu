@@ -23,7 +23,7 @@ export function ConfirmDeleteButton({ onConfirm, title = 'Удалить', confi
         <button
           onClick={() => setConfirming(false)}
           className="px-2 h-7 rounded-lg text-xs"
-          style={{ background: '#EAE7F8', color: '#6B6490' }}
+          style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
         >
           {cancelLabel}
         </button>
@@ -35,7 +35,7 @@ export function ConfirmDeleteButton({ onConfirm, title = 'Удалить', confi
     <button
       onClick={() => setConfirming(true)}
       className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-      style={{ color: '#6B6490' }}
+      style={{ color: 'var(--color-text-secondary)' }}
       title={title}
     >
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

@@ -92,7 +92,7 @@ export default function SortableCategory({
             {...attributes}
             {...listeners}
             className="cursor-grab active:cursor-grabbing shrink-0"
-            style={{ color: '#9D99B8', touchAction: 'none' }}
+            style={{ color: 'var(--color-text-muted)', touchAction: 'none' }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M5 4h1M5 8h1M5 12h1M10 4h1M10 8h1M10 12h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -108,16 +108,16 @@ export default function SortableCategory({
               onBlur={handleRename}
               onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') { setName(category.name); setEditing(false) } }}
               className="flex-1 bg-transparent text-sm font-medium outline-none"
-              style={{ color: '#2C2950', borderBottom: '1px solid #B0A6DF' }}
+              style={{ color: 'var(--color-text-primary)', borderBottom: '1px solid #B0A6DF' }}
             />
           ) : (
             <span
               className="flex-1 text-sm font-medium cursor-pointer"
-              style={{ color: '#2C2950' }}
+              style={{ color: 'var(--color-text-primary)' }}
               onClick={() => setExpanded(e => !e)}
             >
               {category.name}
-              <span className="ml-2 text-xs font-normal" style={{ color: '#9D99B8' }}>
+              <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>
                 {items.length} позиций
               </span>
             </span>
@@ -128,7 +128,7 @@ export default function SortableCategory({
             <button
               onClick={() => setEditing(true)}
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-              style={{ color: '#6B6490' }}
+              style={{ color: 'var(--color-text-secondary)' }}
               title="Переименовать"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -141,7 +141,7 @@ export default function SortableCategory({
             <button
               onClick={() => setExpanded(e => !e)}
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ color: '#9D99B8' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               <svg
                 width="14" height="14" viewBox="0 0 14 14" fill="none"

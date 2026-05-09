@@ -273,7 +273,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           <div className="flex-1 flex justify-end">
             <SheetClose
               className="w-10 h-10 flex items-center justify-center rounded-full"
-              style={{ background: 'rgba(176,166,223,0.15)', color: '#9D99B8' }}
+              style={{ background: 'rgba(176,166,223,0.15)', color: 'var(--color-text-muted)' }}
               aria-label="Закрыть"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -310,7 +310,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         {/* Состав */}
         {(item.composition ?? []).length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: '#9D99B8' }}>СОСТАВ</p>
+            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: 'var(--color-text-muted)' }}>СОСТАВ</p>
             <div className="flex flex-wrap gap-1.5">
               {(item.composition ?? []).map((row, i) => {
                 const ref = ingredientRefs.find(r => r.id === row.ingredientId)
@@ -323,12 +323,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                     style={{
                       background: 'rgba(255,255,255,0.5)',
                       border: '0.5px solid rgba(176,166,223,0.3)',
-                      color: '#6B6490',
+                      color: 'var(--color-text-secondary)',
                     }}
                   >
                     {name}
                     {row.amount > 0 && (
-                      <span style={{ color: '#9D99B8' }}>&thinsp;{row.amount}{row.unit}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>&thinsp;{row.amount}{row.unit}</span>
                     )}
                   </span>
                 )
@@ -353,8 +353,8 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                 border: '0.5px solid rgba(255,255,255,0.5)',
               }}
             >
-              <p className="text-sm font-medium" style={{ color: accent ? '#7C3AED' : '#2C2950' }}>{val}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#9D99B8' }}>{label}</p>
+              <p className="text-sm font-medium" style={{ color: accent ? '#7C3AED' : 'var(--color-text-primary)' }}>{val}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
             </div>
           ))}
         </div>
@@ -375,7 +375,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                     style={
                       isActive
                         ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                        : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+                        : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
                     }
                   >
                     {label}
@@ -412,7 +412,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                   style={
                     variants[group.id] === opt.id
                       ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                      : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+                      : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
                   }
                 >
                   {opt.label} — {getOptionCalories(group, opt)} ккал
@@ -455,7 +455,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                             }))}
                             placeholder="0"
                             className="w-14 text-center text-sm outline-none rounded-lg h-8"
-                            style={{ background: '#EAE7F8', color: '#2C2950' }}
+                            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}
                           />
                           <button
                             onClick={() => setGramAmounts(prev => ({
@@ -465,7 +465,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                             className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-light"
                             style={{ background: '#EAE7F8', color: '#7C3AED' }}
                           >+</button>
-                          <span className="text-xs w-8 text-right" style={{ color: '#9D99B8' }}>г</span>
+                          <span className="text-xs w-8 text-right" style={{ color: 'var(--color-text-muted)' }}>г</span>
                         </div>
                         {kcal > 0 && (
                           <span className="text-xs font-medium" style={{ color: '#7C3AED' }}>+{kcal} ккал</span>
@@ -512,7 +512,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
               {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
             </span>
             {item.price != null && (
-              <span className="text-sm font-semibold" style={{ color: '#2C2950' }}>
+              <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                 {item.price} ₽
               </span>
             )}
@@ -527,7 +527,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           style={
             isValid
               ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 8px 24px rgba(139,92,246,0.35)' }
-              : { background: 'rgba(139,92,246,0.08)', color: '#9D99B8' }
+              : { background: 'rgba(139,92,246,0.08)', color: 'var(--color-text-muted)' }
           }
         >
           {isValid ? 'Добавить в рацион' : 'Выберите параметры'}
@@ -608,7 +608,7 @@ function ModifierGroupSection({ group, selected, onSelect }: {
               style={
                 isSelected
                   ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                  : { background: 'rgba(255,255,255,0.55)', color: '#6B6490', border: '0.5px solid rgba(255,255,255,0.5)' }
+                  : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
               }
             >
               {mod.label}

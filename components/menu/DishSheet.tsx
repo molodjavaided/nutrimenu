@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
-import { buildVariantLabel, resolveNutri, resolveNutriFromComposition } from '@/lib/utils'
-import { getAllIngredients, initLibraries } from '@/lib/store'
+import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
+import { initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
 import { QuantityControl } from '@/components/ui/QuantityControl'
 
@@ -15,12 +15,8 @@ interface Props {
   onAdd: (item: MenuItem, quantity: number, variants: SelectedVariants, modifiers: SelectedModifiers, label: string) => void
 }
 
-function getDefaultVariants(item: MenuItem): SelectedVariants {
-  const result: SelectedVariants = {}
-  // for (const g of item.variantGroups ?? []) {
-  //   if (g.options[0]) result[g.id] = g.options[0].id
-  // }
-  return result
+function getDefaultVariants(_item: MenuItem): SelectedVariants {
+  return {}
 }
 
 function getDefaultModifiers(item: MenuItem): SelectedModifiers {
@@ -39,14 +35,12 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
   const [variants, setVariants] = useState<SelectedVariants>({})
   const [modifiers, setModifiers] = useState<SelectedModifiers>({})
   const [lastItemId, setLastItemId] = useState<string | null>(null)
-  const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
+  const ingredientRefs = useMemo<IngredientRef[]>(() => {
+    const libs = initLibraries(systemLibraries)
+    return libs.flatMap(l => l.ingredients)
+  }, [])
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
   const [gramAmounts, setGramAmounts] = useState<Record<string, Record<string, number>>>({})
-
-  useEffect(() => {
-    const libs = initLibraries(systemLibraries)
-    setIngredientRefs(libs.flatMap(l => l.ingredients))
-  }, [])
 
   // Сброс при смене блюда
   if (item && item.id !== lastItemId) {
@@ -67,7 +61,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
     : null
 
-  let total = {
+  const total = {
     calories: activeSize?.calories ?? item.calories,
     protein: activeSize?.protein ?? item.protein,
     fat: activeSize?.fat ?? item.fat,
@@ -301,6 +295,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           }}
         >
           {item.photo
+            // eslint-disable-next-line @next/next/no-img-element
             ? <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
             : '🍽️'
           }

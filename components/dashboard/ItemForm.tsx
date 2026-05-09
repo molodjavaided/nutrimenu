@@ -8,6 +8,12 @@ import { systemLibraries } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 import IngredientPickerModal from './IngredientPickerModal'
 
+// Типы для API-ответа (raw JSON, без строгой валидации на клиенте)
+interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number }
+interface ApiVariantGroup { id: string; label?: string; required?: boolean; replacesIngredientRefId?: string; options?: ApiVariantOption[] }
+interface ApiModifier { id: string; ingredientRefId?: string; label?: string }
+interface ApiModifierGroup { id: string; label?: string; allowCustomGrams?: boolean; modifiers?: ApiModifier[] }
+
 interface IngredientItem {
   id: string
   ingredientRefId: string
@@ -273,10 +279,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       setIngredientRefs(allLibs.flatMap((l: { ingredients: IngredientRef[] }) => l.ingredients))
       setIsReady(true)
     })
-  }, [])
+  }, [initialCategoryId])
 
   // ─── Загрузка существующего блюда ─────────────────────────
-  useEffect(() => { void loadItem() }, [isReady, ingredientRefs, itemId])
+  useEffect(() => { void loadItem() }, [isReady, ingredientRefs, itemId]) // eslint-disable-line react-hooks/exhaustive-deps
   async function loadItem() {
     if (!isReady) {
       console.log('Ждём загрузки справочника...')
@@ -374,7 +380,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           })))
         }
 
-        const loadedManual: Record<string, any> = {}
+        const loadedManual: Record<string, { calories: number; protein: number; fat: number; carbs: number; isManual: boolean }> = {}
         for (const size of sizesData) {
           loadedManual[size.id] = {
             calories: size.calories,
@@ -427,37 +433,37 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       // ─── Загрузка вариантов (шаг 2) ───────────────────────
       // ─── Загрузка добавок (шаг 3) ─────────────────────────
       if (found.item.modifierGroups && found.item.modifierGroups.length > 0) {
-        const loadedAddonGroups: AddonGroup[] = found.item.modifierGroups.map((mg: any) => ({
+        const loadedAddonGroups: AddonGroup[] = (found.item.modifierGroups as ApiModifierGroup[]).map(mg => ({
           id: mg.id,
-          label: mg.label,
+          label: mg.label ?? '',
           allowCustomGrams: mg.allowCustomGrams ?? false,
-          addons: (mg.modifiers ?? []).map((m: any) => ({
+          addons: (mg.modifiers ?? []).map(m => ({
             id: m.id,
             ingredientRefId: m.ingredientRefId ?? '',
-            label: m.label,
+            label: m.label ?? '',
           })),
         }))
         setAddonGroups(loadedAddonGroups)
       }
 
       if (found.item.variantGroups && found.item.variantGroups.length > 0) {
-        const loadedVariantGroups: VariantOption[] = found.item.variantGroups.map((vg: any) => ({
+        const loadedVariantGroups: VariantOption[] = (found.item.variantGroups as ApiVariantGroup[]).map(vg => ({
           id: vg.id,
-          label: vg.label,
-          required: vg.required,
+          label: vg.label ?? '',
+          required: vg.required ?? false,
           replacesIngredientRefId: vg.replacesIngredientRefId,
-          options: vg.options.map((opt: any) => {
+          options: (vg.options ?? []).map((opt: ApiVariantOption) => {
             const ref = ingredientRefs.find(r => r.id === opt.ingredientRefId)
             return {
               id: opt.id,
               ingredientRefId: opt.ingredientRefId || '',
-              label: ref?.name || opt.label,
-              weight: opt.weight,
-              weightUnit: opt.weightUnit,
-              calories: opt.calories,
-              protein: opt.protein,
-              fat: opt.fat,
-              carbs: opt.carbs,
+              label: ref?.name || opt.label || '',
+              weight: opt.weight ?? 100,
+              weightUnit: (opt.weightUnit ?? 'г') as 'г' | 'мл',
+              calories: opt.calories ?? 0,
+              protein: opt.protein ?? 0,
+              fat: opt.fat ?? 0,
+              carbs: opt.carbs ?? 0,
               isManual: true,
             }
           }),
@@ -789,7 +795,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, addonGroups, isEdit, itemId, router, calculateNutriForSize])
+  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, isEdit, itemId, router, calculateNutriForSize])
 
   // ─── Функции для шага 1 ───────────────────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
@@ -1018,6 +1024,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           <div className="flex items-center gap-3">
             {photo ? (
               <div className="relative shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photo}
                   alt="Фото блюда"

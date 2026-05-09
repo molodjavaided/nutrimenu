@@ -46,8 +46,10 @@ export default function IngredientsPage() {
 
   // Clear selection when switching libraries
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setSelectedIds(new Set())
     setConfirmBulkDelete(false)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [activeLibId])
 
   const activeLib = libraries.find(l => l.id === activeLibId) ?? null

@@ -37,7 +37,7 @@ export default function MenuPage() {
     if (res.ok) setCategories(await res.json())
   }
 
-  useEffect(() => { loadCategories() }, [])
+  useEffect(() => { loadCategories() }, []) // eslint-disable-line react-hooks/set-state-in-effect
 
   async function handleAddCategory() {
     if (!newCatName.trim()) return

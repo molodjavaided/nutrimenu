@@ -16,7 +16,7 @@ import {
   DragEndEvent,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Category, MenuItem } from '@/types'
+import { Category } from '@/types'
 import SortableItem from './SortableItem'
 
 interface Props {

@@ -15,9 +15,9 @@ export interface SessionPayload {
 }
 
 function getSecret() {
-  return new TextEncoder().encode(
-    process.env.AUTH_SECRET ?? 'nm_fallback_secret_32_characters!!'
-  )
+  const secret = process.env.AUTH_SECRET
+  if (!secret) throw new Error('AUTH_SECRET environment variable is not set')
+  return new TextEncoder().encode(secret)
 }
 
 export async function hashPassword(password: string): Promise<string> {

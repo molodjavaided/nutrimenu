@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Category, MenuItem, TrackerItem, Venue } from '@/types'
-import { resolveNutri } from '@/lib/utils'
 import { SelectedModifiers, SelectedVariants } from '@/types'
 import { calcNutriTotal } from '@/lib/utils'
 import CategoryTabs from './CategoryTabs'

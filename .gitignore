@@ -42,3 +42,5 @@ next-env.d.ts
 .gstack/
 
 /lib/generated/prisma
+
+.vercel

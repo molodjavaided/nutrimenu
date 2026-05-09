@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 import { SESSION_COOKIE } from '@/lib/auth'
 
-const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET ?? 'nm_fallback_secret_32_characters!!'
-)
+const rawSecret = process.env.AUTH_SECRET
+if (!rawSecret) throw new Error('AUTH_SECRET environment variable is not set')
+const secret = new TextEncoder().encode(rawSecret)
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl

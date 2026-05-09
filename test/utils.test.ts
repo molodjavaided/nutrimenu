@@ -112,13 +112,13 @@ describe('resolveNutri — modifier groups addon', () => {
   }
 
   it('adds multi-select addon nutrition', () => {
-    const result = resolveNutri(itemWithAddon, {}, { extras: ['cheese', 'sauce'] as any })
+    const result = resolveNutri(itemWithAddon, {}, { extras: ['cheese', 'sauce'] as unknown as string })
     expect(result.calories).toBe(380)
     expect(result.protein).toBe(23)
   })
 
   it('handles empty multi-select', () => {
-    const result = resolveNutri(itemWithAddon, {}, { extras: [] as any })
+    const result = resolveNutri(itemWithAddon, {}, { extras: [] as unknown as string })
     expect(result.calories).toBe(300)
   })
 })

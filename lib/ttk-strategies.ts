@@ -117,7 +117,7 @@ export function strategyHierarchical(
       if (w && w.amount > 0) { amount = w.amount; unit = w.unit; break }
     }
 
-    let ingredientName = normalizeIngredientName(nameRaw)
+    const ingredientName = normalizeIngredientName(nameRaw)
     if (!ingredientName) continue
 
     current.ingredients.push({ ingredientName, netWeight: amount, unit })

@@ -15,8 +15,10 @@ export function useFoodDatabase() {
 
   useEffect(() => {
     const libs = initLibraries(systemLibraries)
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLibraries(libs)
     setIsReady(true)
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
 
   return { libraries, isReady }

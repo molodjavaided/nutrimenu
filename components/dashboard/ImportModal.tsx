@@ -176,7 +176,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
       setIsLoading(false)
       setIsValidating(false)
     }
-  }, [])
+  }, [existingCategories, existingIngredients])
 
   const handleSheetsUrl = useCallback(async (url: string) => {
     setDishes([])
@@ -204,7 +204,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
         return
       }
 
-      const { dishes: parsedDishes, errors: parseErrs, usedAI, corrections } = json as {
+      const { dishes: parsedDishes, errors: parseErrs, corrections } = json as {
         dishes: import('@/lib/importer').ParsedDish[]
         errors: string[]
         strategy: string
@@ -240,7 +240,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [existingCategories, existingIngredients])
 
   const handlePdf = useCallback(async (file: File) => {
     setDishes([])
@@ -310,7 +310,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [existingCategories, existingIngredients])
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -475,7 +475,7 @@ export default function ImportModal({ onClose, onImported }: Props) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-5 shrink-0"
-          style={{ borderBottom: '0.5px solid rgba(176,166,223,0.3)' }}
+          style={{ borderBottom: '0.5px solid rgba(176,16 6,223,0.3)' }}
         >
           <div>
             <div className="flex items-center gap-2">

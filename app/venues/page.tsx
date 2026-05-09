@@ -25,7 +25,6 @@ function useDebounce(value: string, delay: number) {
 }
 
 export default function VenuesPage() {
-  const router = useRouter()
   const [search, setSearch] = useState('')
   const [venues, setVenues] = useState<VenueCard[]>([])
   const [loading, setLoading] = useState(true)

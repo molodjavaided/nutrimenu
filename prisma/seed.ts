@@ -19,7 +19,8 @@ async function hashPassword(password: string): Promise<string> {
 
 async function main() {
   const email = 'yurchik.yuri.ru@gmail.com'
-  const password = process.env.ADMIN_PASSWORD ?? 'admin123'
+  const password = process.env.ADMIN_PASSWORD
+  if (!password) throw new Error('ADMIN_PASSWORD environment variable is not set')
 
   const existing = await db.user.findUnique({ where: { email } })
   if (existing) {

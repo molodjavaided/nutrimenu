@@ -75,6 +75,7 @@ export interface ModifierGroup {
   calcByMl?: boolean
   mlPerVariant?: Record<string, number>
   linkedVariantGroupId?: string
+  allowCustomGrams?: boolean
 }
 
 // Строка состава блюда

@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState, useMemo } from 'react'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
 import { buildVariantLabel, resolveNutri, resolveNutriFromComposition } from '@/lib/utils'
 import { getAllIngredients, initLibraries } from '@/lib/store'
@@ -42,6 +42,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
   const [lastItemId, setLastItemId] = useState<string | null>(null)
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
+  const [gramAmounts, setGramAmounts] = useState<Record<string, Record<string, number>>>({})
 
   useEffect(() => {
     const libs = initLibraries(systemLibraries)
@@ -55,6 +56,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     setVariants(getDefaultVariants(item))
     setModifiers(getDefaultModifiers(item))
     setSelectedSizeId(item.sizes?.[0]?.id ?? null)
+    setGramAmounts({})
   }
 
   // ─── РАСЧЁТ КБЖУ С УЧЁТОМ ВАРИАНТОВ ──────────────────────
@@ -143,6 +145,22 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         continue
       }
 
+      if (group.allowCustomGrams) {
+        // Ввод граммов: modifier.calories — на 100г, масштабируем по gramAmounts
+        const groupGrams = gramAmounts[group.id] ?? {}
+        for (const modifier of group.modifiers) {
+          const grams = groupGrams[modifier.id] ?? 0
+          if (grams > 0) {
+            const ratio = grams / 100
+            total.calories += Math.round(modifier.calories * ratio)
+            total.protein  += Math.round(modifier.protein  * ratio * 10) / 10
+            total.fat      += Math.round(modifier.fat      * ratio * 10) / 10
+            total.carbs    += Math.round(modifier.carbs    * ratio * 10) / 10
+          }
+        }
+        continue
+      }
+
       if (group.multi) {
         // Мультиселект — суммируем добавки
         const selected = modifiers[group.id]
@@ -165,7 +183,18 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
       const modifier = group.modifiers.find(m => m.id === selectedId)
       if (!modifier) continue
 
-      if (group.required) {
+      if (group.calcByMl && group.mlPerVariant && group.linkedVariantGroupId) {
+        // Добавка рассчитывается по объёму (мл), привязанному к выбранному варианту размера
+        const linkedVariantId = variants[group.linkedVariantGroupId]
+        const mlAmount = linkedVariantId ? (group.mlPerVariant[linkedVariantId] ?? 0) : 0
+        if (mlAmount > 0) {
+          const ratio = mlAmount / 100
+          total.calories += Math.round(modifier.calories * ratio)
+          total.protein  += Math.round(modifier.protein  * ratio * 10) / 10
+          total.fat      += Math.round(modifier.fat      * ratio * 10) / 10
+          total.carbs    += Math.round(modifier.carbs    * ratio * 10) / 10
+        }
+      } else if (group.required) {
         // Обязательная = замена ингредиента: дельта от первого (эталонного) варианта
         const defaultMod = group.modifiers[0]
         total.calories += modifier.calories - defaultMod.calories
@@ -190,7 +219,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     weight: activeSize?.weight ?? item.weight,
     weightUnit: (activeSize?.weightUnit ?? item.weightUnit) as 'г' | 'мл',
   }
-}, [item, variants, modifiers, quantity, ingredientRefs, selectedSizeId])
+}, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId])
 
   function handleClose() {
     onClose()
@@ -233,6 +262,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         className="rounded-t-2xl px-5 pt-3 max-w-lg mx-auto overflow-y-auto bg-background"
         style={{
           border: 'none',
@@ -244,8 +274,21 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           boxShadow: '0 -8px 40px rgba(139,92,246,0.12), 0 1px 0 rgba(255,255,255,0.9) inset',
         }}
       >
-        {/* Handle */}
-        <div className="w-9 h-1 rounded-full mx-auto mb-4" style={{ background: 'rgba(139,92,246,0.25)' }} />
+        {/* Sticky шапка: handle + крестик */}
+        <div className="sticky top-0 z-10 flex items-center justify-between pb-3"
+          style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)' }}>
+          <div className="w-9 h-1 rounded-full mx-auto" style={{ background: 'rgba(139,92,246,0.25)' }} />
+          <SheetClose
+            className="absolute right-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
+            style={{ background: 'rgba(176,166,223,0.15)', color: '#9D99B8' }}
+            aria-label="Закрыть"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </SheetClose>
+        </div>
+
 
         {/* Фото */}
         <div
@@ -384,7 +427,62 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
         ))}
 
         {/* Группы добавок */}
-        {(item.modifierGroups ?? []).map(group => (
+        {(item.modifierGroups ?? []).map(group => {
+          if (group.allowCustomGrams) {
+            return (
+              <div key={group.id} className="mb-4">
+                <p className="text-sm font-medium mb-2 text-text-primary">{group.label}</p>
+                <div className="flex flex-col gap-2">
+                  {group.modifiers.map(mod => {
+                    const grams = gramAmounts[group.id]?.[mod.id] ?? 0
+                    const kcal = grams > 0 ? Math.round(mod.calories * grams / 100) : 0
+                    return (
+                      <div key={mod.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+                        style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(176,166,223,0.3)' }}>
+                        <span className="flex-1 text-sm text-text-primary">{mod.label}</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setGramAmounts(prev => ({
+                              ...prev,
+                              [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) }
+                            }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-light"
+                            style={{ background: '#EAE7F8', color: '#7C3AED' }}
+                          >−</button>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={grams || ''}
+                            onChange={e => setGramAmounts(prev => ({
+                              ...prev,
+                              [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, Number(e.target.value) || 0) }
+                            }))}
+                            placeholder="0"
+                            className="w-14 text-center text-sm outline-none rounded-lg h-8"
+                            style={{ background: '#EAE7F8', color: '#2C2950' }}
+                          />
+                          <button
+                            onClick={() => setGramAmounts(prev => ({
+                              ...prev,
+                              [group.id]: { ...prev[group.id], [mod.id]: (prev[group.id]?.[mod.id] ?? 0) + 5 }
+                            }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-light"
+                            style={{ background: '#EAE7F8', color: '#7C3AED' }}
+                          >+</button>
+                          <span className="text-xs w-8 text-right" style={{ color: '#9D99B8' }}>г</span>
+                        </div>
+                        {kcal > 0 && (
+                          <span className="text-xs font-medium" style={{ color: '#7C3AED' }}>+{kcal} ккал</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+
+          return (
           <ModifierGroupSection
             key={group.id}
             group={group}
@@ -403,7 +501,8 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
               }
             }}
           />
-        ))}
+          )
+        })}
 
         {/* Количество */}
         <div className="flex items-center gap-3 mb-5 mt-2">

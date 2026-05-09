@@ -27,6 +27,20 @@ interface AmountCell {
   amount: number
 }
 
+// ─── Типы для шага 3 (Добавки) ──────────────────────────────
+interface AddonItem {
+  id: string
+  ingredientRefId: string
+  label: string
+}
+
+interface AddonGroup {
+  id: string
+  label: string
+  allowCustomGrams: boolean
+  addons: AddonItem[]
+}
+
 // ─── Типы для шага 2 (Варианты) ─────────────────────────────
 interface VariantOption {
   id: string
@@ -228,6 +242,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   // ─── Шаг 2: Варианты для гостя (крупа, белок, начинка) ───
   const [variantGroups, setVariantGroups] = useState<VariantOption[]>([])
 
+  // ─── Шаг 3: Добавки для гостя ────────────────────────────
+  const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([])
+  const [addonPickerTarget, setAddonPickerTarget] = useState<{ groupId: string; addonId: string } | null>(null)
+
   // Флаги для загрузки
   const isInitialLoad = useRef(true)
   const [isReady, setIsReady] = useState(false)
@@ -407,6 +425,21 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       }
 
       // ─── Загрузка вариантов (шаг 2) ───────────────────────
+      // ─── Загрузка добавок (шаг 3) ─────────────────────────
+      if (found.item.modifierGroups && found.item.modifierGroups.length > 0) {
+        const loadedAddonGroups: AddonGroup[] = found.item.modifierGroups.map((mg: any) => ({
+          id: mg.id,
+          label: mg.label,
+          allowCustomGrams: mg.allowCustomGrams ?? false,
+          addons: (mg.modifiers ?? []).map((m: any) => ({
+            id: m.id,
+            ingredientRefId: m.ingredientRefId ?? '',
+            label: m.label,
+          })),
+        }))
+        setAddonGroups(loadedAddonGroups)
+      }
+
       if (found.item.variantGroups && found.item.variantGroups.length > 0) {
         const loadedVariantGroups: VariantOption[] = found.item.variantGroups.map((vg: any) => ({
           id: vg.id,
@@ -484,6 +517,41 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const removeVariantOption = useCallback((groupId: string, optionId: string) => {
     setVariantGroups(prev => prev.map(g =>
       g.id === groupId ? { ...g, options: g.options.filter(o => o.id !== optionId) } : g
+    ))
+  }, [])
+
+  // ─── Функции для шага 3 (Добавки) ────────────────────────
+  const addAddonGroup = useCallback(() => {
+    setAddonGroups(prev => [...prev, { id: crypto.randomUUID(), label: '', allowCustomGrams: false, addons: [] }])
+  }, [])
+
+  const updateAddonGroup = useCallback((groupId: string, updates: Partial<AddonGroup>) => {
+    setAddonGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g))
+  }, [])
+
+  const removeAddonGroup = useCallback((groupId: string) => {
+    setAddonGroups(prev => prev.filter(g => g.id !== groupId))
+  }, [])
+
+  const addAddonToGroup = useCallback((groupId: string) => {
+    setAddonGroups(prev => prev.map(g =>
+      g.id === groupId
+        ? { ...g, addons: [...g.addons, { id: crypto.randomUUID(), ingredientRefId: '', label: '' }] }
+        : g
+    ))
+  }, [])
+
+  const updateAddon = useCallback((groupId: string, addonId: string, updates: Partial<AddonItem>) => {
+    setAddonGroups(prev => prev.map(g =>
+      g.id === groupId
+        ? { ...g, addons: g.addons.map(a => a.id === addonId ? { ...a, ...updates } : a) }
+        : g
+    ))
+  }, [])
+
+  const removeAddon = useCallback((groupId: string, addonId: string) => {
+    setAddonGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, addons: g.addons.filter(a => a.id !== addonId) } : g
     ))
   }, [])
 
@@ -656,6 +724,35 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       }
     })
 
+    // Сохраняем добавки (шаг 3)
+    const modifierGroupsToSave = addonGroups.map(group => {
+      const modifiers = group.addons
+        .filter(a => a.ingredientRefId)
+        .map(a => {
+          const ref = ingredientRefs.find(r => r.id === a.ingredientRefId)
+          return {
+            id: a.id,
+            label: a.label || ref?.name || '',
+            ingredientRefId: a.ingredientRefId,
+            calories: ref?.caloriesPer100 ?? 0,
+            protein: ref?.proteinPer100 ?? 0,
+            fat: ref?.fatPer100 ?? 0,
+            carbs: ref?.carbsPer100 ?? 0,
+            weight: 100,
+            weightUnit: 'г' as const,
+          }
+        })
+      return {
+        id: group.id,
+        label: group.label,
+        multi: true,
+        required: false,
+        type: 'addon' as const,
+        allowCustomGrams: group.allowCustomGrams,
+        modifiers,
+      }
+    }).filter(g => g.modifiers.length > 0)
+
     const newItem = {
       id: itemId ?? crypto.randomUUID(),
       name,
@@ -670,6 +767,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       composition: sizesToSave[0].composition,
       sizes: sizesToSave,
       variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
+      modifierGroups: modifierGroupsToSave.length > 0 ? modifierGroupsToSave : undefined,
       categoryId,
       venueId: '1',
       isAvailable,
@@ -691,7 +789,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, isEdit, itemId, router, calculateNutriForSize])
+  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, manualNutri, variantGroups, addonGroups, isEdit, itemId, router, calculateNutriForSize])
 
   // ─── Функции для шага 1 ───────────────────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
@@ -1498,6 +1596,106 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       </div>
       </>}
 
+      {/* ==================== ШАГ 3: Добавки для гостя ==================== */}
+      {mode === 'detailed' && (
+      <div className="mb-8">
+        <h2 className="text-lg font-medium mb-1" style={{ color: '#2C2950' }}>Добавки для гостя</h2>
+        <p className="text-xs mb-4" style={{ color: '#9D99B8' }}>
+          Ингредиенты, которые гость может добавить к блюду (сахар, молоко, соус и т.д.)
+        </p>
+
+        {addonGroups.map(group => (
+          <div key={group.id} className="mb-4 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.5)', border: '0.5px solid rgba(176,166,223,0.3)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <FormInput
+                value={group.label}
+                onChange={e => updateAddonGroup(group.id, { label: e.target.value })}
+                placeholder="Название группы (напр. Сахар)"
+                className="flex-1"
+              />
+              <button
+                onClick={() => removeAddonGroup(group.id)}
+                className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
+                style={{ background: '#EAE7F8', color: '#9D99B8' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Чекбокс: ввод граммов */}
+            <label className="flex items-center gap-2 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={group.allowCustomGrams}
+                onChange={e => updateAddonGroup(group.id, { allowCustomGrams: e.target.checked })}
+                className="w-4 h-4 rounded accent-lavender"
+              />
+              <span className="text-sm" style={{ color: '#6B6490' }}>Гость вводит граммы вручную</span>
+            </label>
+            <p className="text-xs mb-3" style={{ color: '#9D99B8' }}>
+              {group.allowCustomGrams
+                ? 'КБЖУ хранится на 100 г — гость укажет количество и КБЖУ пересчитается'
+                : 'Гость выбирает добавку кнопкой — КБЖУ добавляется целой порцией (+100 г)'
+              }
+            </p>
+
+            {group.addons.map(addon => {
+              const ref = ingredientRefs.find(r => r.id === addon.ingredientRefId)
+              return (
+                <div key={addon.id} className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => setAddonPickerTarget({ groupId: group.id, addonId: addon.id })}
+                    className="flex-1 h-10 px-3 rounded-xl text-sm text-left truncate"
+                    style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? '#2C2950' : '#9D99B8' }}
+                  >
+                    {ref ? ref.name : '— Выбрать ингредиент'}
+                  </button>
+                  {ref && (
+                    <span className="text-xs shrink-0" style={{ color: '#534AB7' }}>
+                      {ref.caloriesPer100} ккал/100г
+                    </span>
+                  )}
+                  <button
+                    onClick={() => removeAddon(group.id, addon.id)}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
+                    style={{ background: '#EAE7F8', color: '#9D99B8' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                </div>
+              )
+            })}
+
+            <button
+              onClick={() => addAddonToGroup(group.id)}
+              className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl w-full mt-1"
+              style={{ color: '#B0A6DF', background: 'rgba(176,166,223,0.1)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              Добавить ингредиент
+            </button>
+          </div>
+        ))}
+
+        <button
+          onClick={addAddonGroup}
+          className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm w-full justify-center"
+          style={{ border: '0.5px dashed rgba(176,166,223,0.6)', color: '#B0A6DF', background: '#EAE7F8' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          + Добавить группу добавок
+        </button>
+      </div>
+      )}
+
       {/* Кнопки */}
       <div className="flex justify-between pt-4 border-t" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
         <button
@@ -1527,6 +1725,26 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           alreadyAddedIds={ingredients.map(i => i.ingredientRefId)}
           onSelect={ref => addIngredient(ref.id)}
           onClose={() => setPickerOpen(false)}
+          onIngredientCreated={ref => {
+            setIngredientRefs(prev => [...prev, ref])
+            setLibraries(prev => prev.map(l =>
+              l.id === 'my-library' ? { ...l, ingredients: [...l.ingredients, ref] } : l
+            ))
+          }}
+        />
+      )}
+
+      {addonPickerTarget && libraries.length > 0 && (
+        <IngredientPickerModal
+          libraries={libraries}
+          allRefs={ingredientRefs}
+          alreadyAddedIds={[]}
+          onSelect={ref => {
+            const { groupId, addonId } = addonPickerTarget
+            updateAddon(groupId, addonId, { ingredientRefId: ref.id, label: ref.name })
+            setAddonPickerTarget(null)
+          }}
+          onClose={() => setAddonPickerTarget(null)}
           onIngredientCreated={ref => {
             setIngredientRefs(prev => [...prev, ref])
             setLibraries(prev => prev.map(l =>

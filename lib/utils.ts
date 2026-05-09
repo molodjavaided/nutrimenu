@@ -59,6 +59,7 @@ export function resolveNutri(
 
 // Одиночные добавки
 for (const group of item.modifierGroups ?? []) {
+  if (group.allowCustomGrams) continue  // граммы вводятся клиентом, здесь не считаем
   if (group.multi) continue
   const selectedId = selectedModifiers[group.id]
   if (!selectedId || selectedId === true) continue
@@ -104,6 +105,7 @@ for (const group of item.modifierGroups ?? []) {
 
   // Мультиселект добавки
   for (const group of item.modifierGroups ?? []) {
+    if (group.allowCustomGrams) continue
     if (!group.multi) continue
     const selected = selectedModifiers[group.id]
     if (Array.isArray(selected)) {

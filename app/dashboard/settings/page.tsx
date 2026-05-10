@@ -49,7 +49,7 @@ export default function SettingsPage() {
     QRCode.toCanvas(canvasRef.current, url, {
       width: 200,
       margin: 2,
-      color: { dark: 'var(--color-text-primary)', light: '#FEFEF2' },
+      color: { dark: '#2C2950', light: '#FEFEF2' },
     })
   }, [slug])
 

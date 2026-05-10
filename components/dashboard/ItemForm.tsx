@@ -545,16 +545,44 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       return
     }
 
+    // Ингредиенты, которые является «заменяемыми» хотя бы в одной variantGroup —
+    // их строка должна быть в composition каждого размера (даже если 0), чтобы
+    // публичная карточка могла пересчитывать вариант по объёму активного размера.
+    const replacedIngredientRefIds = new Set(
+      variantGroups
+        .map(g => g.replacesIngredientRefId)
+        .filter((id): id is string => Boolean(id)),
+    )
+
+    // Если у блюда несколько размеров и есть variantGroup с заменой ингредиента —
+    // граммовка заменяемого ингредиента должна быть проставлена для каждого размера.
+    if (sizes.length > 1 && replacedIngredientRefIds.size > 0) {
+      for (const refId of replacedIngredientRefIds) {
+        const ing = ingredients.find(i => i.ingredientRefId === refId)
+        if (!ing) continue
+        const missingSize = sizes.find(s =>
+          !(amounts.find(a => a.ingredientId === ing.id && a.sizeId === s.id)?.amount),
+        )
+        if (missingSize) {
+          toast.error(`Заполните количество «${ing.name}» для размера «${missingSize.name}»`)
+          return
+        }
+      }
+    }
+
     // Сохраняем размеры (шаг 1)
     const sizesToSave: SizeOption[] = sizes.map(size => {
-      const composition = ingredients.map(ingredient => {
+      const composition = ingredients.flatMap(ingredient => {
         const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
-        return {
+        const amount = amountCell?.amount || 0
+        const isReplaced = replacedIngredientRefIds.has(ingredient.ingredientRefId)
+        if (amount === 0 && !isReplaced) return []
+        return [{
           ingredientId: ingredient.ingredientRefId,
-          amount: amountCell?.amount || 0,
+          amount,
           unit: ingredient.unit,
-        }
-      }).filter(comp => comp.amount > 0)
+        }]
+      })
 
       const nutri = calculateNutriForSize(size.id)
       const totalWeight = composition.reduce((sum, comp) => {

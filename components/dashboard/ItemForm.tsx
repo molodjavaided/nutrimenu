@@ -1383,10 +1383,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 </select>
                 {replacedAmountsPerSize && (
                   <div className="flex items-center gap-1 flex-wrap">
-                    {replacedAmountsPerSize.map(({ size, amount }) => (
+                    {replacedAmountsPerSize.map(({ size, amount }, idx) => (
                       <span key={size.id} className="px-2 py-0.5 rounded-lg text-xs"
                         style={{ background: '#D8D4F0', color: '#534AB7' }}>
-                        {size.name || (sizes.length === 1 ? 'порция' : size.id)}: {amount} {size.unit}
+                        {size.name || (sizes.length === 1 ? 'порция' : `Размер ${idx + 1}`)}: {amount} {size.unit}
                       </span>
                     ))}
                   </div>
@@ -1425,10 +1425,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                     <div className="flex items-center gap-2 flex-wrap">
                       {replacedAmountsPerSize ? (
                         <>
-                          {replacedAmountsPerSize.map(({ size, amount }) => (
+                          {replacedAmountsPerSize.map(({ size, amount }, idx) => (
                             <span key={size.id} className="px-2 py-1 rounded-lg text-xs"
                               style={{ background: '#EAE7F8', color: '#534AB7' }}>
-                              {size.name || (sizes.length === 1 ? 'порция' : size.id)}: {amount} {size.unit}
+                              {size.name || (sizes.length === 1 ? 'порция' : `Размер ${idx + 1}`)}: {amount} {size.unit}
                             </span>
                           ))}
                           <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>из состава</span>

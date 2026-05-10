@@ -15,6 +15,7 @@ interface Props {
   open: boolean
   onClose: () => void
   onAdd: (item: MenuItem, quantity: number, variants: SelectedVariants, modifiers: SelectedModifiers, label: string) => void
+  venueIngredientRefs?: IngredientRef[]
 }
 
 function getDefaultVariants(_item: MenuItem): SelectedVariants {
@@ -32,15 +33,20 @@ function getDefaultModifiers(item: MenuItem): SelectedModifiers {
   return result
 }
 
-export default function DishSheet({ item, open, onClose, onAdd }: Props) {
+export default function DishSheet({ item, open, onClose, onAdd, venueIngredientRefs = [] }: Props) {
   const [quantity, setQuantity] = useState(1)
   const [variants, setVariants] = useState<SelectedVariants>({})
   const [modifiers, setModifiers] = useState<SelectedModifiers>({})
   const [lastItemId, setLastItemId] = useState<string | null>(null)
   const ingredientRefs = useMemo<IngredientRef[]>(() => {
     const libs = initLibraries(systemLibraries)
-    return libs.flatMap(l => l.ingredients)
-  }, [])
+    const systemRefs = libs.flatMap(l => l.ingredients)
+    // Venue refs win over system refs on id collision (defensive)
+    const map = new Map<string, IngredientRef>()
+    for (const r of systemRefs) map.set(r.id, r)
+    for (const r of venueIngredientRefs) map.set(r.id, r)
+    return [...map.values()]
+  }, [venueIngredientRefs])
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
   const [gramAmounts, setGramAmounts] = useState<Record<string, Record<string, number>>>({})
 
@@ -301,12 +307,14 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
           <p className="text-sm mb-3 leading-relaxed text-text-secondary">{item.description}</p>
         )}
 
-        {/* Состав */}
-        {(item.composition ?? []).length > 0 && (
+        {/* Состав активного размера (или базовый, если размеров нет) */}
+        {(() => {
+          const compRows = activeSize?.composition ?? item.composition ?? []
+          return compRows.length > 0 ? (
           <div className="mb-4">
             <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: 'var(--color-text-muted)' }}>СОСТАВ</p>
             <div className="flex flex-wrap gap-1.5">
-              {(item.composition ?? []).map((row, i) => {
+              {compRows.map((row, i) => {
                 const ref = ingredientRefs.find(r => r.id === row.ingredientId)
                 const name = ref?.name ?? null
                 if (!name) return null
@@ -329,7 +337,8 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
               })}
             </div>
           </div>
-        )}
+          ) : null
+        })()}
 
         {/* КБЖУ плитки */}
         <div className="grid grid-cols-4 gap-2 mb-4">

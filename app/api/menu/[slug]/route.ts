@@ -18,6 +18,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  // Public sheet must resolve nutrition for variant replacements that reference
+  // venue-owned IngredientRefs (custom ingredients like "Кокосовое молоко"),
+  // not just system libraries. Fetch both.
+  const ingredientRefs = await db.ingredientRef.findMany({
+    where: { OR: [{ venueId: venue.id }, { isSystem: true }] },
+  })
+
   const categories = venue.categories.map(c => ({
     id: c.id,
     name: c.name,
@@ -30,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       name: i.name,
       description: i.description ?? undefined,
       photo: i.photo ?? undefined,
+      price: i.price ?? undefined,
       weight: i.weight,
       weightUnit: i.weightUnit,
       calories: i.calories,
@@ -56,5 +64,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       tags: venue.tags,
     },
     categories,
+    ingredientRefs: ingredientRefs.map(r => ({
+      id: r.id,
+      name: r.name,
+      unit: r.unit,
+      weightPerUnit: r.weightPerUnit ?? undefined,
+      caloriesPer100: r.caloriesPer100,
+      proteinPer100: r.proteinPer100,
+      fatPer100: r.fatPer100,
+      carbsPer100: r.carbsPer100,
+      isSystem: r.isSystem,
+    })),
   })
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Category, Venue } from '@/types'
+import { Category, IngredientRef, Venue } from '@/types'
 import MenuView from './MenuView'
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 export default function MenuClientWrapper({ slug }: Props) {
   const [venue, setVenue] = useState<Venue | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -27,6 +28,7 @@ export default function MenuClientWrapper({ slug }: Props) {
       if (data) {
         setVenue(data.venue)
         setCategories(data.categories)
+        setIngredientRefs(data.ingredientRefs ?? [])
         if (sessionVenue && data.venue && sessionVenue.id === data.venue.id) {
           setIsOwner(true)
         }
@@ -55,5 +57,5 @@ export default function MenuClientWrapper({ slug }: Props) {
     )
   }
 
-  return <MenuView venue={venue} categories={categories} isOwner={isOwner} />
+  return <MenuView venue={venue} categories={categories} isOwner={isOwner} ingredientRefs={ingredientRefs} />
 }

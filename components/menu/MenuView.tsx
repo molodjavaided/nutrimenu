@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Category, MenuItem, TrackerItem, Venue } from '@/types'
+import { Category, IngredientRef, MenuItem, TrackerItem, Venue } from '@/types'
 import { SelectedModifiers, SelectedVariants } from '@/types'
 import { calcNutriTotal } from '@/lib/utils'
 import CategoryTabs from './CategoryTabs'
@@ -17,9 +17,10 @@ interface Props {
   venue: Venue
   categories: Category[]
   isOwner?: boolean
+  ingredientRefs?: IngredientRef[]
 }
 
-export default function MenuView({ venue, categories, isOwner = false }: Props) {
+export default function MenuView({ venue, categories, isOwner = false, ingredientRefs = [] }: Props) {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [trackerItems, setTrackerItems] = useState<TrackerItem[]>([])
@@ -233,6 +234,7 @@ const resolved = {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onAdd={handleAddToTracker}
+        venueIngredientRefs={ingredientRefs}
       />
 
       {/* Sticky NutriTracker */}

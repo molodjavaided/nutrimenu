@@ -27,6 +27,7 @@ interface Size {
   id: string
   name: string
   unit: 'г' | 'мл'
+  price?: number
 }
 
 interface AmountCell {
@@ -268,7 +269,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           setSizes(sizesData.map(s => ({
             id: s.id,
             name: s.name || `${s.weight}${s.weightUnit}`,
-            unit: (s.weightUnit || 'г') as 'г' | 'мл'
+            unit: (s.weightUnit || 'г') as 'г' | 'мл',
+            price: (s as { price?: number }).price,
           })))
         }
 
@@ -538,6 +540,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     if (ingredients.length === 0) return
 
+    if (sizes.length > 1 && sizes.some(s => !s.name.trim())) {
+      toast.error('Назовите все размеры (например, S/M/L)')
+      return
+    }
+
     // Сохраняем размеры (шаг 1)
     const sizesToSave: SizeOption[] = sizes.map(size => {
       const composition = ingredients.map(ingredient => {
@@ -563,6 +570,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         name: size.name || (sizes.length === 1 ? `${totalWeight}${size.unit}` : ''),
         weight: totalWeight,
         weightUnit: size.unit,
+        price: size.price,
         calories: nutri.calories,
         protein: nutri.protein,
         fat: nutri.fat,
@@ -724,6 +732,16 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
   const updateSizeUnit = useCallback((sizeId: string, newUnit: 'г' | 'мл') => {
     setSizes(prev => prev.map(s => s.id === sizeId ? { ...s, unit: newUnit } : s))
+  }, [])
+
+  const updateSizePrice = useCallback((sizeId: string, newPrice: number | undefined) => {
+    setSizes(prev => prev.map(s => s.id === sizeId ? { ...s, price: newPrice } : s))
+  }, [])
+
+  const applySizePreset = useCallback((preset: { name: string; unit: 'г' | 'мл' }[]) => {
+    setSizes(preset.map(p => ({ id: crypto.randomUUID(), name: p.name, unit: p.unit })))
+    setAmounts([])
+    setManualNutri({})
   }, [])
 
   const removeSize = useCallback((sizeId: string) => {
@@ -1130,14 +1148,32 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
             {hasMultipleSizes && (
               <div className="ml-6">
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs self-center" style={{ color: 'var(--color-text-muted)' }}>Шаблоны:</span>
+                  {[
+                    { label: 'S / M / L', preset: [{ name: 'S', unit: 'мл' as const }, { name: 'M', unit: 'мл' as const }, { name: 'L', unit: 'мл' as const }] },
+                    { label: 'Маленькая / Средняя / Большая', preset: [{ name: 'Маленькая', unit: 'г' as const }, { name: 'Средняя', unit: 'г' as const }, { name: 'Большая', unit: 'г' as const }] },
+                    { label: '200 / 300 / 400 мл', preset: [{ name: '200 мл', unit: 'мл' as const }, { name: '300 мл', unit: 'мл' as const }, { name: '400 мл', unit: 'мл' as const }] },
+                  ].map(p => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => applySizePreset(p.preset)}
+                      className="text-xs px-2.5 py-1 rounded-full transition-all active:scale-95"
+                      style={{ color: '#534AB7', background: '#EAE7F8' }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2 mb-3">
                   {sizes.map((size, idx) => (
-                    <div key={size.id} className="flex items-center gap-1">
+                    <div key={size.id} className="flex items-center gap-1 flex-wrap">
                       <FormInput
                         value={size.name}
                         onChange={e => updateSizeName(size.id, e.target.value)}
-                        placeholder={idx === 0 ? "Средний" : "Большой"}
-                        className="w-28 h-11 px-2 rounded-lg"
+                        placeholder={idx === 0 ? "Маленькая" : idx === 1 ? "Средняя" : "Большая"}
+                        className="w-32 h-11 px-2 rounded-lg"
                       />
                       <FormSelect
                         value={size.unit}
@@ -1147,6 +1183,18 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                         <option value="г">г</option>
                         <option value="мл">мл</option>
                       </FormSelect>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={size.price ?? ''}
+                          onChange={e => updateSizePrice(size.id, e.target.value === '' ? undefined : Number(e.target.value))}
+                          placeholder="Цена"
+                          className="w-24 h-11 px-2 rounded-lg text-sm outline-none"
+                          style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                        />
+                        <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>₽</span>
+                      </div>
                       {sizes.length > 1 && (
                         <RemoveButton size="sm" onClick={() => removeSize(size.id)} />
                       )}
@@ -1154,8 +1202,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                   ))}
                   {sizes.length < MAX_SIZES && (
                     <button
+                      type="button"
                       onClick={addSize}
-                      className="text-sm px-3 py-1.5 rounded-lg"
+                      className="text-sm px-3 py-1.5 rounded-lg self-start"
                       style={{ color: '#B0A6DF', background: '#EAE7F8' }}
                     >
                       + Добавить размер ({sizes.length}/{MAX_SIZES})
@@ -1172,10 +1221,23 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           <div className="mb-5">
             {/* Mobile: стек по размерам */}
             <div className="md:hidden space-y-3">
-              {sizes.map(size => (
+              {sizes.map((size, sizeIdx) => {
+                const sizeNutri = calculateNutriForSize(size.id)
+                let sizeWeight = 0
+                for (const ingredient of ingredients) {
+                  const cell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
+                  if (!cell?.amount) continue
+                  if (ingredient.unit === 'шт') {
+                    const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
+                    sizeWeight += ref?.weightPerUnit ? cell.amount * ref.weightPerUnit : cell.amount
+                  } else {
+                    sizeWeight += cell.amount
+                  }
+                }
+                return (
                 <div key={size.id} className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(176,166,223,0.3)' }}>
                   <div className="px-3 py-2 text-xs font-medium" style={{ background: '#EAE7F8', color: '#534AB7' }}>
-                    {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')} ({size.unit})
+                    {size.name || (hasMultipleSizes ? `Размер ${sizeIdx + 1}` : 'Порция')} ({size.unit})
                   </div>
                   <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
                     {ingredients.map(ingredient => {
@@ -1206,8 +1268,16 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       )
                     })}
                   </div>
+                  <div className="px-3 py-2 text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ background: 'rgba(234,231,248,0.5)', color: '#534AB7' }}>
+                    <span>Σ <b>{Math.round(sizeWeight)}</b> {size.unit}</span>
+                    <span><b>{Math.round(sizeNutri.calories)}</b> ккал</span>
+                    <span>Б {sizeNutri.protein.toFixed(1)}</span>
+                    <span>Ж {sizeNutri.fat.toFixed(1)}</span>
+                    <span>У {sizeNutri.carbs.toFixed(1)}</span>
+                  </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Desktop: таблица */}
@@ -1216,9 +1286,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <thead>
                   <tr>
                     <th className="text-left py-2 px-3 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Ингредиент</th>
-                    {sizes.map(size => (
+                    {sizes.map((size, idx) => (
                       <th key={size.id} className="text-center py-2 px-2 text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                        {size.name || (hasMultipleSizes ? 'Новый размер' : 'Порция')}
+                        {size.name || (hasMultipleSizes ? `Размер ${idx + 1}` : 'Порция')}
                       </th>
                     ))}
                   </tr>
@@ -1258,6 +1328,31 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                     )
                   })}
                 </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '1px solid rgba(176,166,223,0.3)' }}>
+                    <td className="py-2 px-3 text-xs font-medium" style={{ color: '#534AB7' }}>Σ итого</td>
+                    {sizes.map(size => {
+                      const n = calculateNutriForSize(size.id)
+                      let w = 0
+                      for (const ingredient of ingredients) {
+                        const cell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
+                        if (!cell?.amount) continue
+                        if (ingredient.unit === 'шт') {
+                          const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
+                          w += ref?.weightPerUnit ? cell.amount * ref.weightPerUnit : cell.amount
+                        } else {
+                          w += cell.amount
+                        }
+                      }
+                      return (
+                        <td key={size.id} className="py-2 px-2 text-center text-xs" style={{ color: '#534AB7' }}>
+                          <div><b>{Math.round(w)}</b> {size.unit} · <b>{Math.round(n.calories)}</b> ккал</div>
+                          <div style={{ color: 'var(--color-text-muted)' }}>Б {n.protein.toFixed(1)} · Ж {n.fat.toFixed(1)} · У {n.carbs.toFixed(1)}</div>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

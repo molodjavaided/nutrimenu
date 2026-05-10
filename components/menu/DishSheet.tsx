@@ -374,7 +374,7 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
                   >
                     {label}
                     <span className={`ml-1.5 text-xs ${isActive ? 'text-lavender-dark' : 'text-text-muted'}`}>
-                      {size.calories} ккал
+                      {size.calories} ккал{size.price != null ? ` · ${size.price} ₽` : ''}
                     </span>
                   </button>
                 )
@@ -505,11 +505,14 @@ export default function DishSheet({ item, open, onClose, onAdd }: Props) {
             <span className="text-sm text-text-secondary">
               {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
             </span>
-            {item.price != null && (
-              <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                {item.price} ₽
-              </span>
-            )}
+            {(() => {
+              const displayPrice = activeSize?.price ?? item.price
+              return displayPrice != null ? (
+                <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                  {quantity > 1 ? `${displayPrice * quantity}` : displayPrice} ₽
+                </span>
+              ) : null
+            })()}
           </div>
         </div>
 

@@ -91,6 +91,7 @@ export interface SizeOption {
   name?: string
   weight: number
   weightUnit: 'г' | 'мл'
+  price?: number
   calories: number
   protein: number
   fat: number

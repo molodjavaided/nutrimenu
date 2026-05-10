@@ -12,3 +12,10 @@ export const authRatelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, '15 m'),
   prefix: 'nm_auth',
 })
+
+// 5 feedback submissions per hour per IP
+export const feedbackRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  prefix: 'nm_feedback',
+})

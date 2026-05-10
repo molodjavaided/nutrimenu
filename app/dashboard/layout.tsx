@@ -1,5 +1,6 @@
 import { DashboardNav } from '@/components/dashboard/DashboardNav'
 import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
+import FeedbackButton from '@/components/feedback/FeedbackButton'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <FeedbackButton />
     </div>
   )
 }

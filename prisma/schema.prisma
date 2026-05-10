@@ -103,6 +103,45 @@ model MenuItem {
   @@index([venueId])
 }
 
+enum FeedbackSource {
+  OWNER
+  GUEST
+}
+
+enum FeedbackCategory {
+  bug
+  idea
+  question
+  other
+}
+
+enum FeedbackStatus {
+  new
+  triaged
+  resolved
+  wontfix
+}
+
+model Feedback {
+  id        String           @id @default(cuid())
+  createdAt DateTime         @default(now())
+  source    FeedbackSource
+  category  FeedbackCategory @default(other)
+  message   String
+  rating    Int?
+  email     String?
+  pageUrl   String?
+  userAgent String?
+  venueId   String?
+  userId    String?
+  status    FeedbackStatus   @default(new)
+  note      String?
+
+  @@index([status, createdAt])
+  @@index([source, createdAt])
+  @@index([venueId])
+}
+
 model MenuView {
   id      String   @id @default(cuid())
   venueId String

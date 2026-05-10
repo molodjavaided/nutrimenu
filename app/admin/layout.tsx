@@ -1,9 +1,15 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const tabs = [
+    { href: '/admin', label: 'Заведения' },
+    { href: '/admin/feedback', label: 'Отзывы' },
+  ]
 
   async function handleLogout() {
     await fetch('/api/auth/session', { method: 'DELETE' })
@@ -26,7 +32,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <path d="M7 4.5v2.5l1.5 1" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>
-        <span className="font-bold text-sm flex-1" style={{ color: 'var(--color-text-primary)' }}>NutriMenu Admin</span>
+        <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>NutriMenu Admin</span>
+        <nav className="flex gap-1 flex-1 ml-4">
+          {tabs.map(t => {
+            const active = pathname === t.href
+            return (
+              <Link
+                key={t.href}
+                href={t.href}
+                className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                style={{
+                  background: active ? 'var(--color-text-primary)' : 'transparent',
+                  color: active ? '#FEFEF2' : '#7a748f',
+                }}
+              >
+                {t.label}
+              </Link>
+            )
+          })}
+        </nav>
         <button
           onClick={handleLogout}
           className="text-xs px-3 py-1.5 rounded-lg transition-all"

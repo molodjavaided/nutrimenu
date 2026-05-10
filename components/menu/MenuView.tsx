@@ -11,6 +11,7 @@ import DishSheet from './DishSheet'
 import NutriTracker from './NutriTracker'
 import VenueHeader from './VenueHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
+import GuestFeedbackLink from '@/components/feedback/GuestFeedbackLink'
 
 interface Props {
   venue: Venue
@@ -212,9 +213,10 @@ const resolved = {
         </div>
       </div>
 
-      {/* Owner login link */}
+      {/* Footer */}
       {trackerItems.length === 0 && (
-        <div className="py-8 flex justify-center">
+        <div className="py-8 flex justify-center gap-3 flex-wrap">
+          <GuestFeedbackLink venueSlug={venue.slug} />
           <Link
             href="/auth/login"
             className="text-xs px-3 py-1.5 rounded-full transition-all active:scale-95"

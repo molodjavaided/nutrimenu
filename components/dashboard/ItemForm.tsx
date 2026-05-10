@@ -656,6 +656,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       name,
       price: price ? parseFloat(price) : undefined,
       description: description || undefined,
+      photo: photo || undefined,
       weight: sizesToSave[0].weight,
       weightUnit: sizesToSave[0].weightUnit,
       calories: sizesToSave[0].calories,

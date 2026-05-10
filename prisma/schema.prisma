@@ -19,44 +19,45 @@ enum UserRole {
 }
 
 model User {
-  id                 String               @id @default(cuid())
-  email              String               @unique
-  passwordHash       String
-  role               UserRole             @default(OWNER)
-  createdAt          DateTime             @default(now())
-  venue              Venue?
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String
+  role                UserRole             @default(OWNER)
+  createdAt           DateTime             @default(now())
+  venue               Venue?
   passwordResetTokens PasswordResetToken[]
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  token     String    @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
 }
 
 model Venue {
-  id           String      @id @default(cuid())
-  slug         String      @unique
-  name         String
-  address      String?
-  description  String?
-  workingHours String?
-  logo         String?
-  tags         String[]    @default([])
+  id             String      @id @default(cuid())
+  slug           String      @unique
+  name           String
+  address        String?
+  description    String?
+  workingHours   String?
+  logo           String?
+  tags           String[]    @default([])
   status         VenueStatus @default(PENDING)
   allowAdminEdit Boolean     @default(false)
   ownerId        String      @unique
-  owner        User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  owner          User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   categories  Category[]
+  menuItems   MenuItem[]
   ingredients IngredientRef[]
 }
 
@@ -66,7 +67,11 @@ model Category {
   venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
   name      String
   sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   items     MenuItem[]
+
+  @@index([venueId, sortOrder])
 }
 
 model MenuItem {
@@ -74,6 +79,7 @@ model MenuItem {
   categoryId     String
   category       Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   venueId        String
+  venue          Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
   name           String
   description    String?
   photo          String?
@@ -90,13 +96,18 @@ model MenuItem {
   variantGroups  Json?
   modifierGroups Json?
   sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([categoryId, sortOrder])
+  @@index([venueId])
 }
 
 model MenuView {
-  id        String   @id @default(cuid())
-  venueId   String
-  date      DateTime @default(now()) @db.Date
-  count     Int      @default(1)
+  id      String   @id @default(cuid())
+  venueId String
+  date    DateTime @default(now()) @db.Date
+  count   Int      @default(1)
 
   @@unique([venueId, date])
   @@index([venueId])

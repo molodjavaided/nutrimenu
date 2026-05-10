@@ -31,26 +31,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!cat) return NextResponse.json({ error: 'Категория не найдена' }, { status: 404 })
   }
 
+  // Partial update: only touch fields that were actually sent.
+  // Prevents wiping photo / other fields when a client PATCHes a subset.
+  const updateData: Record<string, unknown> = {}
+  if (categoryId !== undefined) updateData.categoryId = categoryId
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.description !== undefined) updateData.description = data.description ?? null
+  if (data.photo !== undefined) updateData.photo = data.photo ?? null
+  if (data.price !== undefined) updateData.price = data.price ?? null
+  if (data.weight !== undefined) updateData.weight = data.weight
+  if (data.weightUnit !== undefined) updateData.weightUnit = data.weightUnit
+  if (data.calories !== undefined) updateData.calories = data.calories
+  if (data.protein !== undefined) updateData.protein = data.protein
+  if (data.fat !== undefined) updateData.fat = data.fat
+  if (data.carbs !== undefined) updateData.carbs = data.carbs
+  if (data.isAvailable !== undefined) updateData.isAvailable = data.isAvailable
+  if (data.sizes !== undefined) updateData.sizes = data.sizes
+  if (data.composition !== undefined) updateData.composition = data.composition
+  if (data.variantGroups !== undefined) updateData.variantGroups = data.variantGroups
+  if (data.modifierGroups !== undefined) updateData.modifierGroups = data.modifierGroups
+
   const item = await db.menuItem.update({
     where: { id, venueId: venueId },
-    data: {
-      ...(categoryId ? { categoryId } : {}),
-      name: data.name,
-      description: data.description ?? null,
-      photo: data.photo ?? null,
-      price: data.price ?? null,
-      weight: data.weight ?? 0,
-      weightUnit: data.weightUnit ?? 'г',
-      calories: data.calories ?? 0,
-      protein: data.protein ?? 0,
-      fat: data.fat ?? 0,
-      carbs: data.carbs ?? 0,
-      isAvailable: data.isAvailable ?? true,
-      sizes: data.sizes ?? [],
-      composition: data.composition ?? [],
-      variantGroups: data.variantGroups ?? [],
-      modifierGroups: data.modifierGroups ?? [],
-    },
+    data: updateData,
   })
 
   return NextResponse.json(item)

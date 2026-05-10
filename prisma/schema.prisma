@@ -23,6 +23,8 @@ model User {
   email               String               @unique
   passwordHash        String
   role                UserRole             @default(OWNER)
+  emailVerified       Boolean              @default(false)
+  ttkImportCount      Int                  @default(0)
   createdAt           DateTime             @default(now())
   venue               Venue?
   passwordResetTokens PasswordResetToken[]

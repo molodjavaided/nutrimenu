@@ -123,8 +123,8 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ─── Gemini validation/extraction ──────────────────────────
-  const apiKey = process.env.DEEPSEEK_API_KEY
+  // ─── AI validation/extraction ──────────────────────────────
+  const apiKey = process.env.OPENROUTER_API_KEY
   let allDishes: ParsedDish[] = []
   let usedAI = false
   let corrections: string[] = []

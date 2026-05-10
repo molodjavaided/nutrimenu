@@ -1,14 +1,3 @@
-/**
- * POST /api/validate-ttk
- *
- * Body: {
- *   sheets: SheetInput[]
- *   examples?: TTKExample[]  — few-shot examples from localStorage
- * }
- *
- * Returns: { dishes: ParsedDish[], corrections: string[] }
- */
-
 import { NextRequest, NextResponse } from 'next/server'
 import { validateTTKDishes, type SheetInput } from '@/lib/gemini-ttk'
 import type { TTKExample } from '@/lib/ttk-examples'
@@ -26,26 +15,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sheets обязателен' }, { status: 400 })
   }
 
-  const deepseekKey = process.env.DEEPSEEK_API_KEY
-  const geminiKey = process.env.GEMINI_API_KEY
-  if (!deepseekKey && !geminiKey) {
-    return NextResponse.json({ error: 'Не настроен ни DEEPSEEK_API_KEY, ни GEMINI_API_KEY' }, { status: 503 })
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    return NextResponse.json({ error: 'OPENROUTER_API_KEY не настроен' }, { status: 503 })
   }
 
   try {
-    // Try DeepSeek first; fall back to Gemini on balance error
-    let result
-    if (deepseekKey) {
-      try {
-        result = await validateTTKDishes(sheets, deepseekKey, examples)
-      } catch (err) {
-        const isNoBalance = (err as { code?: string }).code === 'NO_BALANCE'
-        if (!isNoBalance || !geminiKey) throw err
-        result = await validateTTKDishes(sheets, geminiKey, examples)
-      }
-    } else {
-      result = await validateTTKDishes(sheets, geminiKey!, examples)
-    }
+    const result = await validateTTKDishes(sheets, apiKey, examples)
     return NextResponse.json(result)
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 502 })

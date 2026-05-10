@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 type VenueStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
@@ -129,6 +130,13 @@ export default function AdminPage() {
               </span>
 
               <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+                <Link
+                  href={`/admin/venues/${venue.id}`}
+                  className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                  style={{ background: 'rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                >
+                  Смотреть меню
+                </Link>
                 {deleteConfirm === venue.id ? (
                   <>
                     <button

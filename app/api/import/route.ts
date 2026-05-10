@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
+import { FREE_IMPORT_LIMIT } from '@/app/api/import/limit/route'
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 
@@ -56,6 +57,21 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const venueId = getEffectiveVenueId(session)
+
+  // Check import limit (skip for admins)
+  if (session.role !== 'ADMIN') {
+    const user = await db.user.findUnique({
+      where: { id: session.userId },
+      select: { emailVerified: true, ttkImportCount: true },
+    })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user.emailVerified) {
+      return NextResponse.json({ error: 'EMAIL_NOT_VERIFIED', message: 'Подтвердите email перед импортом' }, { status: 403 })
+    }
+    if (user.ttkImportCount >= FREE_IMPORT_LIMIT) {
+      return NextResponse.json({ error: 'IMPORT_LIMIT_REACHED', message: 'Исчерпан лимит бесплатных импортов' }, { status: 402 })
+    }
+  }
 
   const body = await req.json().catch(() => null)
   const parsed = schema.safeParse(body)
@@ -188,6 +204,14 @@ export async function POST(req: NextRequest) {
       }
     }
   })
+
+  // Increment import counter for non-admins
+  if (session.role !== 'ADMIN') {
+    await db.user.update({
+      where: { id: session.userId },
+      data: { ttkImportCount: { increment: 1 } },
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

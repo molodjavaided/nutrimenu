@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
 
@@ -81,6 +81,9 @@ export default function AdminVenueMenuPage() {
   const [resetLink, setResetLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Verify email
+  const [verifying, setVerifying] = useState(false)
+
   // Delete
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -125,6 +128,16 @@ export default function AdminVenueMenuPage() {
       setTimeout(() => setNoteSaved(false), 2000)
     } finally {
       setSavingNote(false)
+    }
+  }
+
+  async function verifyEmail() {
+    setVerifying(true)
+    try {
+      const res = await fetch(`/api/admin/venues/${id}/verify-email`, { method: 'POST' })
+      if (res.ok) setVenue(prev => prev ? { ...prev, owner: { ...prev.owner, emailVerified: true } } : prev)
+    } finally {
+      setVerifying(false)
     }
   }
 
@@ -292,13 +305,23 @@ export default function AdminVenueMenuPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3" style={{ borderTop: '0.5px solid rgba(176,166,223,0.4)' }}>
           {[
             { label: 'Владелец', value: venue.owner.email },
-            { label: 'Email', value: venue.owner.emailVerified ? '✓ Подтверждён' : '✗ Не подтверждён', color: venue.owner.emailVerified ? '#15803D' : '#DC2626' },
+            { label: 'Email', value: venue.owner.emailVerified ? '✓ Подтверждён' : '✗ Не подтверждён', color: venue.owner.emailVerified ? '#15803D' : '#DC2626', action: !venue.owner.emailVerified ? (
+            <button
+              onClick={verifyEmail}
+              disabled={verifying}
+              className="mt-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60"
+              style={{ background: 'rgba(21,128,61,0.12)', color: '#15803D' }}
+            >
+              {verifying ? '…' : 'Подтвердить'}
+            </button>
+          ) : null },
             { label: 'Импортов ТТК', value: `${venue.owner.ttkImportCount} из 3` },
             { label: 'Зарегистрирован', value: new Date(venue.owner.createdAt).toLocaleDateString('ru-RU') },
-          ].map(({ label, value, color }) => (
+          ].map(({ label, value, color, action }) => (
             <div key={label}>
               <p className="text-xs" style={{ color: '#9D99B8' }}>{label}</p>
-              <p className="text-sm font-medium mt-0.5 truncate" style={{ color: color ?? '#2C2950' }}>{value}</p>
+              <p className="text-sm font-medium mt-0.5 truncate" style={{ color: (color as string | undefined) ?? '#2C2950' }}>{value}</p>
+              {(action as React.ReactNode | null | undefined) ?? null}
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import PlateLogoIcon from '@/components/PlateLogoIcon'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -27,12 +28,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ background: 'var(--color-text-primary)' }}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="4" stroke="#FEFEF2" strokeWidth="1.5" />
-            <path d="M7 4.5v2.5l1.5 1" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <PlateLogoIcon size={20} />
         </div>
-        <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>NutriMenu Admin</span>
+        <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Plate Admin</span>
         <nav className="flex gap-1 flex-1 ml-4">
           {tabs.map(t => {
             const active = pathname === t.href

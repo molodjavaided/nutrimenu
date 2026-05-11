@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 import { LogOut } from 'lucide-react'
+import PlateLogoIcon from '@/components/PlateLogoIcon'
 
 const navItems = [
   {
@@ -121,13 +122,10 @@ export function DashboardNav() {
         {/* Логотип */}
         <div className="px-5 py-5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-lavender">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="5" stroke="#FEFEF2" strokeWidth="1.5"/>
-                <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#2C2950' }}>
+              <PlateLogoIcon size={20} />
             </div>
-            <span className="font-medium text-sm text-text-primary">NutriMenu</span>
+            <span className="font-medium text-sm text-text-primary">Plate</span>
           </div>
         </div>
 

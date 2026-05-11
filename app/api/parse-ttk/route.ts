@@ -38,7 +38,7 @@ async function fetchSheetBuffer(url: string): Promise<{ buffer: ArrayBuffer; err
 
   let res: Response
   try {
-    res = await fetch(exportUrl, { headers: { 'User-Agent': 'NutriMenu/1.0' }, redirect: 'follow' })
+    res = await fetch(exportUrl, { headers: { 'User-Agent': 'Plate/1.0' }, redirect: 'follow' })
   } catch {
     return { buffer: new ArrayBuffer(0), error: 'Не удалось подключиться к Google' }
   }

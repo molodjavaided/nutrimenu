@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { ALLERGENS } from '@/lib/allergens'
 import { FormField, FormInput, FormSelect, FormTextarea, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import IngredientPickerModal from './IngredientPickerModal'
@@ -145,6 +146,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([])
   const [addonPickerTarget, setAddonPickerTarget] = useState<{ groupId: string; addonId: string } | null>(null)
 
+  // Аллергены
+  const [allergens, setAllergens] = useState<string[]>([])
+
   // Флаги для загрузки
   const isInitialLoad = useRef(true)
   const [isReady, setIsReady] = useState(false)
@@ -201,6 +205,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       setDescription(found.item.description ?? '')
       setPhoto(found.item.photo ?? '')
       setCategoryId(found.categoryId)
+      setAllergens(found.item.allergens ?? [])
 
       const hasComposition = (found.item.sizes?.length > 0 && found.item.sizes[0]?.composition?.length > 0)
         || (found.item.composition?.length > 0)
@@ -515,6 +520,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         fat: quickFat,
         carbs: quickCarbs,
         isAvailable,
+        allergens: allergens.length > 0 ? allergens : undefined,
         composition: [],
         sizes: [],
         variantGroups: [],
@@ -703,6 +709,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       sizes: sizesToSave,
       variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
       modifierGroups: modifierGroupsToSave.length > 0 ? modifierGroupsToSave : undefined,
+      allergens: allergens.length > 0 ? allergens : undefined,
       categoryId,
       venueId: '1',
       isAvailable,
@@ -724,7 +731,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, isEdit, itemId, router, calculateNutriForSize])
+  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, allergens, isEdit, itemId, router, calculateNutriForSize])
 
   // ─── Функции для шага 1 ───────────────────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
@@ -937,6 +944,31 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             rows={3}
             placeholder="Состав, особенности приготовления..."
           />
+        </FormField>
+
+        {/* Аллергены */}
+        <FormField label="Аллергены (необязательно)">
+          <div className="flex flex-wrap gap-1.5">
+            {ALLERGENS.map(a => {
+              const active = allergens.includes(a.id)
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setAllergens(prev =>
+                    prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]
+                  )}
+                  className="px-2.5 py-1 rounded-full text-xs transition-all active:scale-95"
+                  style={active
+                    ? { background: '#EF4444', color: '#fff', fontWeight: 500 }
+                    : { background: '#EAE7F8', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(176,166,223,0.4)' }
+                  }
+                >
+                  {a.emoji} {a.label}
+                </button>
+              )
+            })}
+          </div>
         </FormField>
 
         {/* Доступность */}

@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { NutritionGrid } from '@/components/ui/NutritionGrid'
 import { QuantityControl } from '@/components/ui/QuantityControl'
+import { getAllergenById } from '@/lib/allergens'
 
 interface Props {
   item: MenuItem
@@ -64,6 +65,24 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
               </p>
             )}
           </div>
+          {item.allergens && item.allergens.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {item.allergens.map(id => {
+                const a = getAllergenById(id)
+                if (!a) return null
+                return (
+                  <span
+                    key={id}
+                    title={a.label}
+                    className="text-xs px-1.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(239,68,68,0.1)', color: '#DC2626', border: '0.5px solid rgba(239,68,68,0.25)' }}
+                  >
+                    {a.emoji} {a.label}
+                  </span>
+                )
+              })}
+            </div>
+          )}
         </div>
       </button>
 

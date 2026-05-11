@@ -1,3 +1,19 @@
+@font-face {
+  font-family: 'Stolzl';
+  src: url('/fonts/stolzl_regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Stolzl';
+  src: url('/fonts/stolzl_bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

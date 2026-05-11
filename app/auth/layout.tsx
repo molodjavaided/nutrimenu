@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import PlateLogoIcon from '@/components/PlateLogoIcon'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,12 +19,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'var(--color-text-primary)' }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="5" stroke="#FEFEF2" strokeWidth="1.5" />
-              <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <PlateLogoIcon size={20} />
           </div>
-            <span className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>NutriMenu</span>
+            <span className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Plate</span>
           </div>
           <Link
             href="/venues"

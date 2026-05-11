@@ -160,7 +160,7 @@ async function callOpenRouter(
       'content-type': 'application/json',
       authorization: `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://nutrimenu.app',
-      'X-Title': 'NutriMenu TTK Parser',
+      'X-Title': 'Plate TTK Parser',
     },
     body: JSON.stringify({
       model: MODEL,

@@ -213,7 +213,7 @@ export default function SettingsPage() {
       <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(176,166,223,0.3)' }}>
         <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Доступ администратора</h2>
         <p className="text-xs mb-4" style={{ color: '#7a748f' }}>
-          Разрешите команде NutriMenu редактировать ваше меню — например, чтобы перенести данные о КБЖУ за вас.
+          Разрешите команде Plate редактировать ваше меню — например, чтобы перенести данные о КБЖУ за вас.
         </p>
         <button
           onClick={() => toggleAdminEdit(!allowAdminEdit)}

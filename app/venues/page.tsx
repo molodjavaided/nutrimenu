@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import PlateLogoIcon from '@/components/PlateLogoIcon'
 
 interface VenueCard {
   id: string
@@ -48,12 +49,9 @@ export default function VenuesPage() {
       <header className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: '#EAE7F8' }}>
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-text-primary)' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="5" stroke="#FEFEF2" strokeWidth="1.5"/>
-              <path d="M8 5v3l2 1.5" stroke="#FEFEF2" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+            <PlateLogoIcon size={22} />
           </div>
-          <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>NutriMenu</span>
+          <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Plate</span>
         </div>
         <Link
           href="/auth/login"

@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/reset-password/${token}`
 
   await resend.emails.send({
-    from: 'NutriMenu <noreply@nutrimenu.ru>',
+    from: 'Plate <noreply@nutrimenu.ru>',
     to: email,
-    subject: 'Сброс пароля NutriMenu',
+    subject: 'Сброс пароля Plate',
     html: `
       <p>Вы запросили сброс пароля.</p>
       <p><a href="${resetUrl}">Нажмите здесь для сброса пароля</a></p>

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   let res: Response
   try {
-    res = await fetch(exportUrl, { headers: { 'User-Agent': 'NutriMenu/1.0' } })
+    res = await fetch(exportUrl, { headers: { 'User-Agent': 'Plate/1.0' } })
   } catch {
     return NextResponse.json({ error: 'Не удалось подключиться к Google' }, { status: 502 })
   }

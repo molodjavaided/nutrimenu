@@ -147,7 +147,7 @@ export const mockIngredients: IngredientRef[] = [
 ]
 
 /**
- * Системные библиотеки от сервиса NutriMenu.
+ * Системные библиотеки от сервиса Plate.
  * Подключаются через initLibraries() и доступны только для чтения владельцем.
  */
 export const systemLibraries: IngredientLibrary[] = [

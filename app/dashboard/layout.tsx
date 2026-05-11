@@ -1,6 +1,11 @@
+import type { Metadata } from 'next'
 import { DashboardNav } from '@/components/dashboard/DashboardNav'
 import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
 import FeedbackButton from '@/components/feedback/FeedbackButton'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (

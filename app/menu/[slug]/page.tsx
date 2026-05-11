@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = `${venue.name} — меню с КБЖУ`
   const description = venue.description
     ?? `Меню заведения ${venue.name}${venue.address ? ` — ${venue.address}` : ''}. Полная информация о составе и питательной ценности блюд.`
-  const url = `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://nutrimenu.ru'}/menu/${venue.slug}`
+  const url = `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`
 
   return {
     title,
@@ -31,13 +31,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url,
       type: 'website',
-      ...(venue.logo ? { images: [{ url: venue.logo, width: 400, height: 400, alt: venue.name }] } : {}),
+      locale: 'ru_RU',
+      siteName: 'Plate',
+      images: venue.logo
+        ? [{ url: venue.logo, width: 400, height: 400, alt: venue.name }]
+        : [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Plate — цифровое меню' }],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(venue.logo ? { images: [venue.logo] } : {}),
+      images: venue.logo ? [venue.logo] : ['/opengraph-image'],
     },
     alternates: { canonical: url },
   }
@@ -56,11 +60,11 @@ export default async function MenuPage({ params }: Props) {
         '@context': 'https://schema.org',
         '@type': 'Restaurant',
         name: venue.name,
-        url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://nutrimenu.ru'}/menu/${venue.slug}`,
+        url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`,
         ...(venue.address ? { address: { '@type': 'PostalAddress', streetAddress: venue.address } } : {}),
         hasMenu: {
           '@type': 'Menu',
-          url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://nutrimenu.ru'}/menu/${venue.slug}`,
+          url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`,
         },
       }
     : null

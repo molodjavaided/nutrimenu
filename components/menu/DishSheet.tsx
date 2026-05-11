@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
 import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
+import { getAllergenById } from '@/lib/allergens'
 import { glassSheet } from '@/lib/styles'
 import { initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
@@ -305,6 +306,28 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         <h2 className="text-lg font-medium mb-1 text-text-primary">{item.name}</h2>
         {item.description && (
           <p className="text-sm mb-3 leading-relaxed text-text-secondary">{item.description}</p>
+        )}
+
+        {/* Аллергены */}
+        {item.allergens && item.allergens.length > 0 && (
+          <div className="mb-4 p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.06)', border: '0.5px solid rgba(239,68,68,0.2)' }}>
+            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: '#DC2626' }}>АЛЛЕРГЕНЫ</p>
+            <div className="flex flex-wrap gap-1.5">
+              {item.allergens.map(id => {
+                const a = getAllergenById(id)
+                if (!a) return null
+                return (
+                  <span
+                    key={id}
+                    className="text-xs px-2.5 py-1 rounded-full font-medium"
+                    style={{ background: 'rgba(239,68,68,0.12)', color: '#DC2626', border: '0.5px solid rgba(239,68,68,0.3)' }}
+                  >
+                    {a.emoji} {a.label}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/* Состав активного размера (или базовый, если размеров нет) */}

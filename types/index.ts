@@ -122,6 +122,7 @@ export interface MenuItem {
   categoryId: string
   venueId: string
   isAvailable: boolean
+  allergens?: string[]
   composition?: CompositionRow[]
   variantGroups?: VariantGroup[]
   modifierGroups?: ModifierGroup[]

@@ -8,10 +8,26 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const venues = await db.venue.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { owner: { select: { email: true } } },
-  })
+  const [venues, counts] = await Promise.all([
+    db.venue.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { owner: { select: { email: true } } },
+    }),
+    db.venue.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    }),
+  ])
 
-  return NextResponse.json(venues)
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+  const newThisWeek = venues.filter(v => new Date(v.createdAt) >= weekAgo).length
+
+  const stats = {
+    total: venues.length,
+    newThisWeek,
+    byStatus: Object.fromEntries(counts.map(c => [c.status, c._count._all])) as Record<string, number>,
+  }
+
+  return NextResponse.json({ venues, stats })
 }

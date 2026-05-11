@@ -53,6 +53,7 @@ model Venue {
   tags           String[]    @default([])
   status         VenueStatus @default(PENDING)
   allowAdminEdit Boolean     @default(false)
+  adminNote      String?
   ownerId        String      @unique
   owner          User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt      DateTime    @default(now())

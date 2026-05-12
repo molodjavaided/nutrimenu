@@ -253,11 +253,11 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     ...(item.modifierGroups ?? []).map(g => ({ id: g.id, label: g.label, type: 'modifier' as const, group: g })),
   ]
 
-  // Чип-лейбл показывает выбранное значение или название группы
+  // Чип-лейбл: всегда показывает название группы, после выбора — "Группа: значение"
   function chipLabel(entry: GroupEntry): string {
     if (entry.type === 'variant') {
       const sel = entry.group.options.find((o: { id: string; label: string }) => o.id === variants[entry.group.id])
-      return sel ? sel.label : entry.group.label
+      return sel ? `${entry.group.label}: ${sel.label}` : entry.group.label
     } else {
       const g = entry.group
       if (g.multi) {
@@ -265,7 +265,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         return sel > 0 ? `${g.label} (${sel})` : g.label
       }
       const sel = g.modifiers.find(m => m.id === modifiers[g.id])
-      return sel ? sel.label : g.label
+      return sel ? `${g.label}: ${sel.label}` : g.label
     }
   }
 
@@ -321,12 +321,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
           />
 
           {/* Контент хедера поверх градиента */}
-          <div className="absolute inset-x-0 top-0 px-5 pt-3 pb-4">
-            {/* Drag handle */}
-            <div className="flex justify-center mb-3">
-              <div className="w-10 h-[5px] rounded-full" style={{ background: 'rgba(255,255,255,0.4)' }} />
-            </div>
-
+          <div className="absolute inset-x-0 top-0 px-5 pt-4 pb-4">
             {/* Название + крестик */}
             <div className="flex items-start justify-between gap-3 mb-3">
               <h2 className="text-[17px] font-semibold leading-snug flex-1" style={{ color: TEXT, fontFamily: 'Stolzl, sans-serif' }}>
@@ -392,7 +387,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                   return (
                     <button
                       key={size.id}
-                      onClick={() => { setSelectedSizeId(size.id); setSizePickerOpen(false) }}
+                      onClick={() => setSelectedSizeId(size.id)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
                       style={isActive
                         ? { background: '#7C3AED', color: '#fff' }
@@ -480,7 +475,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
             const entry = allGroups.find(e => e.id === activeGroupId)
             if (!entry) return null
             return (
-              <div className="px-5 py-3" style={{ background: 'rgba(28,23,38,0.75)', backdropFilter: 'blur(16px)' }}>
+              <div className="px-5 py-3">
                 {(() => {
                   if (entry.type === 'variant') {
                     const group = entry.group as VariantGroup
@@ -500,7 +495,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                               className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
                               style={isActive
                                 ? { background: BG_CHIP_ACTIVE, color: '#fff' }
-                                : { background: BG_CHIP, color: 'rgba(255,255,255,0.85)' }
+                                : { background: GLASS_DARK, backdropFilter: 'blur(12px)', color: '#fff' }
                               }
                             >
                               {opt.label}
@@ -525,7 +520,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                           const kcal = grams > 0 ? Math.round(mod.calories * grams / 100) : 0
                           return (
                             <div key={mod.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
-                              style={{ background: BG_CHIP }}>
+                              style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)' }}>
                               <span className="flex-1 text-sm" style={{ color: TEXT }}>{mod.label}</span>
                               <div className="flex items-center gap-1">
                                 <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) } }))}
@@ -604,7 +599,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                     className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all active:opacity-70 whitespace-nowrap"
                     style={active || selected
                       ? { background: BG_CHIP_ACTIVE, color: '#fff' }
-                      : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
+                      : { background: GLASS_DARK, backdropFilter: 'blur(12px)', color: '#fff' }
                     }
                   >
                     {!selected && <span className="text-sm leading-none opacity-70">{chipIcon(entry)}</span>}

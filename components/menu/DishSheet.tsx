@@ -227,7 +227,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     ...(item.modifierGroups ?? []).map(g => ({ id: g.id, label: g.label, type: 'modifier' as const, group: g })),
   ]
 
-  // Чип-лейбл показывает выбранное значение
+  // Чип-лейбл показывает выбранное значение или название группы
   function chipLabel(entry: GroupEntry): string {
     if (entry.type === 'variant') {
       const sel = entry.group.options.find((o: { id: string; label: string }) => o.id === variants[entry.group.id])
@@ -243,12 +243,44 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     }
   }
 
+  // Иконка-подсказка: замена или добавка
+  function chipIcon(entry: GroupEntry): string {
+    if (entry.type === 'variant') return '⇄'
+    return entry.group.type === 'replace' ? '⇄' : '+'
+  }
+
   function isChipSelected(entry: GroupEntry): boolean {
     if (entry.type === 'variant') return !!variants[entry.group.id]
     const g = entry.group
     if (g.multi) return Array.isArray(modifiers[g.id]) && (modifiers[g.id] as unknown as string[]).length > 0
     return !!modifiers[g.id]
   }
+
+  // Сумма доплат за выбранные варианты и добавки
+  const priceExtra = useMemo(() => {
+    let extra = 0
+    for (const group of item?.variantGroups ?? []) {
+      const selId = variants[group.id]
+      const opt = group.options.find(o => o.id === selId)
+      if (opt?.price) extra += opt.price
+    }
+    for (const group of item?.modifierGroups ?? []) {
+      if (group.multi) {
+        const sel = Array.isArray(modifiers[group.id]) ? modifiers[group.id] as unknown as string[] : []
+        for (const id of sel) {
+          const m = group.modifiers.find(x => x.id === id)
+          if (m?.price) extra += m.price
+        }
+      } else {
+        const selId = modifiers[group.id]
+        if (typeof selId === 'string') {
+          const m = group.modifiers.find(x => x.id === selId)
+          if (m?.price) extra += m.price
+        }
+      }
+    }
+    return extra * quantity
+  }, [item, variants, modifiers, quantity])
 
   const displayPrice = activeSize?.price ?? item.price
 
@@ -258,13 +290,13 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         side="bottom"
         showCloseButton={false}
         className="dish-sheet max-w-full mx-auto p-0 flex flex-col overflow-hidden"
-        style={{ background: BG, border: 'none', gap: 0 }}
+        style={{ background: BG, border: 'none', gap: 0, maxHeight: '92vh' }}
       >
         {/* ── ФОТО + ХЕДЕР-ОВЕРЛЕЙ ────────────────────────────── */}
         <div className="relative w-full shrink-0" style={{ aspectRatio: '4/3' }}>
           {/* Фото */}
           {item.photo
-            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
+            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority style={{ objectPosition: item.photoPosition === 'top' ? 'center top' : item.photoPosition === 'bottom' ? 'center bottom' : 'center center' }} />
             : <div className="w-full h-full flex items-center justify-center text-7xl" style={{ background: '#1a1426' }}>🍽️</div>
           }
 
@@ -282,7 +314,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
           <div
             className="absolute inset-x-0 bottom-0"
             style={{
-              height: '35%',
+              height: '20%',
               background: `linear-gradient(to top, ${BG} 0%, transparent 100%)`,
               pointerEvents: 'none',
             }}
@@ -442,7 +474,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         </div>
 
         {/* ── СКРОЛЛИМАЯ ЧАСТЬ: добавки + количество ───────────── */}
-        <div className="flex-1 overflow-y-auto" style={{ background: BG }}>
+        <div className="overflow-y-auto" style={{ background: BG }}>
 
           {/* Горизонтальный ряд чипов: варианты + модификаторы */}
           {allGroups.length > 0 && (
@@ -464,7 +496,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                       : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
                     }
                   >
-                    {!selected && <span className="text-base leading-none" style={{ marginTop: -1 }}>+</span>}
+                    {!selected && <span className="text-sm leading-none opacity-70">{chipIcon(entry)}</span>}
                     {chipLabel(entry)}
                   </button>
                 )
@@ -500,6 +532,9 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                           }
                         >
                           {opt.label}
+                          {opt.price != null && opt.price > 0 && (
+                            <span className="ml-1 text-xs opacity-80">+{opt.price} ₽</span>
+                          )}
                           {opt.calories > 0 && (
                             <span className="ml-1 text-xs opacity-60">{getOptionCalories(group, opt)} ккал</span>
                           )}
@@ -571,6 +606,9 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                         }
                       >
                         {mod.label}
+                        {mod.price != null && mod.price > 0 && (
+                          <span className="ml-1 text-xs opacity-80">+{mod.price} ₽</span>
+                        )}
                         {mod.calories > 0 && group.type !== 'replace' && (
                           <span className="ml-1 text-xs opacity-60">+{mod.calories} ккал</span>
                         )}
@@ -594,9 +632,16 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         >
           {/* Цена */}
           {displayPrice != null && (
-            <span className="text-sm font-semibold shrink-0" style={{ color: TEXT }}>
-              {displayPrice} ₽
-            </span>
+            <div className="flex flex-col shrink-0">
+              <span className="text-sm font-semibold leading-tight" style={{ color: TEXT }}>
+                {(displayPrice * quantity) + priceExtra} ₽
+              </span>
+              {priceExtra > 0 && (
+                <span className="text-[10px] leading-tight" style={{ color: TEXT_MUTED }}>
+                  {displayPrice * quantity} + {priceExtra} доп.
+                </span>
+              )}
+            </div>
           )}
 
           {/* Счётчик − n + */}

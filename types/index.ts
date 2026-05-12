@@ -30,6 +30,7 @@ export interface VariantChoice {
   protein: number
   fat: number
   carbs: number
+  price?: number
 }
 
 export interface VariantGroup {
@@ -59,6 +60,7 @@ export interface Modifier {
   carbs: number
   weight: number
   weightUnit: 'г' | 'мл'
+  price?: number
   allowPortions?: boolean
   maxPortions?: number
   subOptions?: ModifierSubOption[]
@@ -111,6 +113,7 @@ export interface MenuItem {
   name: string
   description?: string
   photo?: string
+  photoPosition?: 'top' | 'center' | 'bottom'
   price?: number
   weight: number
   weightUnit: 'г' | 'мл'

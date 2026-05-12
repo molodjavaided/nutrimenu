@@ -12,9 +12,9 @@ import { RemoveButton } from '@/components/ui/RemoveButton'
 import IngredientPickerModal from './IngredientPickerModal'
 
 // Типы для API-ответа (raw JSON, без строгой валидации на клиенте)
-interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number }
+interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
 interface ApiVariantGroup { id: string; label?: string; required?: boolean; replacesIngredientRefId?: string; options?: ApiVariantOption[] }
-interface ApiModifier { id: string; ingredientRefId?: string; label?: string }
+interface ApiModifier { id: string; ingredientRefId?: string; label?: string; price?: number }
 interface ApiModifierGroup { id: string; label?: string; allowCustomGrams?: boolean; modifiers?: ApiModifier[] }
 
 interface IngredientItem {
@@ -42,6 +42,7 @@ interface AddonItem {
   id: string
   ingredientRefId: string
   label: string
+  price?: number
 }
 
 interface AddonGroup {
@@ -70,6 +71,7 @@ interface VariantChoice {
   protein: number
   fat: number
   carbs: number
+  price?: number
   isManual?: boolean
 }
 
@@ -88,6 +90,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const [isAvailable, setIsAvailable] = useState(true)
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState('')
+  const [photoPosition, setPhotoPosition] = useState<'top' | 'center' | 'bottom'>('center')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
@@ -204,6 +207,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       setIsAvailable(found.item.isAvailable ?? true)
       setDescription(found.item.description ?? '')
       setPhoto(found.item.photo ?? '')
+      setPhotoPosition(found.item.photoPosition ?? 'center')
       setCategoryId(found.categoryId)
       setAllergens(found.item.allergens ?? [])
 
@@ -340,6 +344,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             id: m.id,
             ingredientRefId: m.ingredientRefId ?? '',
             label: m.label ?? '',
+            price: m.price,
           })),
         }))
         setAddonGroups(loadedAddonGroups)
@@ -363,6 +368,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               protein: opt.protein ?? 0,
               fat: opt.fat ?? 0,
               carbs: opt.carbs ?? 0,
+              price: opt.price,
               isManual: true,
             }
           }),
@@ -513,6 +519,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         price: price ? parseFloat(price) : undefined,
         description: description || undefined,
         photo: photo || undefined,
+        photoPosition: photo ? photoPosition : undefined,
         weight: quickWeight,
         weightUnit: quickWeightUnit,
         calories: quickCalories,
@@ -646,6 +653,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 protein: Math.round(ref.proteinPer100 * ratio * 10) / 10,
                 fat: Math.round(ref.fatPer100 * ratio * 10) / 10,
                 carbs: Math.round(ref.carbsPer100 * ratio * 10) / 10,
+                price: opt.price || undefined,
               }
             }
           }
@@ -659,6 +667,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             protein: opt.protein,
             fat: opt.fat,
             carbs: opt.carbs,
+            price: opt.price || undefined,
           }
         }),
       }
@@ -680,6 +689,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
             carbs: ref?.carbsPer100 ?? 0,
             weight: 100,
             weightUnit: 'г' as const,
+            price: a.price || undefined,
           }
         })
       return {
@@ -699,6 +709,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       price: price ? parseFloat(price) : undefined,
       description: description || undefined,
       photo: photo || undefined,
+      photoPosition: photo ? photoPosition : undefined,
       weight: sizesToSave[0].weight,
       weightUnit: sizesToSave[0].weightUnit,
       calories: sizesToSave[0].calories,
@@ -731,7 +742,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, photo, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, allergens, isEdit, itemId, router, calculateNutriForSize])
+  }, [name, categoryId, description, photo, photoPosition, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, allergens, isEdit, itemId, router, calculateNutriForSize])
 
   // ─── Функции для шага 1 ───────────────────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
@@ -1074,6 +1085,27 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG, WebP · до 5 МБ</p>
             </div>
           </div>
+          {photo && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>Позиция фото:</span>
+              <div className="flex gap-1">
+                {(['top', 'center', 'bottom'] as const).map(pos => (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => setPhotoPosition(pos)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+                    style={photoPosition === pos
+                      ? { background: '#2C2950', color: '#fff' }
+                      : { background: 'rgba(44,41,80,0.1)', color: 'var(--color-text-primary)' }
+                    }
+                  >
+                    {pos === 'top' ? 'Верх' : pos === 'center' ? 'Центр' : 'Низ'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </FormField>
 
         {/* ─── Быстрый режим: вес + КБЖУ вручную ─── */}
@@ -1625,6 +1657,18 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       {displayCalories > 0 && (
                         <span className="text-xs" style={{ color: '#534AB7' }}>{displayCalories} ккал</span>
                       )}
+                      <div className="flex items-center gap-1 ml-auto">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={opt.price ?? ''}
+                          onChange={e => updateVariantOption(group.id, opt.id, { price: e.target.value ? Number(e.target.value) : undefined })}
+                          placeholder="0"
+                          className="w-16 h-8 px-2 rounded-lg text-sm outline-none text-center"
+                          style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                        />
+                        <span className="text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>₽</span>
+                      </div>
                     </div>
                   </div>
                 )
@@ -1718,6 +1762,22 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                       {ref.caloriesPer100} ккал/100г
                     </span>
                   )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={addon.price ?? ''}
+                      onChange={e => setAddonGroups(prev => prev.map(g =>
+                        g.id === group.id
+                          ? { ...g, addons: g.addons.map(a => a.id === addon.id ? { ...a, price: e.target.value ? Number(e.target.value) : undefined } : a) }
+                          : g
+                      ))}
+                      placeholder="0"
+                      className="w-14 h-10 px-2 rounded-xl text-sm outline-none text-center"
+                      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                    />
+                    <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>₽</span>
+                  </div>
                   <button
                     onClick={() => removeAddon(group.id, addon.id)}
                     className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"

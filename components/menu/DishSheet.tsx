@@ -190,6 +190,32 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     }
   }, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId])
 
+  // Сумма доплат за выбранные варианты и добавки (должен быть до раннего return)
+  const priceExtra = useMemo(() => {
+    let extra = 0
+    for (const group of item?.variantGroups ?? []) {
+      const selId = variants[group.id]
+      const opt = group.options.find(o => o.id === selId)
+      if (opt?.price) extra += opt.price
+    }
+    for (const group of item?.modifierGroups ?? []) {
+      if (group.multi) {
+        const sel = Array.isArray(modifiers[group.id]) ? modifiers[group.id] as unknown as string[] : []
+        for (const id of sel) {
+          const m = group.modifiers.find(x => x.id === id)
+          if (m?.price) extra += m.price
+        }
+      } else {
+        const selId = modifiers[group.id]
+        if (typeof selId === 'string') {
+          const m = group.modifiers.find(x => x.id === selId)
+          if (m?.price) extra += m.price
+        }
+      }
+    }
+    return extra * quantity
+  }, [item, variants, modifiers, quantity])
+
   if (!item) return null
 
   const activeSize = item.sizes && item.sizes.length > 0
@@ -255,32 +281,6 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     if (g.multi) return Array.isArray(modifiers[g.id]) && (modifiers[g.id] as unknown as string[]).length > 0
     return !!modifiers[g.id]
   }
-
-  // Сумма доплат за выбранные варианты и добавки
-  const priceExtra = useMemo(() => {
-    let extra = 0
-    for (const group of item?.variantGroups ?? []) {
-      const selId = variants[group.id]
-      const opt = group.options.find(o => o.id === selId)
-      if (opt?.price) extra += opt.price
-    }
-    for (const group of item?.modifierGroups ?? []) {
-      if (group.multi) {
-        const sel = Array.isArray(modifiers[group.id]) ? modifiers[group.id] as unknown as string[] : []
-        for (const id of sel) {
-          const m = group.modifiers.find(x => x.id === id)
-          if (m?.price) extra += m.price
-        }
-      } else {
-        const selId = modifiers[group.id]
-        if (typeof selId === 'string') {
-          const m = group.modifiers.find(x => x.id === selId)
-          if (m?.price) extra += m.price
-        }
-      }
-    }
-    return extra * quantity
-  }, [item, variants, modifiers, quantity])
 
   const displayPrice = activeSize?.price ?? item.price
 

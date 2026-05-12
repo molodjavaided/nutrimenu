@@ -364,7 +364,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                       className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
                       style={isActive
                         ? { background: '#7C3AED', color: '#fff' }
-                        : { background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }
+                        : { background: GLASS_DARK, backdropFilter: 'blur(12px)', color: '#fff' }
                       }
                     >
                       {size.name || `${size.weight} ${size.weightUnit}`}

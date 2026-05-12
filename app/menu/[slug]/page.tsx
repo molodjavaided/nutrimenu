@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const venue = await db.venue.findUnique({
     where: { slug },
-    select: { name: true, description: true, address: true, logo: true, slug: true },
+    select: { name: true, description: true, country: true, city: true, address: true, logo: true, slug: true },
   })
 
   if (!venue) {
@@ -19,8 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const title = `${venue.name} — меню с КБЖУ`
+  const locationStr = [venue.city, venue.country].filter(Boolean).join(', ')
   const description = venue.description
-    ?? `Меню заведения ${venue.name}${venue.address ? ` — ${venue.address}` : ''}. Полная информация о составе и питательной ценности блюд.`
+    ?? `Меню заведения ${venue.name}${locationStr ? ` — ${locationStr}` : venue.address ? ` — ${venue.address}` : ''}. Полная информация о составе и питательной ценности блюд.`
   const url = `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`
 
   return {
@@ -52,7 +53,7 @@ export default async function MenuPage({ params }: Props) {
 
   const venue = await db.venue.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true, address: true },
+    select: { id: true, name: true, slug: true, country: true, city: true, address: true },
   })
 
   const jsonLd = venue
@@ -61,7 +62,14 @@ export default async function MenuPage({ params }: Props) {
         '@type': 'Restaurant',
         name: venue.name,
         url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`,
-        ...(venue.address ? { address: { '@type': 'PostalAddress', streetAddress: venue.address } } : {}),
+        ...(venue.address || venue.city || venue.country ? {
+          address: {
+            '@type': 'PostalAddress',
+            ...(venue.address ? { streetAddress: venue.address } : {}),
+            ...(venue.city ? { addressLocality: venue.city } : {}),
+            ...(venue.country ? { addressCountry: venue.country } : {}),
+          },
+        } : {}),
         hasMenu: {
           '@type': 'Menu',
           url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'}/menu/${venue.slug}`,

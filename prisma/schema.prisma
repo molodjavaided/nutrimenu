@@ -46,6 +46,8 @@ model Venue {
   id             String      @id @default(cuid())
   slug           String      @unique
   name           String
+  country        String?
+  city           String?
   address        String?
   description    String?
   workingHours   String?

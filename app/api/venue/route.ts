@@ -16,6 +16,8 @@ export async function GET() {
 
 const schema = z.object({
   name: z.string().min(2).optional(),
+  country: z.string().optional(),
+  city: z.string().optional(),
   address: z.string().optional(),
   description: z.string().optional(),
   workingHours: z.string().optional(),

@@ -20,6 +20,7 @@ interface Props {
 const BG = '#1C1726'
 const BG_CHIP = 'rgba(255,255,255,0.10)'
 const BG_CHIP_ACTIVE = '#7C3AED'
+const GLASS_DARK = 'rgba(0,0,0,0.52)'   // контрастное тёмное стекло для оверлея на фото
 const TEXT = 'rgba(255,255,255,0.92)'
 const TEXT_MUTED = 'rgba(255,255,255,0.45)'
 const DIVIDER = 'rgba(255,255,255,0.07)'
@@ -296,7 +297,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
 
             {/* Название + крестик */}
             <div className="flex items-start justify-between gap-3 mb-3">
-              <h2 className="text-[17px] font-semibold leading-snug flex-1" style={{ color: TEXT }}>
+              <h2 className="text-[17px] font-semibold leading-snug flex-1" style={{ color: TEXT, fontFamily: 'Stolzl, sans-serif' }}>
                 {item.name}
               </h2>
               <SheetClose
@@ -380,7 +381,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                 <button
                   onClick={() => setDescriptionOpen(o => !o)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
-                  style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }}
+                  style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)', color: '#fff' }}
                 >
                   Описание
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none"
@@ -393,7 +394,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                 <button
                   onClick={() => setCompositionOpen(o => !o)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
-                  style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }}
+                  style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)', color: '#fff' }}
                 >
                   Состав
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none"
@@ -416,7 +417,8 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
 
             {/* Описание раскрытое */}
             {descriptionOpen && item.description && (
-              <p className="mt-2 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
+              <p className="mt-2 text-xs leading-relaxed px-3 py-2 rounded-xl"
+                style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)', color: 'rgba(255,255,255,0.9)' }}>
                 {item.description}
               </p>
             )}
@@ -429,7 +431,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                   if (!ref) return null
                   return (
                     <span key={i} className="text-[11px] px-2 py-1 rounded-full"
-                      style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.7)' }}>
+                      style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)', color: 'rgba(255,255,255,0.9)' }}>
                       {ref.name}{row.amount > 0 ? ` ${row.amount}${row.unit}` : ''}
                     </span>
                   )

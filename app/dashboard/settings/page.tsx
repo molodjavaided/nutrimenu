@@ -10,6 +10,8 @@ import QRCode from 'qrcode'
 
 const schema = z.object({
   name: z.string().min(2, 'Минимум 2 символа'),
+  country: z.string().optional(),
+  city: z.string().optional(),
   address: z.string().optional(),
   description: z.string().optional(),
   workingHours: z.string().optional(),
@@ -36,7 +38,7 @@ export default function SettingsPage() {
       .then(r => r.ok ? r.json() : null)
       .then(v => {
         if (v) {
-          reset({ name: v.name, address: v.address ?? '', description: v.description ?? '', workingHours: v.workingHours ?? '' })
+          reset({ name: v.name, country: v.country ?? '', city: v.city ?? '', address: v.address ?? '', description: v.description ?? '', workingHours: v.workingHours ?? '' })
           setAllowAdminEdit(v.allowAdminEdit ?? false)
           setSlug(v.slug ?? null)
         }
@@ -106,6 +108,17 @@ export default function SettingsPage() {
           <label className={labelClass} style={labelStyle}>Название заведения</label>
           <input {...register('name')} type="text" className={fieldClass} style={fieldStyle} />
           {errors.name && <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{errors.name.message}</p>}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass} style={labelStyle}>Страна</label>
+            <input {...register('country')} type="text" placeholder="Россия" className={fieldClass} style={fieldStyle} />
+          </div>
+          <div>
+            <label className={labelClass} style={labelStyle}>Город</label>
+            <input {...register('city')} type="text" placeholder="Москва" className={fieldClass} style={fieldStyle} />
+          </div>
         </div>
 
         <div>

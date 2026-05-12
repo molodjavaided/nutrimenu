@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { MenuExport } from '@/components/dashboard/MenuExport'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -167,6 +168,8 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <MenuExport />
 
       {/* Danger zone */}
       <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(220,38,38,0.2)' }}>

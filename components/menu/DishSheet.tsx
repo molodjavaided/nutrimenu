@@ -3,13 +3,11 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
-import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants } from '@/types'
+import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants, VariantGroup } from '@/types'
 import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
 import { getAllergenById } from '@/lib/allergens'
-import { glassSheet } from '@/lib/styles'
 import { initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
-import { QuantityControl } from '@/components/ui/QuantityControl'
 
 interface Props {
   item: MenuItem | null
@@ -19,17 +17,17 @@ interface Props {
   venueIngredientRefs?: IngredientRef[]
 }
 
-function getDefaultVariants(_item: MenuItem): SelectedVariants {
-  return {}
-}
+const BG = '#1C1726'
+const BG_CHIP = 'rgba(255,255,255,0.10)'
+const BG_CHIP_ACTIVE = '#7C3AED'
+const TEXT = 'rgba(255,255,255,0.92)'
+const TEXT_MUTED = 'rgba(255,255,255,0.45)'
+const DIVIDER = 'rgba(255,255,255,0.07)'
 
 function getDefaultModifiers(item: MenuItem): SelectedModifiers {
   const result: SelectedModifiers = {}
-  // Только обязательные добавки/замены
   for (const g of item.modifierGroups ?? []) {
-    if (!g.multi && g.required && g.modifiers[0]) {
-      result[g.id] = g.modifiers[0].id
-    }
+    if (!g.multi && g.required && g.modifiers[0]) result[g.id] = g.modifiers[0].id
   }
   return result
 }
@@ -39,622 +37,601 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
   const [variants, setVariants] = useState<SelectedVariants>({})
   const [modifiers, setModifiers] = useState<SelectedModifiers>({})
   const [lastItemId, setLastItemId] = useState<string | null>(null)
+  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
+  const [gramAmounts, setGramAmounts] = useState<Record<string, Record<string, number>>>({})
+  const [compositionOpen, setCompositionOpen] = useState(false)
+  const [descriptionOpen, setDescriptionOpen] = useState(false)
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
+  const [sizePickerOpen, setSizePickerOpen] = useState(false)
+
   const ingredientRefs = useMemo<IngredientRef[]>(() => {
     const libs = initLibraries(systemLibraries)
     const systemRefs = libs.flatMap(l => l.ingredients)
-    // Venue refs win over system refs on id collision (defensive)
     const map = new Map<string, IngredientRef>()
     for (const r of systemRefs) map.set(r.id, r)
     for (const r of venueIngredientRefs) map.set(r.id, r)
     return [...map.values()]
   }, [venueIngredientRefs])
-  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null)
-  const [gramAmounts, setGramAmounts] = useState<Record<string, Record<string, number>>>({})
 
   // Сброс при смене блюда
   if (item && item.id !== lastItemId) {
     setLastItemId(item.id)
     setQuantity(1)
-    setVariants(getDefaultVariants(item))
+    setVariants({})
     setModifiers(getDefaultModifiers(item))
     setSelectedSizeId(item.sizes?.[0]?.id ?? null)
     setGramAmounts({})
+    setCompositionOpen(false)
+    setDescriptionOpen(false)
+    setActiveGroupId(null)
+    setSizePickerOpen(false)
   }
 
-  // ─── РАСЧЁТ КБЖУ С УЧЁТОМ ВАРИАНТОВ ──────────────────────
+  // ─── КБЖУ ────────────────────────────────────────────────────
   const resolvedNutri = useMemo(() => {
-  if (!item) return { calories: 0, protein: 0, fat: 0, carbs: 0, weight: 0, weightUnit: 'г' as const }
+    if (!item) return { calories: 0, protein: 0, fat: 0, carbs: 0, weight: 0, weightUnit: 'г' as const }
 
-  // Если у блюда несколько sizes — берём КБЖУ выбранного размера как базу
-  const activeSize = item.sizes && item.sizes.length > 0
-    ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
-    : null
+    const activeSize = item.sizes && item.sizes.length > 0
+      ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
+      : null
 
-  const total = {
-    calories: activeSize?.calories ?? item.calories,
-    protein: activeSize?.protein ?? item.protein,
-    fat: activeSize?.fat ?? item.fat,
-    carbs: activeSize?.carbs ?? item.carbs,
-  }
-
-  // Добавляем КБЖУ выбранных вариантов
-  for (const group of item.variantGroups ?? []) {
-    const selectedId = variants[group.id]
-    const option = group.options.find(o => o.id === selectedId)
-    if (!option) continue
-
-    if (group.replacesIngredientRefId) {
-      // Группа заменяет конкретный ингредиент в составе.
-      // Берём количество заменяемого ингредиента из ТЕКУЩЕГО размера (не фиксированное).
-      const composition = activeSize?.composition ?? []
-      const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientRefId)
-      const originalRef = ingredientRefs.find(r => r.id === group.replacesIngredientRefId)
-      // Справочник замены — для пересчёта под текущий объём
-      const replacementRef = option.ingredientRefId
-        ? ingredientRefs.find(r => r.id === option.ingredientRefId)
-        : undefined
-
-      if (originalRow && originalRow.amount > 0 && originalRef) {
-        const ratio = originalRow.amount / 100  // количество в текущем размере
-        const origCal  = Math.round(originalRef.caloriesPer100 * ratio)
-        const origProt = Math.round(originalRef.proteinPer100  * ratio * 10) / 10
-        const origFat  = Math.round(originalRef.fatPer100      * ratio * 10) / 10
-        const origCarb = Math.round(originalRef.carbsPer100    * ratio * 10) / 10
-
-        // Если знаем справочник замены — пересчитываем для текущего объёма
-        const replCal  = replacementRef ? Math.round(replacementRef.caloriesPer100 * ratio) : option.calories
-        const replProt = replacementRef ? Math.round(replacementRef.proteinPer100  * ratio * 10) / 10 : option.protein
-        const replFat  = replacementRef ? Math.round(replacementRef.fatPer100      * ratio * 10) / 10 : option.fat
-        const replCarb = replacementRef ? Math.round(replacementRef.carbsPer100    * ratio * 10) / 10 : option.carbs
-
-        total.calories += replCal  - origCal
-        total.protein  += replProt - origProt
-        total.fat      += replFat  - origFat
-        total.carbs    += replCarb - origCarb
-      } else {
-        // Нет данных по составу — добавляем как дельту (лучше чем ничего)
-        total.calories += option.calories
-        total.protein  += option.protein
-        total.fat      += option.fat
-        total.carbs    += option.carbs
-      }
-    } else if (option.calories > 0) {
-      // Обычный вариант (объём, тип): полностью заменяет базовые КБЖУ
-      total.calories = option.calories
-      total.protein  = option.protein
-      total.fat      = option.fat
-      total.carbs    = option.carbs
+    const total = {
+      calories: activeSize?.calories ?? item.calories,
+      protein: activeSize?.protein ?? item.protein,
+      fat: activeSize?.fat ?? item.fat,
+      carbs: activeSize?.carbs ?? item.carbs,
     }
-  }
 
-    // Добавляем КБЖУ выбранных добавок/замен
+    for (const group of item.variantGroups ?? []) {
+      const selectedId = variants[group.id]
+      const option = group.options.find(o => o.id === selectedId)
+      if (!option) continue
+      if (group.replacesIngredientRefId) {
+        const composition = activeSize?.composition ?? []
+        const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientRefId)
+        const originalRef = ingredientRefs.find(r => r.id === group.replacesIngredientRefId)
+        const replacementRef = option.ingredientRefId ? ingredientRefs.find(r => r.id === option.ingredientRefId) : undefined
+        if (originalRow && originalRow.amount > 0 && originalRef) {
+          const ratio = originalRow.amount / 100
+          const origCal = Math.round(originalRef.caloriesPer100 * ratio)
+          const origProt = Math.round(originalRef.proteinPer100 * ratio * 10) / 10
+          const origFat = Math.round(originalRef.fatPer100 * ratio * 10) / 10
+          const origCarb = Math.round(originalRef.carbsPer100 * ratio * 10) / 10
+          const replCal = replacementRef ? Math.round(replacementRef.caloriesPer100 * ratio) : option.calories
+          const replProt = replacementRef ? Math.round(replacementRef.proteinPer100 * ratio * 10) / 10 : option.protein
+          const replFat = replacementRef ? Math.round(replacementRef.fatPer100 * ratio * 10) / 10 : option.fat
+          const replCarb = replacementRef ? Math.round(replacementRef.carbsPer100 * ratio * 10) / 10 : option.carbs
+          total.calories += replCal - origCal
+          total.protein += replProt - origProt
+          total.fat += replFat - origFat
+          total.carbs += replCarb - origCarb
+        } else {
+          total.calories += option.calories
+          total.protein += option.protein
+          total.fat += option.fat
+          total.carbs += option.carbs
+        }
+      } else if (option.calories > 0) {
+        total.calories = option.calories
+        total.protein = option.protein
+        total.fat = option.fat
+        total.carbs = option.carbs
+      }
+    }
+
     for (const group of item.modifierGroups ?? []) {
       if (group.type === 'replace') {
-        // Замена через состав (ingredientRef-based)
-        const activeSize = item.sizes?.find(s => s.id === selectedSizeId) ?? item.sizes?.[0]
-        if (activeSize?.composition) {
-          const replacedNutri = resolveNutriFromComposition(
-            activeSize.composition,
-            ingredientRefs,
-            item.modifierGroups ?? [],
-            modifiers
-          )
-          total.calories = replacedNutri.calories
-          total.protein = replacedNutri.protein
-          total.fat = replacedNutri.fat
-          total.carbs = replacedNutri.carbs
+        const as = item.sizes?.find(s => s.id === selectedSizeId) ?? item.sizes?.[0]
+        if (as?.composition) {
+          const r = resolveNutriFromComposition(as.composition, ingredientRefs, item.modifierGroups ?? [], modifiers)
+          total.calories = r.calories; total.protein = r.protein; total.fat = r.fat; total.carbs = r.carbs
         }
         continue
       }
-
       if (group.allowCustomGrams) {
-        // Ввод граммов: modifier.calories — на 100г, масштабируем по gramAmounts
         const groupGrams = gramAmounts[group.id] ?? {}
         for (const modifier of group.modifiers) {
           const grams = groupGrams[modifier.id] ?? 0
           if (grams > 0) {
             const ratio = grams / 100
             total.calories += Math.round(modifier.calories * ratio)
-            total.protein  += Math.round(modifier.protein  * ratio * 10) / 10
-            total.fat      += Math.round(modifier.fat      * ratio * 10) / 10
-            total.carbs    += Math.round(modifier.carbs    * ratio * 10) / 10
+            total.protein += Math.round(modifier.protein * ratio * 10) / 10
+            total.fat += Math.round(modifier.fat * ratio * 10) / 10
+            total.carbs += Math.round(modifier.carbs * ratio * 10) / 10
           }
         }
         continue
       }
-
       if (group.multi) {
-        // Мультиселект — суммируем добавки
         const selected = modifiers[group.id]
         if (!Array.isArray(selected)) continue
         for (const id of selected) {
-          const modifier = group.modifiers.find(m => m.id === id)
-          if (modifier) {
-            total.calories += modifier.calories
-            total.protein  += modifier.protein
-            total.fat      += modifier.fat
-            total.carbs    += modifier.carbs
-          }
+          const m = group.modifiers.find(x => x.id === id)
+          if (m) { total.calories += m.calories; total.protein += m.protein; total.fat += m.fat; total.carbs += m.carbs }
         }
         continue
       }
-
-      // Одиночная группа
       const selectedId = modifiers[group.id]
       if (!selectedId || typeof selectedId !== 'string') continue
       const modifier = group.modifiers.find(m => m.id === selectedId)
       if (!modifier) continue
-
       if (group.calcByMl && group.mlPerVariant && group.linkedVariantGroupId) {
-        // Добавка рассчитывается по объёму (мл), привязанному к выбранному варианту размера
         const linkedVariantId = variants[group.linkedVariantGroupId]
         const mlAmount = linkedVariantId ? (group.mlPerVariant[linkedVariantId] ?? 0) : 0
         if (mlAmount > 0) {
           const ratio = mlAmount / 100
           total.calories += Math.round(modifier.calories * ratio)
-          total.protein  += Math.round(modifier.protein  * ratio * 10) / 10
-          total.fat      += Math.round(modifier.fat      * ratio * 10) / 10
-          total.carbs    += Math.round(modifier.carbs    * ratio * 10) / 10
+          total.protein += Math.round(modifier.protein * ratio * 10) / 10
+          total.fat += Math.round(modifier.fat * ratio * 10) / 10
+          total.carbs += Math.round(modifier.carbs * ratio * 10) / 10
         }
       } else if (group.required) {
-        // Обязательная = замена ингредиента: дельта от первого (эталонного) варианта
         const defaultMod = group.modifiers[0]
         total.calories += modifier.calories - defaultMod.calories
-        total.protein  += modifier.protein  - defaultMod.protein
-        total.fat      += modifier.fat      - defaultMod.fat
-        total.carbs    += modifier.carbs    - defaultMod.carbs
+        total.protein += modifier.protein - defaultMod.protein
+        total.fat += modifier.fat - defaultMod.fat
+        total.carbs += modifier.carbs - defaultMod.carbs
       } else {
-        // Необязательная = обычная добавка
         total.calories += modifier.calories
-        total.protein  += modifier.protein
-        total.fat      += modifier.fat
-        total.carbs    += modifier.carbs
+        total.protein += modifier.protein
+        total.fat += modifier.fat
+        total.carbs += modifier.carbs
       }
     }
 
-    // Умножаем на количество
     return {
-    calories: total.calories * quantity,
-    protein: Math.round((total.protein * quantity) * 10) / 10,
-    fat: Math.round((total.fat * quantity) * 10) / 10,
-    carbs: Math.round((total.carbs * quantity) * 10) / 10,
-    weight: activeSize?.weight ?? item.weight,
-    weightUnit: (activeSize?.weightUnit ?? item.weightUnit) as 'г' | 'мл',
-  }
-}, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId])
-
-  function handleClose() {
-    onClose()
-  }
+      calories: total.calories * quantity,
+      protein: Math.round(total.protein * quantity * 10) / 10,
+      fat: Math.round(total.fat * quantity * 10) / 10,
+      carbs: Math.round(total.carbs * quantity * 10) / 10,
+      weight: activeSize?.weight ?? item.weight,
+      weightUnit: (activeSize?.weightUnit ?? item.weightUnit) as 'г' | 'мл',
+    }
+  }, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId])
 
   if (!item) return null
 
-  // Активный размер — нужен и в расчёте, и в отображении кнопок
   const activeSize = item.sizes && item.sizes.length > 0
     ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])
     : null
 
-  // Динамические ккал опции с учётом текущего размера
-  function getOptionCalories(
-    group: { replacesIngredientRefId?: string },
-    opt: { ingredientRefId?: string; calories: number }
-  ): number {
+  function getOptionCalories(group: { replacesIngredientRefId?: string }, opt: { ingredientRefId?: string; calories: number }): number {
     if (!group.replacesIngredientRefId) return opt.calories
     const composition = activeSize?.composition ?? []
     const originalRow = composition.find(c => c.ingredientId === group.replacesIngredientRefId)
-    if (!originalRow || !originalRow.amount) return opt.calories
-    const replacementRef = opt.ingredientRefId
-      ? ingredientRefs.find(r => r.id === opt.ingredientRefId)
-      : undefined
+    if (!originalRow?.amount) return opt.calories
+    const replacementRef = opt.ingredientRefId ? ingredientRefs.find(r => r.id === opt.ingredientRefId) : undefined
     if (!replacementRef) return opt.calories
     return Math.round(replacementRef.caloriesPer100 * originalRow.amount / 100)
   }
 
-  const isValid = (item.variantGroups ?? [])
-  .filter(g => g.required)
-  .every(g => variants[g.id])
+  const isValid = (item.variantGroups ?? []).filter(g => g.required).every(g => variants[g.id])
 
   function handleAdd() {
     if (!isValid || !item) return
-    const label = buildVariantLabel(item, variants, modifiers)
-    onAdd(item, quantity, variants, modifiers, label)
+    onAdd(item, quantity, variants, modifiers, buildVariantLabel(item, variants, modifiers))
   }
 
+  const compRows = activeSize?.composition ?? item.composition ?? []
+  const hasComposition = compRows.length > 0
+  const hasAllergens = (item.allergens ?? []).length > 0
+
+  type GroupEntry =
+    | { id: string; label: string; type: 'variant'; group: VariantGroup }
+    | { id: string; label: string; type: 'modifier'; group: ModifierGroup }
+
+  // Все группы вариантов + модификаторов для чип-ряда
+  const allGroups: GroupEntry[] = [
+    ...(item.variantGroups ?? []).map(g => ({ id: g.id, label: g.label, type: 'variant' as const, group: g })),
+    ...(item.modifierGroups ?? []).map(g => ({ id: g.id, label: g.label, type: 'modifier' as const, group: g })),
+  ]
+
+  // Чип-лейбл показывает выбранное значение
+  function chipLabel(entry: GroupEntry): string {
+    if (entry.type === 'variant') {
+      const sel = entry.group.options.find((o: { id: string; label: string }) => o.id === variants[entry.group.id])
+      return sel ? sel.label : entry.group.label
+    } else {
+      const g = entry.group
+      if (g.multi) {
+        const sel = Array.isArray(modifiers[g.id]) ? (modifiers[g.id] as unknown as string[]).length : 0
+        return sel > 0 ? `${g.label} (${sel})` : g.label
+      }
+      const sel = g.modifiers.find(m => m.id === modifiers[g.id])
+      return sel ? sel.label : g.label
+    }
+  }
+
+  function isChipSelected(entry: GroupEntry): boolean {
+    if (entry.type === 'variant') return !!variants[entry.group.id]
+    const g = entry.group
+    if (g.multi) return Array.isArray(modifiers[g.id]) && (modifiers[g.id] as unknown as string[]).length > 0
+    return !!modifiers[g.id]
+  }
+
+  const displayPrice = activeSize?.price ?? item.price
+
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
+    <Sheet open={open} onOpenChange={onClose}>
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="rounded-t-2xl max-w-lg mx-auto flex flex-col bg-background"
-        style={{ border: 'none', maxHeight: '90vh', ...glassSheet }}
+        className="dish-sheet max-w-full mx-auto p-0 flex flex-col overflow-hidden"
+        style={{ background: BG, border: 'none', gap: 0 }}
       >
-        {/* Header: handle + крестик — вне скролл-области, всегда виден */}
-        <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
-          <div className="flex-1" />
-          <div className="w-9 h-1 rounded-full" style={{ background: 'rgba(139,92,246,0.25)' }} />
-          <div className="flex-1 flex justify-end">
-            <SheetClose
-              className="w-10 h-10 flex items-center justify-center rounded-full"
-              style={{ background: 'rgba(176,166,223,0.15)', color: 'var(--color-text-muted)' }}
-              aria-label="Закрыть"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </SheetClose>
-          </div>
-        </div>
-
-        {/* Скролл-область */}
-        <div className="overflow-y-auto flex-1 px-5" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
-
-        {/* Фото */}
-        <div
-          className="relative w-full aspect-[4/3] rounded-2xl flex items-center justify-center text-6xl mb-5 overflow-hidden"
-          style={{
-            background: 'rgba(139,92,246,0.06)',
-            border: '0.5px solid rgba(255,255,255,0.5)',
-          }}
-        >
+        {/* ── ФОТО + ХЕДЕР-ОВЕРЛЕЙ ────────────────────────────── */}
+        <div className="relative w-full shrink-0" style={{ aspectRatio: '4/3' }}>
+          {/* Фото */}
           {item.photo
             ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority />
-            : '🍽️'
+            : <div className="w-full h-full flex items-center justify-center text-7xl" style={{ background: '#1a1426' }}>🍽️</div>
           }
-        </div>
 
-        {/* Название */}
-        <h2 className="text-lg font-medium mb-1 text-text-primary">{item.name}</h2>
-        {item.description && (
-          <p className="text-sm mb-3 leading-relaxed text-text-secondary">{item.description}</p>
-        )}
+          {/* Градиент сверху: тёмный → прозрачный (только под текст) */}
+          <div
+            className="absolute inset-x-0 top-0"
+            style={{
+              height: '50%',
+              background: `linear-gradient(to bottom, ${BG} 0%, ${BG} 10%, rgba(28,23,38,0.82) 40%, transparent 100%)`,
+              pointerEvents: 'none',
+            }}
+          />
 
-        {/* Аллергены */}
-        {item.allergens && item.allergens.length > 0 && (
-          <div className="mb-4 p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.06)', border: '0.5px solid rgba(239,68,68,0.2)' }}>
-            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: '#DC2626' }}>АЛЛЕРГЕНЫ</p>
-            <div className="flex flex-wrap gap-1.5">
-              {item.allergens.map(id => {
+          {/* Градиент снизу: прозрачный → тёмный */}
+          <div
+            className="absolute inset-x-0 bottom-0"
+            style={{
+              height: '35%',
+              background: `linear-gradient(to top, ${BG} 0%, transparent 100%)`,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Контент хедера поверх градиента */}
+          <div className="absolute inset-x-0 top-0 px-5 pt-3 pb-4">
+            {/* Drag handle */}
+            <div className="flex justify-center mb-3">
+              <div className="w-10 h-[5px] rounded-full" style={{ background: 'rgba(255,255,255,0.4)' }} />
+            </div>
+
+            {/* Название + крестик */}
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h2 className="text-[17px] font-semibold leading-snug flex-1" style={{ color: TEXT }}>
+                {item.name}
+              </h2>
+              <SheetClose
+                className="w-11 h-11 flex items-center justify-center rounded-full shrink-0 active:opacity-70"
+                style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
+                aria-label="Закрыть"
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <path d="M1 1l9 9M10 1L1 10" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </SheetClose>
+            </div>
+
+            {/* КБЖУ + граммовка */}
+            <div className="grid grid-cols-5 gap-1 mb-3">
+              {/* Граммовка — кликабельна если есть размеры */}
+              {item.sizes && item.sizes.length > 1 ? (
+                <button
+                  onClick={() => setSizePickerOpen(o => !o)}
+                  className="text-center active:opacity-70 transition-opacity"
+                >
+                  <p className="text-[15px] font-semibold" style={{ color: sizePickerOpen ? '#A78BFA' : TEXT }}>
+                    {resolvedNutri.weight}{resolvedNutri.weightUnit}
+                  </p>
+                  <p className="text-[10px] mt-0.5 flex items-center justify-center gap-0.5" style={{ color: TEXT_MUTED }}>
+                    объём
+                    <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
+                      style={{ transform: sizePickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                      <path d="M1 2.5l2.5 2.5L6 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </p>
+                </button>
+              ) : (
+                <div className="text-center">
+                  <p className="text-[15px] font-semibold" style={{ color: TEXT }}>
+                    {resolvedNutri.weight}{resolvedNutri.weightUnit}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>объём</p>
+                </div>
+              )}
+
+              {[
+                { val: Math.round(resolvedNutri.calories), label: 'ккал' },
+                { val: `${Math.round(resolvedNutri.protein)}г`, label: 'белки' },
+                { val: `${Math.round(resolvedNutri.fat)}г`, label: 'жиры' },
+                { val: `${Math.round(resolvedNutri.carbs)}г`, label: 'углеводы' },
+              ].map(({ val, label }) => (
+                <div key={label} className="text-center">
+                  <p className="text-[15px] font-semibold" style={{ color: TEXT }}>{val}</p>
+                  <p className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Выбор размера (раскрывается под КБЖУ) */}
+            {sizePickerOpen && item.sizes && item.sizes.length > 1 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {item.sizes.map(size => {
+                  const isActive = (selectedSizeId ?? item.sizes![0].id) === size.id
+                  return (
+                    <button
+                      key={size.id}
+                      onClick={() => { setSelectedSizeId(size.id); setSizePickerOpen(false) }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
+                      style={isActive
+                        ? { background: '#7C3AED', color: '#fff' }
+                        : { background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }
+                      }
+                    >
+                      {size.name || `${size.weight} ${size.weightUnit}`}
+                      <span className="ml-1 opacity-60">{size.calories} ккал</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Кнопки: Описание + Состав + аллергены */}
+            <div className="flex flex-wrap items-center gap-2">
+              {item.description && (
+                <button
+                  onClick={() => setDescriptionOpen(o => !o)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
+                  style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }}
+                >
+                  Описание
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none"
+                    style={{ transform: descriptionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                    <path d="M1.5 3l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              {hasComposition && (
+                <button
+                  onClick={() => setCompositionOpen(o => !o)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:opacity-70"
+                  style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)' }}
+                >
+                  Состав
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none"
+                    style={{ transform: compositionOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                    <path d="M1.5 3l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              {hasAllergens && (item.allergens ?? []).map(id => {
                 const a = getAllergenById(id)
                 if (!a) return null
                 return (
-                  <span
-                    key={id}
-                    className="text-xs px-2.5 py-1 rounded-full font-medium"
-                    style={{ background: 'rgba(239,68,68,0.12)', color: '#DC2626', border: '0.5px solid rgba(239,68,68,0.3)' }}
-                  >
+                  <span key={id} className="text-[10px] px-2 py-1 rounded-full font-medium"
+                    style={{ background: 'rgba(239,68,68,0.25)', color: '#FCA5A5' }}>
                     {a.emoji} {a.label}
                   </span>
                 )
               })}
             </div>
-          </div>
-        )}
 
-        {/* Состав активного размера (или базовый, если размеров нет) */}
-        {(() => {
-          const compRows = activeSize?.composition ?? item.composition ?? []
-          return compRows.length > 0 ? (
-          <div className="mb-4">
-            <p className="text-xs font-medium mb-2 tracking-wide" style={{ color: 'var(--color-text-muted)' }}>СОСТАВ</p>
-            <div className="flex flex-wrap gap-1.5">
-              {compRows.map((row, i) => {
-                const ref = ingredientRefs.find(r => r.id === row.ingredientId)
-                const name = ref?.name ?? null
-                if (!name) return null
-                return (
-                  <span
-                    key={i}
-                    className="text-xs px-2.5 py-1 rounded-full"
-                    style={{
-                      background: 'rgba(255,255,255,0.5)',
-                      border: '0.5px solid rgba(176,166,223,0.3)',
-                      color: 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {name}
-                    {row.amount > 0 && (
-                      <span style={{ color: 'var(--color-text-muted)' }}>&thinsp;{row.amount}{row.unit}</span>
-                    )}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-          ) : null
-        })()}
+            {/* Описание раскрытое */}
+            {descriptionOpen && item.description && (
+              <p className="mt-2 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                {item.description}
+              </p>
+            )}
 
-        {/* КБЖУ плитки */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {[
-            { val: Math.round(resolvedNutri.calories), label: 'ккал', accent: true },
-            { val: `${Math.round(resolvedNutri.protein)}г`, label: 'белки', accent: false },
-            { val: `${Math.round(resolvedNutri.fat)}г`, label: 'жиры', accent: false },
-            { val: `${Math.round(resolvedNutri.carbs)}г`, label: 'углеводы', accent: false },
-          ].map(({ val, label, accent }) => (
-            <div
-              key={label}
-              className="rounded-xl p-2 text-center"
-              style={{
-                background: accent ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.5)',
-                border: '0.5px solid rgba(255,255,255,0.5)',
-              }}
-            >
-              <p className="text-sm font-medium" style={{ color: accent ? '#7C3AED' : 'var(--color-text-primary)' }}>{val}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
-            </div>
-          ))}
+            {/* Состав раскрытый */}
+            {compositionOpen && hasComposition && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {compRows.map((row, i) => {
+                  const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+                  if (!ref) return null
+                  return (
+                    <span key={i} className="text-[11px] px-2 py-1 rounded-full"
+                      style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.7)' }}>
+                      {ref.name}{row.amount > 0 ? ` ${row.amount}${row.unit}` : ''}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Выбор размера (из sizes) */}
-        {item.sizes && item.sizes.length > 1 && (
-          <div className="mb-4">
-            <p className="text-sm font-medium mb-2 text-text-primary">Объём</p>
-            <div className="flex flex-wrap gap-2">
-              {item.sizes.map(size => {
-                const isActive = (selectedSizeId ?? item.sizes![0].id) === size.id
-                const label = size.name || `${size.weight} ${size.weightUnit}`
+        {/* ── СКРОЛЛИМАЯ ЧАСТЬ: добавки + количество ───────────── */}
+        <div className="flex-1 overflow-y-auto" style={{ background: BG }}>
+
+          {/* Горизонтальный ряд чипов: варианты + модификаторы */}
+          {allGroups.length > 0 && (
+            <div
+              className="flex gap-2 overflow-x-auto px-5 py-3"
+              style={{ scrollbarWidth: 'none', borderBottom: `0.5px solid ${DIVIDER}` }}
+            >
+              {/* Группы вариантов/модификаторов */}
+              {allGroups.map(entry => {
+                const active = activeGroupId === entry.id
+                const selected = isChipSelected(entry)
                 return (
                   <button
-                    key={size.id}
-                    onClick={() => setSelectedSizeId(size.id)}
-                    className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
-                    style={
-                      isActive
-                        ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                        : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
+                    key={entry.id}
+                    onClick={() => setActiveGroupId(active ? null : entry.id)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all active:opacity-70 whitespace-nowrap"
+                    style={active || selected
+                      ? { background: BG_CHIP_ACTIVE, color: '#fff' }
+                      : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
                     }
                   >
-                    {label}
-                    <span className={`ml-1.5 text-xs ${isActive ? 'text-lavender-dark' : 'text-text-muted'}`}>
-                      {size.calories} ккал{size.price != null ? ` · ${size.price} ₽` : ''}
-                    </span>
+                    {!selected && <span className="text-base leading-none" style={{ marginTop: -1 }}>+</span>}
+                    {chipLabel(entry)}
                   </button>
                 )
               })}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Группы вариантов */}
-        {item.variantGroups?.map(group => (
-          <div key={group.id} className="mb-4">
-            <p className="text-sm font-medium mb-2 text-text-primary">
-              {group.label}
-              {!group.required && <span className="text-xs ml-1 text-text-muted">(необязательно)</span>}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {group.options.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => setVariants(prev => {
-                    if (!group.required && prev[group.id] === opt.id) {
-                      const next = { ...prev }
-                      delete next[group.id]
-                      return next
-                    }
-                    return { ...prev, [group.id]: opt.id }
-                  })}
-                  className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
-                  style={
-                    variants[group.id] === opt.id
-                      ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                      : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
-                  }
-                >
-                  {opt.label} — {getOptionCalories(group, opt)} ккал
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+          {/* Раскрытая группа вариантов */}
+          {activeGroupId && (() => {
+            const entry = allGroups.find(e => e.id === activeGroupId)
+            if (!entry) return null
 
-        {/* Группы добавок */}
-        {(item.modifierGroups ?? []).map(group => {
-          if (group.allowCustomGrams) {
-            return (
-              <div key={group.id} className="mb-4">
-                <p className="text-sm font-medium mb-2 text-text-primary">{group.label}</p>
-                <div className="flex flex-col gap-2">
+            if (entry.type === 'variant') {
+              const group = entry.group as VariantGroup
+              return (
+                <div className="px-5 py-3" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
+                  <div className="flex flex-wrap gap-2">
+                    {group.options.map(opt => {
+                      const isActive = variants[group.id] === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setVariants(prev => {
+                            if (!group.required && prev[group.id] === opt.id) {
+                              const next = { ...prev }; delete next[group.id]; return next
+                            }
+                            return { ...prev, [group.id]: opt.id }
+                          })}
+                          className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
+                          style={isActive
+                            ? { background: BG_CHIP_ACTIVE, color: '#fff' }
+                            : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
+                          }
+                        >
+                          {opt.label}
+                          {opt.calories > 0 && (
+                            <span className="ml-1 text-xs opacity-60">{getOptionCalories(group, opt)} ккал</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+
+            // Модификатор
+            const group = entry.group as ModifierGroup
+
+            if (group.allowCustomGrams) {
+              return (
+                <div className="px-5 py-3 flex flex-col gap-2" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
                   {group.modifiers.map(mod => {
                     const grams = gramAmounts[group.id]?.[mod.id] ?? 0
                     const kcal = grams > 0 ? Math.round(mod.calories * grams / 100) : 0
                     return (
                       <div key={mod.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
-                        style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(176,166,223,0.3)' }}>
-                        <span className="flex-1 text-sm text-text-primary">{mod.label}</span>
+                        style={{ background: BG_CHIP }}>
+                        <span className="flex-1 text-sm" style={{ color: TEXT }}>{mod.label}</span>
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setGramAmounts(prev => ({
-                              ...prev,
-                              [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) }
-                            }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-light"
-                            style={{ background: '#EAE7F8', color: '#7C3AED' }}
-                          >−</button>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            value={grams || ''}
-                            onChange={e => setGramAmounts(prev => ({
-                              ...prev,
-                              [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, Number(e.target.value) || 0) }
-                            }))}
-                            placeholder="0"
-                            className="w-14 text-center text-sm outline-none rounded-lg h-8"
-                            style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}
-                          />
-                          <button
-                            onClick={() => setGramAmounts(prev => ({
-                              ...prev,
-                              [group.id]: { ...prev[group.id], [mod.id]: (prev[group.id]?.[mod.id] ?? 0) + 5 }
-                            }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg font-light"
-                            style={{ background: '#EAE7F8', color: '#7C3AED' }}
-                          >+</button>
-                          <span className="text-xs w-8 text-right" style={{ color: 'var(--color-text-muted)' }}>г</span>
+                          <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) } }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>−</button>
+                          <input type="number" inputMode="decimal" value={grams || ''} placeholder="0"
+                            onChange={e => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, Number(e.target.value) || 0) } }))}
+                            className="w-12 text-center text-sm outline-none rounded-lg h-8"
+                            style={{ background: 'rgba(255,255,255,0.1)', color: TEXT }} />
+                          <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: (prev[group.id]?.[mod.id] ?? 0) + 5 } }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>+</button>
+                          <span className="text-xs w-6" style={{ color: TEXT_MUTED }}>г</span>
                         </div>
-                        {kcal > 0 && (
-                          <span className="text-xs font-medium" style={{ color: '#7C3AED' }}>+{kcal} ккал</span>
-                        )}
+                        {kcal > 0 && <span className="text-xs font-medium" style={{ color: '#A78BFA' }}>+{kcal}</span>}
                       </div>
+                    )
+                  })}
+                </div>
+              )
+            }
+
+            return (
+              <div className="px-5 py-3" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
+                <div className="flex flex-wrap gap-2">
+                  {group.modifiers.map(mod => {
+                    const isSelected = group.multi
+                      ? Array.isArray(modifiers[group.id]) && (modifiers[group.id] as unknown as string[]).includes(mod.id)
+                      : modifiers[group.id] === mod.id
+
+                    return (
+                      <button
+                        key={mod.id}
+                        onClick={() => {
+                          if (group.multi) {
+                            setModifiers(m => {
+                              const cur = Array.isArray(m[group.id]) ? m[group.id] as unknown as string[] : []
+                              return { ...m, [group.id]: (cur.includes(mod.id) ? cur.filter(x => x !== mod.id) : [...cur, mod.id]) as unknown as string }
+                            })
+                          } else {
+                            setModifiers(m => ({ ...m, [group.id]: mod.id }))
+                          }
+                        }}
+                        className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
+                        style={isSelected
+                          ? { background: BG_CHIP_ACTIVE, color: '#fff' }
+                          : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
+                        }
+                      >
+                        {mod.label}
+                        {mod.calories > 0 && group.type !== 'replace' && (
+                          <span className="ml-1 text-xs opacity-60">+{mod.calories} ккал</span>
+                        )}
+                      </button>
                     )
                   })}
                 </div>
               </div>
             )
-          }
+          })()}
 
-          return (
-          <ModifierGroupSection
-            key={group.id}
-            group={group}
-            selected={modifiers[group.id]}
-            onSelect={(modId, subId) => {
-              if (group.multi) {
-                setModifiers(m => {
-                  const cur = Array.isArray(m[group.id]) ? m[group.id] as unknown as string[] : []
-                  const next = cur.includes(modId)
-                    ? cur.filter(x => x !== modId)
-                    : [...cur, modId]
-                  return { ...m, [group.id]: next as unknown as string }
-                })
-              } else {
-                setModifiers(m => ({ ...m, [group.id]: subId ?? modId }))
-              }
-            }}
-          />
-          )
-        })}
-
-        {/* Количество */}
-        <div className="flex items-center gap-3 mb-5 mt-2">
-          <QuantityControl
-            quantity={quantity}
-            onAdd={() => setQuantity(q => q + 1)}
-            onRemove={() => setQuantity(q => Math.max(1, q - 1))}
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">
-              {quantity > 1 ? `${quantity} × ` : ''}{resolvedNutri.weight} {resolvedNutri.weightUnit}
-            </span>
-            {(() => {
-              const displayPrice = activeSize?.price ?? item.price
-              return displayPrice != null ? (
-                <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                  {quantity > 1 ? `${displayPrice * quantity}` : displayPrice} ₽
-                </span>
-              ) : null
-            })()}
-          </div>
         </div>
 
-        {/* Кнопка */}
-        <button
-          onClick={handleAdd}
-          disabled={!isValid}
-          className="w-full py-4 rounded-xl text-base font-medium transition-all active:scale-[0.98]"
-          style={
-            isValid
-              ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 8px 24px rgba(139,92,246,0.35)' }
-              : { background: 'rgba(139,92,246,0.08)', color: 'var(--color-text-muted)' }
-          }
+        {/* ── ФУТЕР ─────────────────────────────────────────────── */}
+        <div
+          className="shrink-0 px-4 pt-3 flex items-center gap-2"
+          style={{
+            background: BG,
+            paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+          }}
         >
-          {isValid ? 'Добавить в рацион' : 'Выберите параметры'}
-        </button>
-        </div>{/* конец скролл-области */}
+          {/* Цена */}
+          {displayPrice != null && (
+            <span className="text-sm font-semibold shrink-0" style={{ color: TEXT }}>
+              {displayPrice} ₽
+            </span>
+          )}
+
+          {/* Счётчик − n + */}
+          <div className="flex items-center shrink-0 rounded-full overflow-hidden"
+            style={{ background: BG_CHIP }}>
+            <button
+              onClick={() => setQuantity(q => Math.max(1, q - 1))}
+              className="w-10 h-10 flex items-center justify-center text-lg font-light active:opacity-60"
+              style={{ color: TEXT }}
+            >−</button>
+            <span className="min-w-[1.75rem] text-center text-sm font-medium" style={{ color: TEXT }}>
+              {quantity}
+            </span>
+            <button
+              onClick={() => setQuantity(q => q + 1)}
+              className="w-10 h-10 flex items-center justify-center text-lg font-light active:opacity-60"
+              style={{ color: TEXT }}
+            >+</button>
+          </div>
+
+          {/* Кнопка добавить — круглая, прижата вправо */}
+          <button
+            onClick={handleAdd}
+            disabled={!isValid}
+            className="ml-auto w-11 h-11 shrink-0 flex items-center justify-center rounded-full transition-all active:scale-[0.93]"
+            style={isValid
+              ? { background: '#7C3AED', color: '#fff', boxShadow: '0 6px 16px rgba(124,58,237,0.45)' }
+              : { background: 'rgba(124,58,237,0.25)', color: 'rgba(255,255,255,0.35)' }
+            }
+            aria-label="Добавить в рацион"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
       </SheetContent>
     </Sheet>
-  )
-}
-
-// Секция добавок
-function ModifierGroupSection({ group, selected, onSelect }: {
-  group: ModifierGroup
-  selected: string | string[] | true | number | undefined
-  onSelect: (modId: string, portionCount?: number) => void
-}) {
-  return (
-    <div className="mb-4">
-      <p className="text-sm font-medium mb-2 text-text-primary">
-        {group.label}
-        {!group.required && <span className="text-xs font-normal ml-1 text-text-muted">необязательно</span>}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {group.modifiers.map(mod => {
-          const isSelected = Array.isArray(selected)
-            ? selected.includes(mod.id)
-            : typeof selected === 'number'
-              ? selected > 0 && group.modifiers.length === 1
-              : selected === mod.id
-
-          const portionCount = mod.allowPortions && typeof selected === 'number' ? selected : 1
-
-          if (mod.allowPortions) {
-            return (
-              <div key={mod.id} className="flex items-center gap-1 rounded-full overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.55)', border: '0.5px solid rgba(176,166,223,0.4)' }}>
-                {portionCount > 0 ? (
-                  <>
-                    <button
-                      onClick={() => onSelect(mod.id, Math.max(0, portionCount - 1))}
-                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors text-lavender-dark">
-                      −
-                    </button>
-                    <span className="min-w-[1.5rem] text-center text-sm font-medium text-text-primary">
-                      {portionCount}
-                    </span>
-                    <button
-                      onClick={() => onSelect(mod.id, Math.min(portionCount + 1, mod.maxPortions ?? 10))}
-                      className="w-8 h-8 flex items-center justify-center text-lg font-light transition-colors text-lavender-dark">
-                      +
-                    </button>
-                    <span className="pr-3 text-xs text-text-secondary">
-                      {mod.label}
-                      {mod.calories > 0 && (
-                        <span className="ml-1 text-lavender-dark">+{mod.calories * portionCount} ккал</span>
-                      )}
-                    </span>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => onSelect(mod.id, 1)}
-                    className="px-3 py-1.5 text-sm text-text-secondary">
-                    {mod.label}
-                    {mod.calories > 0 && (
-                      <span className="ml-1 text-xs text-text-muted">+{mod.calories} ккал</span>
-                    )}
-                  </button>
-                )}
-              </div>
-            )
-          }
-
-          return (
-            <button
-              key={mod.id}
-              onClick={() => onSelect(mod.id)}
-              className="px-4 rounded-full text-sm transition-all min-h-[44px] active:opacity-70"
-              style={
-                isSelected
-                  ? { background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }
-                  : { background: 'rgba(255,255,255,0.55)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(255,255,255,0.5)' }
-              }
-            >
-              {mod.label}
-              {mod.calories > 0 && group.type !== 'replace' && (
-                <span className={`ml-1 text-xs ${isSelected ? 'text-lavender-dark' : 'text-text-muted'}`}>
-                  +{mod.calories} ккал
-                </span>
-              )}
-              {group.type === 'replace' && mod.calories > 0 && (
-                <span className={`ml-1 text-xs ${isSelected ? 'text-lavender-dark' : 'text-text-muted'}`}>
-                  {mod.calories} ккал/100{mod.weightUnit}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
   )
 }

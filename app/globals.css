@@ -170,3 +170,24 @@
     }
   }
 }
+
+/* DishSheet: мобиле — полный экран, десктоп — по центру */
+.dish-sheet {
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+}
+
+@media (min-width: 640px) {
+  .dish-sheet {
+    height: auto !important;
+    max-height: 88dvh !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 1.5rem !important;
+    width: 560px !important;
+  }
+}

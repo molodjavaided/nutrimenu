@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 import { hashPassword, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { authRatelimit } from '@/lib/ratelimit'
+import { sendTelegramMessage, escapeHtml } from '@/lib/telegram'
 
 const schema = z.object({
   venueName: z.string().min(2).max(100),
@@ -60,6 +61,13 @@ export async function POST(req: NextRequest) {
     })
     return { user, venue }
   })
+
+  void sendTelegramMessage(
+    `🏪 <b>Новая регистрация</b>\n` +
+    `Заведение: <b>${escapeHtml(venue.name)}</b>\n` +
+    `Email: <code>${escapeHtml(normalizedEmail)}</code>\n` +
+    `Slug: /menu/${escapeHtml(venue.slug)}`
+  )
 
   const token = await createSessionToken({ email: user.email, userId: user.id, venueId: venue.id, role: 'OWNER' })
 

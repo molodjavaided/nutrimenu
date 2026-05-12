@@ -533,7 +533,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                                   className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>+</button>
                                 <span className="text-xs w-6" style={{ color: TEXT_MUTED }}>г</span>
                               </div>
-                              {kcal > 0 && <span className="text-xs font-medium" style={{ color: '#A78BFA' }}>+{kcal}</span>}
+                              {kcal > 0 && <span className="text-xs font-medium whitespace-nowrap" style={{ color: '#A78BFA' }}>+{kcal} ккал</span>}
                             </div>
                           )
                         })}

@@ -3,6 +3,8 @@ export interface Venue {
   name: string
   slug: string
   logo?: string
+  country?: string
+  city?: string
   address?: string
   description?: string
   workingHours?: string

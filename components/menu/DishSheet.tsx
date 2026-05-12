@@ -261,8 +261,10 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
     } else {
       const g = entry.group
       if (g.multi) {
-        const sel = Array.isArray(modifiers[g.id]) ? (modifiers[g.id] as unknown as string[]).length : 0
-        return sel > 0 ? `${g.label} (${sel})` : g.label
+        const selIds = Array.isArray(modifiers[g.id]) ? (modifiers[g.id] as unknown as string[]) : []
+        if (selIds.length === 0) return g.label
+        const names = selIds.map(id => g.modifiers.find(m => m.id === id)?.label).filter(Boolean)
+        return `${g.label}: ${names.join(', ')}`
       }
       const sel = g.modifiers.find(m => m.id === modifiers[g.id])
       return sel ? `${g.label}: ${sel.label}` : g.label
@@ -340,29 +342,31 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
 
             {/* КБЖУ + граммовка */}
             <div className="grid grid-cols-5 gap-1 mb-3">
-              {/* Граммовка — кликабельна если есть размеры */}
+              {/* Размер: название сверху, граммовка снизу */}
               {item.sizes && item.sizes.length > 1 ? (
                 <button
                   onClick={() => setSizePickerOpen(o => !o)}
                   className="text-center active:opacity-70 transition-opacity"
                 >
-                  <p className="text-[15px] font-semibold" style={{ color: sizePickerOpen ? '#A78BFA' : TEXT }}>
-                    {resolvedNutri.weight}{resolvedNutri.weightUnit}
-                  </p>
-                  <p className="text-[10px] mt-0.5 flex items-center justify-center gap-0.5" style={{ color: TEXT_MUTED }}>
-                    объём
+                  <p className="text-[15px] font-semibold flex items-center justify-center gap-0.5" style={{ color: sizePickerOpen ? '#A78BFA' : TEXT }}>
+                    {activeSize?.name || `${resolvedNutri.weight}${resolvedNutri.weightUnit}`}
                     <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
                       style={{ transform: sizePickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                       <path d="M1 2.5l2.5 2.5L6 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                     </svg>
                   </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                    {resolvedNutri.weight}{resolvedNutri.weightUnit}
+                  </p>
                 </button>
               ) : (
                 <div className="text-center">
                   <p className="text-[15px] font-semibold" style={{ color: TEXT }}>
-                    {resolvedNutri.weight}{resolvedNutri.weightUnit}
+                    {activeSize?.name || `${resolvedNutri.weight}${resolvedNutri.weightUnit}`}
                   </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>объём</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: TEXT_MUTED }}>
+                    {activeSize?.name ? `${resolvedNutri.weight}${resolvedNutri.weightUnit}` : 'объём'}
+                  </p>
                 </div>
               )}
 
@@ -463,6 +467,10 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
                     </span>
                   )
                 })}
+                <span className="text-[11px] px-2 py-1 rounded-full font-medium"
+                  style={{ background: BG_CHIP_ACTIVE, color: '#fff' }}>
+                  Итого: {resolvedNutri.weight}{resolvedNutri.weightUnit}
+                </span>
               </div>
             )}
           </div>

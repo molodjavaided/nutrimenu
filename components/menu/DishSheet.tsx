@@ -290,7 +290,7 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
         side="bottom"
         showCloseButton={false}
         className="dish-sheet max-w-full mx-auto p-0 flex flex-col overflow-hidden"
-        style={{ background: BG, border: 'none', gap: 0, maxHeight: '92vh' }}
+        style={{ background: BG, border: 'none', gap: 0, maxHeight: '92vh', height: 'fit-content' }}
       >
         {/* ── ФОТО + ХЕДЕР-ОВЕРЛЕЙ ────────────────────────────── */}
         <div className="relative w-full shrink-0" style={{ aspectRatio: '4/3' }}>

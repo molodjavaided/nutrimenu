@@ -289,33 +289,33 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="dish-sheet max-w-full mx-auto p-0 flex flex-col overflow-hidden"
-        style={{ background: BG, border: 'none', gap: 0, maxHeight: '92vh', height: 'fit-content' }}
+        className="dish-sheet max-w-full mx-auto p-0 overflow-hidden"
+        style={{ background: BG, border: 'none', gap: 0, height: '90vh' }}
       >
-        {/* ── ФОТО + ХЕДЕР-ОВЕРЛЕЙ ────────────────────────────── */}
-        <div className="relative w-full shrink-0" style={{ aspectRatio: '4/3' }}>
-          {/* Фото */}
+        {/* ── ФОТО НА ВЕСЬ ШИТ + ВСЕ ОВЕРЛЕИ ─────────────────── */}
+        <div className="relative w-full h-full">
+          {/* Фото на всю площадь */}
           {item.photo
             ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority style={{ objectPosition: item.photoPosition === 'top' ? 'center top' : item.photoPosition === 'bottom' ? 'center bottom' : 'center center' }} />
             : <div className="w-full h-full flex items-center justify-center text-7xl" style={{ background: '#1a1426' }}>🍽️</div>
           }
 
-          {/* Градиент сверху: тёмный → прозрачный (только под текст) */}
+          {/* Градиент сверху: тёмный → прозрачный (под хедер) */}
           <div
             className="absolute inset-x-0 top-0"
             style={{
-              height: '50%',
-              background: `linear-gradient(to bottom, ${BG} 0%, ${BG} 10%, rgba(28,23,38,0.82) 40%, transparent 100%)`,
+              height: '40%',
+              background: `linear-gradient(to bottom, rgba(28,23,38,0.85) 0%, rgba(28,23,38,0.6) 50%, transparent 100%)`,
               pointerEvents: 'none',
             }}
           />
 
-          {/* Градиент снизу: прозрачный → тёмный */}
+          {/* Градиент снизу: прозрачный → тёмный (под чипы и футер) */}
           <div
             className="absolute inset-x-0 bottom-0"
             style={{
-              height: '20%',
-              background: `linear-gradient(to top, ${BG} 0%, transparent 100%)`,
+              height: '40%',
+              background: `linear-gradient(to top, rgba(28,23,38,0.95) 0%, rgba(28,23,38,0.7) 50%, transparent 100%)`,
               pointerEvents: 'none',
             }}
           />
@@ -471,16 +471,127 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
               </div>
             )}
           </div>
-        </div>
 
-        {/* ── СКРОЛЛИМАЯ ЧАСТЬ: добавки + количество ───────────── */}
-        <div className="overflow-y-auto" style={{ background: BG }}>
+        {/* ── НИЖНИЙ ОВЕРЛЕЙ: раскрытый пикер + чипы + футер ──── */}
+        <div className="absolute inset-x-0 bottom-0">
 
-          {/* Горизонтальный ряд чипов: варианты + модификаторы */}
+          {/* Раскрытая группа вариантов — над чипами */}
+          {activeGroupId && (() => {
+            const entry = allGroups.find(e => e.id === activeGroupId)
+            if (!entry) return null
+            return (
+              <div className="px-5 py-3" style={{ background: 'rgba(28,23,38,0.75)', backdropFilter: 'blur(16px)' }}>
+                {(() => {
+                  if (entry.type === 'variant') {
+                    const group = entry.group as VariantGroup
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {group.options.map(opt => {
+                          const isActive = variants[group.id] === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              onClick={() => setVariants(prev => {
+                                if (!group.required && prev[group.id] === opt.id) {
+                                  const next = { ...prev }; delete next[group.id]; return next
+                                }
+                                return { ...prev, [group.id]: opt.id }
+                              })}
+                              className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
+                              style={isActive
+                                ? { background: BG_CHIP_ACTIVE, color: '#fff' }
+                                : { background: BG_CHIP, color: 'rgba(255,255,255,0.85)' }
+                              }
+                            >
+                              {opt.label}
+                              {opt.price != null && opt.price > 0 && (
+                                <span className="ml-1 text-xs opacity-80">+{opt.price} ₽</span>
+                              )}
+                              {opt.calories > 0 && (
+                                <span className="ml-1 text-xs opacity-60">{getOptionCalories(group, opt)} ккал</span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  }
+                  const group = entry.group as ModifierGroup
+                  if (group.allowCustomGrams) {
+                    return (
+                      <div className="flex flex-col gap-2">
+                        {group.modifiers.map(mod => {
+                          const grams = gramAmounts[group.id]?.[mod.id] ?? 0
+                          const kcal = grams > 0 ? Math.round(mod.calories * grams / 100) : 0
+                          return (
+                            <div key={mod.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+                              style={{ background: BG_CHIP }}>
+                              <span className="flex-1 text-sm" style={{ color: TEXT }}>{mod.label}</span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) } }))}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>−</button>
+                                <input type="number" inputMode="decimal" value={grams || ''} placeholder="0"
+                                  onChange={e => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, Number(e.target.value) || 0) } }))}
+                                  className="w-12 text-center text-sm outline-none rounded-lg h-8"
+                                  style={{ background: 'rgba(255,255,255,0.1)', color: TEXT }} />
+                                <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: (prev[group.id]?.[mod.id] ?? 0) + 5 } }))}
+                                  className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>+</button>
+                                <span className="text-xs w-6" style={{ color: TEXT_MUTED }}>г</span>
+                              </div>
+                              {kcal > 0 && <span className="text-xs font-medium" style={{ color: '#A78BFA' }}>+{kcal}</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {group.modifiers.map(mod => {
+                        const isSelected = group.multi
+                          ? Array.isArray(modifiers[group.id]) && (modifiers[group.id] as unknown as string[]).includes(mod.id)
+                          : modifiers[group.id] === mod.id
+                        return (
+                          <button
+                            key={mod.id}
+                            onClick={() => {
+                              if (group.multi) {
+                                setModifiers(m => {
+                                  const cur = Array.isArray(m[group.id]) ? m[group.id] as unknown as string[] : []
+                                  return { ...m, [group.id]: (cur.includes(mod.id) ? cur.filter(x => x !== mod.id) : [...cur, mod.id]) as unknown as string }
+                                })
+                              } else {
+                                setModifiers(m => ({ ...m, [group.id]: mod.id }))
+                              }
+                            }}
+                            className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
+                            style={isSelected
+                              ? { background: BG_CHIP_ACTIVE, color: '#fff' }
+                              : { background: BG_CHIP, color: 'rgba(255,255,255,0.85)' }
+                            }
+                          >
+                            {mod.label}
+                            {mod.price != null && mod.price > 0 && (
+                              <span className="ml-1 text-xs opacity-80">+{mod.price} ₽</span>
+                            )}
+                            {mod.calories > 0 && group.type !== 'replace' && (
+                              <span className="ml-1 text-xs opacity-60">+{mod.calories} ккал</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+            )
+          })()}
+
+          {/* Горизонтальный ряд чипов */}
           {allGroups.length > 0 && (
             <div
               className="flex gap-2 overflow-x-auto px-5 py-3"
-              style={{ scrollbarWidth: 'none', borderBottom: `0.5px solid ${DIVIDER}` }}
+              style={{ scrollbarWidth: 'none' }}
             >
               {/* Группы вариантов/модификаторов */}
               {allGroups.map(entry => {
@@ -504,132 +615,13 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
             </div>
           )}
 
-          {/* Раскрытая группа вариантов */}
-          {activeGroupId && (() => {
-            const entry = allGroups.find(e => e.id === activeGroupId)
-            if (!entry) return null
-
-            if (entry.type === 'variant') {
-              const group = entry.group as VariantGroup
-              return (
-                <div className="px-5 py-3" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
-                  <div className="flex flex-wrap gap-2">
-                    {group.options.map(opt => {
-                      const isActive = variants[group.id] === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => setVariants(prev => {
-                            if (!group.required && prev[group.id] === opt.id) {
-                              const next = { ...prev }; delete next[group.id]; return next
-                            }
-                            return { ...prev, [group.id]: opt.id }
-                          })}
-                          className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
-                          style={isActive
-                            ? { background: BG_CHIP_ACTIVE, color: '#fff' }
-                            : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
-                          }
-                        >
-                          {opt.label}
-                          {opt.price != null && opt.price > 0 && (
-                            <span className="ml-1 text-xs opacity-80">+{opt.price} ₽</span>
-                          )}
-                          {opt.calories > 0 && (
-                            <span className="ml-1 text-xs opacity-60">{getOptionCalories(group, opt)} ккал</span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            }
-
-            // Модификатор
-            const group = entry.group as ModifierGroup
-
-            if (group.allowCustomGrams) {
-              return (
-                <div className="px-5 py-3 flex flex-col gap-2" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
-                  {group.modifiers.map(mod => {
-                    const grams = gramAmounts[group.id]?.[mod.id] ?? 0
-                    const kcal = grams > 0 ? Math.round(mod.calories * grams / 100) : 0
-                    return (
-                      <div key={mod.id} className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
-                        style={{ background: BG_CHIP }}>
-                        <span className="flex-1 text-sm" style={{ color: TEXT }}>{mod.label}</span>
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, (prev[group.id]?.[mod.id] ?? 0) - 5) } }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>−</button>
-                          <input type="number" inputMode="decimal" value={grams || ''} placeholder="0"
-                            onChange={e => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: Math.max(0, Number(e.target.value) || 0) } }))}
-                            className="w-12 text-center text-sm outline-none rounded-lg h-8"
-                            style={{ background: 'rgba(255,255,255,0.1)', color: TEXT }} />
-                          <button onClick={() => setGramAmounts(prev => ({ ...prev, [group.id]: { ...prev[group.id], [mod.id]: (prev[group.id]?.[mod.id] ?? 0) + 5 } }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-lg" style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}>+</button>
-                          <span className="text-xs w-6" style={{ color: TEXT_MUTED }}>г</span>
-                        </div>
-                        {kcal > 0 && <span className="text-xs font-medium" style={{ color: '#A78BFA' }}>+{kcal}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            }
-
-            return (
-              <div className="px-5 py-3" style={{ borderBottom: `0.5px solid ${DIVIDER}` }}>
-                <div className="flex flex-wrap gap-2">
-                  {group.modifiers.map(mod => {
-                    const isSelected = group.multi
-                      ? Array.isArray(modifiers[group.id]) && (modifiers[group.id] as unknown as string[]).includes(mod.id)
-                      : modifiers[group.id] === mod.id
-
-                    return (
-                      <button
-                        key={mod.id}
-                        onClick={() => {
-                          if (group.multi) {
-                            setModifiers(m => {
-                              const cur = Array.isArray(m[group.id]) ? m[group.id] as unknown as string[] : []
-                              return { ...m, [group.id]: (cur.includes(mod.id) ? cur.filter(x => x !== mod.id) : [...cur, mod.id]) as unknown as string }
-                            })
-                          } else {
-                            setModifiers(m => ({ ...m, [group.id]: mod.id }))
-                          }
-                        }}
-                        className="px-3 py-2 rounded-full text-sm transition-all active:opacity-70"
-                        style={isSelected
-                          ? { background: BG_CHIP_ACTIVE, color: '#fff' }
-                          : { background: BG_CHIP, color: 'rgba(255,255,255,0.75)' }
-                        }
-                      >
-                        {mod.label}
-                        {mod.price != null && mod.price > 0 && (
-                          <span className="ml-1 text-xs opacity-80">+{mod.price} ₽</span>
-                        )}
-                        {mod.calories > 0 && group.type !== 'replace' && (
-                          <span className="ml-1 text-xs opacity-60">+{mod.calories} ккал</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })()}
-
-        </div>
-
-        {/* ── ФУТЕР ─────────────────────────────────────────────── */}
-        <div
-          className="shrink-0 px-4 pt-3 flex items-center gap-2"
-          style={{
-            background: BG,
-            paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
-          }}
-        >
+          {/* ── ФУТЕР: цена + счётчик + добавить ───────────────── */}
+          <div
+            className="px-4 pt-2 flex items-center gap-2"
+            style={{
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+            }}
+          >
           {/* Цена */}
           {displayPrice != null && (
             <div className="flex flex-col shrink-0">
@@ -677,6 +669,8 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
               <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
+          </div>
+        </div>
         </div>
       </SheetContent>
     </Sheet>

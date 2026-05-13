@@ -291,8 +291,8 @@ export default function DishSheet({ item, open, onClose, onAdd, venueIngredientR
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="dish-sheet max-w-full mx-auto p-0 overflow-hidden"
-        style={{ background: BG, border: 'none', gap: 0, height: '90vh' }}
+        className="dish-sheet max-w-full mx-auto p-0 overflow-hidden h-[90vh] sm:inset-auto! sm:top-[7.5vh]! sm:left-[calc(50%-220px)]! sm:w-[440px]! sm:max-w-[440px]! sm:h-[85vh]! sm:max-h-[680px]! sm:rounded-3xl! sm:[transform:none]!"
+        style={{ background: BG, border: 'none', gap: 0 }}
       >
         {/* ── ФОТО НА ВЕСЬ ШИТ + ВСЕ ОВЕРЛЕИ ─────────────────── */}
         <div className="relative w-full h-full">

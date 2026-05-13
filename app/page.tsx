@@ -162,14 +162,6 @@ export default function RootPage() {
             </Link>
           </div>
         </main>
-
-        {/* ── Owner strip ── */}
-        <footer className="relative z-10 flex items-center justify-center gap-2 py-6 px-6 text-xs" style={{ color: '#B0A6DF' }}>
-          Уже есть аккаунт?{' '}
-          <Link href="/auth/login" className="font-semibold" style={{ color: '#7C3AED' }}>
-            Войти в панель управления
-          </Link>
-        </footer>
       </div>
     </>
   )

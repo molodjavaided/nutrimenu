@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ALLERGENS, getAllergenById } from '@/lib/allergens'
+import { ALLERGENS } from '@/lib/allergens'
+import DishCard from '@/components/menu/DishCard'
+import { MenuItem } from '@/types'
 
 const DEMO_SLUG = 'demo-nutrimenu'
 
@@ -82,19 +84,22 @@ export default function DemoPage() {
     router.push('/demo/preview')
   }
 
-  // Values shown in the live preview
-  const p = {
+  const isEmpty = !form.name && !form.calories
+  const previewItem: MenuItem = {
+    id: 'demo-preview',
     name: form.name.trim() || 'Название блюда',
-    description: form.description.trim(),
+    description: form.description.trim() || undefined,
     price: form.price ? parseFloat(form.price) : undefined,
-    weight: form.weight || '—',
+    weight: parseFloat(form.weight) || 0,
     weightUnit: form.weightUnit,
     calories: Math.round(parseFloat(form.calories) || 0),
     protein: Math.round(parseFloat(form.protein) || 0),
     fat: Math.round(parseFloat(form.fat) || 0),
     carbs: Math.round(parseFloat(form.carbs) || 0),
-    allergens: form.allergens,
-    isEmpty: !form.name && !form.calories,
+    allergens: form.allergens.length > 0 ? form.allergens : undefined,
+    isAvailable: true,
+    categoryId: 'demo-cat',
+    venueId: 'demo',
   }
 
   return (
@@ -350,81 +355,19 @@ export default function DemoPage() {
                 <p className="text-sm" style={{ color: '#9D99B8' }}>Обновляется в реальном времени</p>
               </div>
 
-              {/* Dish card preview */}
-              <div key={p.name} className="preview-card flex gap-4 py-4" style={{ borderBottom: '0.5px solid rgba(139,92,246,0.1)' }}>
-                {/* Фото */}
-                <div
-                  style={{
-                    width: 72, height: 72, borderRadius: 16, flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 28,
-                    background: 'rgba(255,255,255,0.6)',
-                    backdropFilter: 'blur(8px)',
-                    border: '0.5px solid rgba(255,255,255,0.5)',
-                  }}
-                >
-                  🍽️
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p className="text-sm font-semibold mb-0.5 truncate" style={{ color: p.isEmpty ? '#D8D4F0' : '#2C2950' }}>
-                    {p.name}
-                  </p>
-                  {p.description && (
-                    <p className="text-xs mb-2 truncate" style={{ color: '#9D99B8' }}>{p.description}</p>
-                  )}
-
-                  {/* КБЖУ */}
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    <span style={{ fontSize: 12, padding: '3px 8px', borderRadius: 7, background: 'rgba(242,217,101,0.3)', color: '#7C5200', border: '0.5px solid rgba(242,217,101,0.5)', fontWeight: 500 }}>
-                      {p.calories} ккал
-                    </span>
-                    {[
-                      { label: 'Б', val: p.protein },
-                      { label: 'Ж', val: p.fat },
-                      { label: 'У', val: p.carbs },
-                    ].map(({ label, val }) => (
-                      <span key={label} style={{ fontSize: 12, padding: '3px 8px', borderRadius: 7, background: 'rgba(139,92,246,0.1)', color: '#7C3AED', border: '0.5px solid rgba(139,92,246,0.2)', fontWeight: 500 }}>
-                        {label} {val}г
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Вес + цена */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs" style={{ color: '#B0A6DF' }}>{p.weight} {p.weightUnit}</span>
-                    {p.price != null && (
-                      <span className="text-xs font-semibold" style={{ color: '#2C2950' }}>{p.price} ₽</span>
-                    )}
-                  </div>
-
-                  {/* Аллергены */}
-                  {p.allergens.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {p.allergens.map(id => {
-                        const a = getAllergenById(id)
-                        if (!a) return null
-                        return (
-                          <span key={id} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'rgba(239,68,68,0.1)', color: '#DC2626', border: '0.5px solid rgba(239,68,68,0.25)' }}>
-                            {a.emoji} {a.label}
-                          </span>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* + button */}
-                <div className="flex items-center justify-center shrink-0">
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}>
-                    +
-                  </div>
-                </div>
+              {/* Dish card preview — same component guests see */}
+              <div className="preview-card">
+                <DishCard
+                  item={previewItem}
+                  quantity={0}
+                  onOpen={() => {}}
+                  onAdd={() => {}}
+                  onRemove={() => {}}
+                />
               </div>
 
               {/* Empty hint */}
-              {p.isEmpty && (
+              {isEmpty && (
                 <p className="text-sm text-center" style={{ color: '#D8D4F0' }}>
                   Начните заполнять форму слева →
                 </p>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ALLERGENS } from '@/lib/allergens'
 import DishCard from '@/components/menu/DishCard'
+import DishSheet from '@/components/menu/DishSheet'
 import { MenuItem } from '@/types'
 
 const DEMO_SLUG = 'demo-nutrimenu'
@@ -39,6 +40,7 @@ export default function DemoPage() {
   const router = useRouter()
   const [form, setForm] = useState<Form>(EMPTY)
   const [tab, setTab] = useState<'form' | 'preview'>('form')
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   function field(key: keyof Form) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -360,8 +362,8 @@ export default function DemoPage() {
                 <DishCard
                   item={previewItem}
                   quantity={0}
-                  onOpen={() => {}}
-                  onAdd={() => {}}
+                  onOpen={() => setSheetOpen(true)}
+                  onAdd={() => setSheetOpen(true)}
                   onRemove={() => {}}
                 />
               </div>
@@ -382,6 +384,14 @@ export default function DemoPage() {
             </div>
           </div>
         </div>
+
+        {/* DishSheet — открывается при клике на превью */}
+        <DishSheet
+          item={sheetOpen ? previewItem : null}
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onAdd={() => setSheetOpen(false)}
+        />
       </div>
     </>
   )

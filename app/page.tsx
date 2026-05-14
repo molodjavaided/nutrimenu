@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import DemoButton from '@/components/landing/DemoButton'
-import PlateLogoIcon from '@/components/PlateLogoIcon'
+import SiteNav from '@/components/landing/SiteNav'
 
 export const metadata: Metadata = {
   title: 'Plate — умное цифровое меню с КБЖУ и аллергенами',
@@ -75,32 +74,7 @@ export default function RootPage() {
           </svg>
         </div>
 
-        {/* ── Nav ── */}
-        <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-5xl mx-auto w-full">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 logo-mark"
-              style={{ background: '#2C2950' }}
-            >
-              <PlateLogoIcon size={26} />
-            </div>
-            <span className="font-semibold text-base tracking-tight" style={{ color: '#2C2950' }}>Plate</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="text-sm font-medium px-4 py-2 rounded-xl transition-all"
-              style={{ color: '#6B6490' }}
-            >
-              Войти
-            </Link>
-            <DemoButton
-              className="demo-btn text-sm font-semibold px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer"
-              style={{ background: '#2C2950', color: '#FEFEF2' }}
-            />
-          </div>
-        </nav>
+        <SiteNav />
 
         {/* ── Hero ── */}
         <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-5xl mx-auto w-full text-center">
@@ -134,31 +108,25 @@ export default function RootPage() {
           {/* CTA buttons */}
           <div className="hero-ctas flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <Link
-              href="/auth/register"
-              className="cta-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200"
-              style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 20px rgba(139,92,246,0.3)' }}
+              href="/about"
+              className="cta-primary inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200"
+              style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 20px rgba(139,92,246,0.3)', width: 200 }}
             >
-              Начать бесплатно
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              Для заведения
             </Link>
             <Link
               href="/venues"
-              className="cta-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl font-medium text-sm transition-all duration-200"
+              className="cta-secondary inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-medium text-sm transition-all duration-200"
               style={{
                 background: 'rgba(255,255,255,0.6)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 border: '1px solid rgba(176,166,223,0.45)',
                 color: '#2C2950',
+                width: 200,
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2C5.79 2 4 3.79 4 6c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
-                <circle cx="8" cy="6" r="1.5" stroke="currentColor" strokeWidth="1.4"/>
-              </svg>
-              Найти заведение
+              Для гостя
             </Link>
           </div>
         </main>

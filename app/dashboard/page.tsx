@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import QRCode from 'qrcode'
 import { Category, Venue } from '@/types'
 
 export default function DashboardPage() {
@@ -9,6 +10,25 @@ export default function DashboardPage() {
   const [venue, setVenue] = useState<Venue | null>(null)
   const [loading, setLoading] = useState(true)
   const [views, setViews] = useState<{ total: number; today: number; week: number } | null>(null)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    if (!venue?.slug || !qrCanvasRef.current) return
+    const url = `${window.location.origin}/menu/${venue.slug}`
+    QRCode.toCanvas(qrCanvasRef.current, url, {
+      width: 160,
+      margin: 1,
+      color: { dark: '#3D3100', light: '#F2D965' },
+    }).catch(() => {})
+  }, [venue?.slug])
+
+  function downloadQr() {
+    if (!qrCanvasRef.current || !venue?.slug) return
+    const link = document.createElement('a')
+    link.download = `qr-${venue.slug}.png`
+    link.href = qrCanvasRef.current.toDataURL('image/png')
+    link.click()
+  }
 
   useEffect(() => {
     Promise.all([
@@ -24,28 +44,6 @@ export default function DashboardPage() {
   }, [])
 
   if (loading) return <div className="p-6" />
-
-  if (venue?.status === 'PENDING') {
-    return (
-      <div className="p-6 sm:p-10 flex flex-col items-center text-center max-w-md mx-auto mt-12">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5" style={{ background: '#EAE7F8' }}>
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="12" stroke="#B0A6DF" strokeWidth="2"/>
-            <path d="M16 10v7M16 21v1.5" stroke="#B0A6DF" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-        </div>
-        <h1 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>Заявка на рассмотрении</h1>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-          Мы проверяем данные вашего заведения. Обычно это занимает 1–2 рабочих дня.
-          Как только заявка будет одобрена — вы сразу получите доступ к дашборду.
-        </p>
-        <p className="text-xs mt-4" style={{ color: 'var(--color-text-muted)' }}>
-          Вопросы? Напишите на{' '}
-          <a href="mailto:support@nutrimenu.app" className="underline">support@nutrimenu.app</a>
-        </p>
-      </div>
-    )
-  }
 
   if (venue?.status === 'REJECTED') {
     return (
@@ -107,6 +105,29 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* PENDING banner */}
+      {venue?.status === 'PENDING' && (
+        <div className="mb-6 rounded-2xl p-4 sm:p-5 flex gap-3 items-start"
+          style={{ background: 'rgba(242,217,101,0.18)', border: '0.5px solid rgba(242,217,101,0.5)' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(99,82,0,0.12)' }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="7" stroke="#635200" strokeWidth="1.5"/>
+              <path d="M9 5v4l2.5 2" stroke="#635200" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold mb-1" style={{ color: '#3D3100' }}>
+              Заявка на рассмотрении
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: '#635200' }}>
+              Меню пока скрыто от гостей — но вы можете подготовить категории, ингредиенты и блюда.
+              Как только одобрим — всё сразу опубликуется. Обычно это 1–2 рабочих дня.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Onboarding checklist */}
       {!onboardingDone && (
@@ -210,29 +231,33 @@ export default function DashboardPage() {
       {/* QR block */}
       <div className="rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4"
         style={{ background: '#F2D965', border: '0.5px solid rgba(242,217,101,0.5)' }}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium mb-1" style={{ color: '#635200' }}>QR-код для гостей</p>
           <p className="text-xs mb-3" style={{ color: '#635200' }}>
-            Гости сканируют и сразу видят меню с КБЖУ
+            Гости сканируют и сразу видят меню с КБЖУ. Распечатайте один раз — ссылка не меняется.
           </p>
-          <p className="text-xs font-medium truncate" style={{ color: '#3D3100' }}>
-            {venue?.slug ? `nutrimenu.app/menu/${venue.slug}` : 'nutrimenu.app/menu/…'}
+          <p className="text-xs font-medium mb-3 truncate" style={{ color: '#3D3100' }}>
+            {venue?.slug ? `${typeof window !== 'undefined' ? window.location.host : 'plate.menu'}/menu/${venue.slug}` : 'plate.menu/menu/…'}
           </p>
+          {venue?.slug && (
+            <button
+              onClick={downloadQr}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
+              style={{ background: '#3D3100', color: '#F2D965' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 2v6.5M3.5 5.5l3 3 3-3M2 11h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Скачать PNG
+            </button>
+          )}
         </div>
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(99,82,0,0.1)' }}>
-          <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
-            <rect x="4" y="4" width="14" height="14" rx="2" stroke="#635200" strokeWidth="2"/>
-            <rect x="7" y="7" width="8" height="8" fill="#635200"/>
-            <rect x="22" y="4" width="14" height="14" rx="2" stroke="#635200" strokeWidth="2"/>
-            <rect x="25" y="7" width="8" height="8" fill="#635200"/>
-            <rect x="4" y="22" width="14" height="14" rx="2" stroke="#635200" strokeWidth="2"/>
-            <rect x="7" y="25" width="8" height="8" fill="#635200"/>
-            <rect x="22" y="22" width="4" height="4" fill="#635200"/>
-            <rect x="29" y="22" width="4" height="4" fill="#635200"/>
-            <rect x="22" y="29" width="4" height="4" fill="#635200"/>
-            <rect x="29" y="29" width="7" height="7" fill="#635200"/>
-          </svg>
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ background: 'rgba(99,82,0,0.06)' }}>
+          {venue?.slug
+            ? <canvas ref={qrCanvasRef} className="w-full h-full" />
+            : <div className="text-xs" style={{ color: '#635200' }}>—</div>
+          }
         </div>
       </div>
     </div>

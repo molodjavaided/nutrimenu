@@ -121,12 +121,12 @@ export function DashboardNav() {
       >
         {/* Логотип */}
         <div className="px-5 py-5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-70">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#2C2950' }}>
               <PlateLogoIcon size={20} />
             </div>
             <span className="font-medium text-sm text-text-primary">Plate</span>
-          </div>
+          </Link>
         </div>
 
         {/* Навигация */}

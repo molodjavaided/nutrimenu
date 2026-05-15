@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
-import { FREE_IMPORT_LIMIT } from '@/app/api/import/limit/route'
+import { getEffectiveLimits } from '@/lib/plans'
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 
@@ -62,14 +62,28 @@ export async function POST(req: NextRequest) {
   if (session.role !== 'ADMIN') {
     const user = await db.user.findUnique({
       where: { id: session.userId },
-      select: { emailVerified: true, ttkImportCount: true },
+      select: { emailVerified: true, ttkImportCount: true, ttkImportMonth: true, plan: true, trialEndsAt: true, paidUntil: true },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (!user.emailVerified) {
       return NextResponse.json({ error: 'EMAIL_NOT_VERIFIED', message: 'Подтвердите email перед импортом' }, { status: 403 })
     }
-    if (user.ttkImportCount >= FREE_IMPORT_LIMIT) {
-      return NextResponse.json({ error: 'IMPORT_LIMIT_REACHED', message: 'Исчерпан лимит бесплатных импортов' }, { status: 402 })
+    const limits = getEffectiveLimits({
+      plan: user.plan,
+      trialEndsAt: user.trialEndsAt,
+      paidUntil: user.paidUntil,
+    })
+    if (!limits.canImportAi) {
+      const isTrial = limits.state === 'trial'
+      const message = isTrial
+        ? 'AI-импорт доступен только после оплаты тарифа.'
+        : 'Пробный период завершён. Пожалуйста, выберите тариф.'
+      return NextResponse.json({ error: isTrial ? 'TRIAL_NO_AI' : 'TRIAL_EXPIRED', message }, { status: 402 })
+    }
+    const currentMonth = new Date().getMonth() + 1
+    const usedThisMonth = user.ttkImportMonth === currentMonth ? user.ttkImportCount : 0
+    if (limits.aiImportPerMonth !== Infinity && usedThisMonth >= limits.aiImportPerMonth) {
+      return NextResponse.json({ error: 'IMPORT_LIMIT_REACHED', message: `Исчерпан лимит импортов на этот месяц (${limits.aiImportPerMonth})` }, { status: 402 })
     }
   }
 
@@ -205,11 +219,17 @@ export async function POST(req: NextRequest) {
     }
   })
 
-  // Increment import counter for non-admins
+  // Increment import counter for non-admins (reset monthly)
   if (session.role !== 'ADMIN') {
+    const currentMonth = new Date().getMonth() + 1
+    const user = await db.user.findUnique({ where: { id: session.userId }, select: { ttkImportMonth: true } })
+    const resetMonth = user?.ttkImportMonth !== currentMonth
     await db.user.update({
       where: { id: session.userId },
-      data: { ttkImportCount: { increment: 1 } },
+      data: {
+        ttkImportCount: resetMonth ? 1 : { increment: 1 },
+        ttkImportMonth: currentMonth,
+      },
     })
   }
 

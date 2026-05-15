@@ -35,7 +35,6 @@ const plans: Plan[] = [
       'Конструктор + Ингредиенты + КБЖУ',
       'AI-импорт: 5 операций/мес',
       'Аналитика спроса',
-      'Оцифровка меню — разово 5 000 ₽',
     ],
     cta: { label: 'Попробуй 14 дней бесплатно', href: '/auth/register' },
     accent: '#8B5CF6',
@@ -54,11 +53,24 @@ const plans: Plan[] = [
       'Обратная связь в Telegram',
       'Кастомизация (лого / цвета / шрифт)',
       'Food cost и наценка',
-      'Оцифровка меню — разово 5 000 ₽',
     ],
     cta: { label: 'В разработке', href: '#', disabled: true },
     highlight: true,
     accent: '#7C3AED',
+  },
+  {
+    id: 'digitization',
+    name: 'Оцифровка меню',
+    price: '5 000 ₽',
+    priceSub: 'разово',
+    tagline: 'Мы оцифруем меню за вас',
+    features: [
+      'Пришлите файлы — внесём всё сами',
+      'Не нужно сидеть и вбивать вручную',
+      'Готовое меню за 1–2 дня',
+    ],
+    cta: { label: 'Заказать', href: 'mailto:hello@plate.menu?subject=Оцифровка%20меню' },
+    accent: '#0EA5E9',
   },
   {
     id: 'custom',
@@ -121,7 +133,7 @@ export default function PricingPage() {
         </section>
 
         {/* Tariff cards */}
-        <section className="grid md:grid-cols-3 gap-5 mb-20 max-w-4xl mx-auto w-full">
+        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-20 w-full">
           {plans.map((plan) => (
             <div
               key={plan.id}

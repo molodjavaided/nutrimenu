@@ -15,6 +15,7 @@ import {
 import { Category, IngredientRef } from '@/types'
 import { getTTKExamples, saveTTKExample } from '@/lib/ttk-examples'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
+import TestBadge from '@/components/ui/TestBadge'
 
 const UNDO_SECONDS = 30
 
@@ -489,8 +490,9 @@ export default function ImportModal({ onClose, onImported }: Props) {
         >
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+              <h2 className="flex items-center gap-2 text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                 Импорт меню
+                <TestBadge />
               </h2>
               {/* Import counter badge */}
               {importLimit && importLimit.remaining !== Infinity && step === 'upload' && (
@@ -776,7 +778,7 @@ function PaywallStep({
         <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
           {isNotVerified
             ? 'Для импорта ТТК необходимо подтвердить email. Проверьте почту и перейдите по ссылке из письма.'
-            : `Вы использовали все ${limit} бесплатных импорта. Для продолжения необходима платная подписка.`
+            : `Вы использовали бесплатный импорт ТТК. Для продолжения необходима платная подписка.`
           }
         </p>
         {isLimitReached && (

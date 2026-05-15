@@ -315,7 +315,7 @@ export default function AdminVenueMenuPage() {
               {verifying ? '…' : 'Подтвердить'}
             </button>
           ) : null },
-            { label: 'Импортов ТТК', value: `${venue.owner.ttkImportCount} из 3` },
+            { label: 'Импортов ТТК', value: `${venue.owner.ttkImportCount} из 1` },
             { label: 'Зарегистрирован', value: new Date(venue.owner.createdAt).toLocaleDateString('ru-RU') },
           ].map(({ label, value, color, action }) => (
             <div key={label}>

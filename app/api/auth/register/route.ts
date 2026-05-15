@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 import { hashPassword, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
+import { TRIAL_DAYS } from '@/lib/plans'
 import { authRatelimit } from '@/lib/ratelimit'
 import { sendTelegramMessage, escapeHtml } from '@/lib/telegram'
 
@@ -48,8 +49,9 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hashPassword(password)
 
   const { user, venue } = await db.$transaction(async (tx: TransactionClient) => {
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
     const user = await tx.user.create({
-      data: { email: normalizedEmail, passwordHash },
+      data: { email: normalizedEmail, passwordHash, plan: 'START', trialEndsAt },
     })
     const venue = await tx.venue.create({
       data: {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { DashboardNav } from '@/components/dashboard/DashboardNav'
 import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
+import TrialBanner from '@/components/dashboard/TrialBanner'
 import FeedbackButton from '@/components/feedback/FeedbackButton'
 
 export const metadata: Metadata = {
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <ImpersonationBanner />
+      <TrialBanner />
       <div className="flex flex-1 overflow-hidden">
         <DashboardNav />
         <main className="flex-1 overflow-auto dashboard-main">

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status') as 'new' | 'triaged' | 'resolved' | 'wontfix' | null
   const source = searchParams.get('source') as 'OWNER' | 'GUEST' | null
-  const category = searchParams.get('category') as 'bug' | 'idea' | 'question' | 'other' | null
+  const category = searchParams.get('category') as 'bug' | 'idea' | 'question' | 'billing' | 'other' | null
   const q = searchParams.get('q')?.trim()
 
   const items = await db.feedback.findMany({

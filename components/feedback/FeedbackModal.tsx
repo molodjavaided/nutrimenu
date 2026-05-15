@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-type Category = 'bug' | 'idea' | 'question' | 'other'
+type Category = 'bug' | 'idea' | 'question' | 'billing' | 'other'
 type Source = 'OWNER' | 'GUEST'
 
 interface Props {
@@ -11,17 +11,26 @@ interface Props {
   onClose: () => void
   source: Source
   venueSlug?: string
+  initialCategory?: Category
+  onSent?: () => void
 }
 
-const CATEGORIES: { id: Category; icon: string; label: string }[] = [
+const CATEGORIES_OWNER: { id: Category; icon: string; label: string }[] = [
+  { id: 'billing', icon: '💳', label: 'Тариф' },
+  { id: 'bug', icon: '🐛', label: 'Баг' },
+  { id: 'idea', icon: '💡', label: 'Идея' },
+  { id: 'question', icon: '❓', label: 'Вопрос' },
+  { id: 'other', icon: '💬', label: 'Другое' },
+]
+const CATEGORIES_GUEST: { id: Category; icon: string; label: string }[] = [
   { id: 'bug', icon: '🐛', label: 'Баг' },
   { id: 'idea', icon: '💡', label: 'Идея' },
   { id: 'question', icon: '❓', label: 'Вопрос' },
   { id: 'other', icon: '💬', label: 'Другое' },
 ]
 
-export default function FeedbackModal({ open, onClose, source, venueSlug }: Props) {
-  const [category, setCategory] = useState<Category>(source === 'GUEST' ? 'other' : 'bug')
+export default function FeedbackModal({ open, onClose, source, venueSlug, initialCategory, onSent }: Props) {
+  const [category, setCategory] = useState<Category>(initialCategory ?? (source === 'GUEST' ? 'other' : 'billing'))
   const [message, setMessage] = useState('')
   const [rating, setRating] = useState<number | null>(null)
   const [email, setEmail] = useState('')
@@ -58,6 +67,7 @@ export default function FeedbackModal({ open, onClose, source, venueSlug }: Prop
       setMessage('')
       setRating(null)
       setEmail('')
+      onSent?.()
       onClose()
     } catch {
       toast.error('Нет соединения')
@@ -92,7 +102,7 @@ export default function FeedbackModal({ open, onClose, source, venueSlug }: Prop
         </div>
 
         <div className="flex gap-2 mb-4 flex-wrap">
-          {CATEGORIES.map(c => (
+          {(source === 'OWNER' ? CATEGORIES_OWNER : CATEGORIES_GUEST).map(c => (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}

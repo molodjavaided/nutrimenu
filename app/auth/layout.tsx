@@ -14,15 +14,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     >
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--color-text-primary)' }}
-          >
-            <PlateLogoIcon size={20} />
-          </div>
+          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-70">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'var(--color-text-primary)' }}
+            >
+              <PlateLogoIcon size={20} />
+            </div>
             <span className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Plate</span>
-          </div>
+          </Link>
           <Link
             href="/venues"
             className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-70"

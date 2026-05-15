@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { SwitchRoleButton } from '@/components/SwitchRoleButton'
 import { LogOut } from 'lucide-react'
 import PlateLogoIcon from '@/components/PlateLogoIcon'
+import { MessagesNavButton } from '@/components/feedback/MessagesHost'
 
 const navItems = [
   {
@@ -164,6 +165,7 @@ export function DashboardNav() {
             </svg>
             Смотреть меню
           </Link>
+          <MessagesNavButton variant="sidebar" />
           <SwitchRoleButton variant="sidebar" />
           <button
             onClick={handleLogout}
@@ -208,26 +210,7 @@ export function DashboardNav() {
             </Link>
           )
         })}
-        <Link
-          href={venueSlug ? `/menu/${venueSlug}` : '#'}
-          target="_blank"
-          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-            <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            <path d="M10 2h4m0 0v4m0-4L8 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span className="text-[10px] font-medium">Меню</span>
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-all"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          <LogOut size={20} />
-          <span className="text-[10px] font-medium">Выйти</span>
-        </button>
+        <MessagesNavButton variant="mobile" />
       </nav>
     </>
   )

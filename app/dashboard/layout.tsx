@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { DashboardNav } from '@/components/dashboard/DashboardNav'
 import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
 import TrialBanner from '@/components/dashboard/TrialBanner'
-import FeedbackButton from '@/components/feedback/FeedbackButton'
+import { MessagesPanelHost } from '@/components/feedback/MessagesHost'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
-      <FeedbackButton />
+      <MessagesPanelHost />
     </div>
   )
 }

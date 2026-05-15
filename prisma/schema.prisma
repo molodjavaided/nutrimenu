@@ -149,6 +149,7 @@ enum FeedbackCategory {
   bug
   idea
   question
+  billing
   other
 }
 
@@ -160,23 +161,40 @@ enum FeedbackStatus {
 }
 
 model Feedback {
-  id        String           @id @default(cuid())
-  createdAt DateTime         @default(now())
-  source    FeedbackSource
-  category  FeedbackCategory @default(other)
-  message   String
-  rating    Int?
-  email     String?
-  pageUrl   String?
-  userAgent String?
-  venueId   String?
-  userId    String?
-  status    FeedbackStatus   @default(new)
-  note      String?
+  id          String           @id @default(cuid())
+  createdAt   DateTime         @default(now())
+  source      FeedbackSource
+  category    FeedbackCategory @default(other)
+  message     String
+  rating      Int?
+  email       String?
+  pageUrl     String?
+  userAgent   String?
+  venueId     String?
+  userId      String?
+  status      FeedbackStatus   @default(new)
+  note        String?
+  lastReplyAt DateTime?
+  ownerUnread Boolean          @default(false)
+  adminUnread Boolean          @default(true)
+  replies     FeedbackReply[]
 
   @@index([status, createdAt])
   @@index([source, createdAt])
   @@index([venueId])
+  @@index([userId])
+}
+
+model FeedbackReply {
+  id         String   @id @default(cuid())
+  feedbackId String
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  authorRole UserRole
+  authorId   String
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@index([feedbackId, createdAt])
 }
 
 model MenuView {

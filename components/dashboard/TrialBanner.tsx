@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { trialDaysLeft } from '@/lib/plans'
+import { messagesStore } from '@/components/feedback/MessagesButton'
 
 interface LimitInfo {
   plan: string
@@ -32,15 +33,15 @@ export default function TrialBanner() {
         style={{ background: '#FEF2F2', borderBottom: '1px solid #FECACA' }}
       >
         <span style={{ color: '#DC2626' }}>
-          Тестовый период завершён. Свяжитесь с администратором, чтобы выбрать тариф — публичное меню скрыто от гостей.
+          Тестовый период завершён. Меню скрыто от гостей — напишите админу, чтобы выбрать тариф.
         </span>
-        <Link
-          href="/pricing"
+        <button
+          onClick={() => messagesStore.open('billing')}
           className="shrink-0 px-3 py-1 rounded-lg text-xs font-semibold"
           style={{ background: '#DC2626', color: '#fff' }}
         >
-          Тарифы
-        </Link>
+          Написать админу
+        </button>
       </div>
     )
   }
@@ -55,13 +56,13 @@ export default function TrialBanner() {
         <span style={{ color: '#92400E' }}>
           Срок оплаты истёк. Меню для гостей временно скрыто — продлите подписку.
         </span>
-        <Link
-          href="/pricing"
+        <button
+          onClick={() => messagesStore.open('billing')}
           className="shrink-0 px-3 py-1 rounded-lg text-xs font-semibold"
           style={{ background: '#D97706', color: '#fff' }}
         >
           Продлить
-        </Link>
+        </button>
       </div>
     )
   }

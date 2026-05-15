@@ -7,7 +7,7 @@ import { sendTelegramMessage, escapeHtml } from '@/lib/telegram'
 
 const schema = z.object({
   source: z.enum(['OWNER', 'GUEST']),
-  category: z.enum(['bug', 'idea', 'question', 'other']).default('other'),
+  category: z.enum(['bug', 'idea', 'question', 'billing', 'other']).default('other'),
   message: z.string().trim().min(3).max(4000),
   rating: z.number().int().min(1).max(5).optional(),
   email: z.string().email().max(200).optional(),
@@ -19,6 +19,7 @@ const CATEGORY_ICON: Record<string, string> = {
   bug: '🐛',
   idea: '💡',
   question: '❓',
+  billing: '💳',
   other: '💬',
 }
 

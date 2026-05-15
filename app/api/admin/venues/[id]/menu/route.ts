@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const venue = await db.venue.findUnique({
     where: { id },
     include: {
-      owner: { select: { email: true, emailVerified: true, ttkImportCount: true, createdAt: true, plan: true, paidUntil: true, trialEndsAt: true } },
+      owner: { select: { email: true, emailVerified: true, ttkImportCount: true, createdAt: true, plan: true, paidUntil: true, trialEndsAt: true, bonusItems: true, bonusAiImports: true, bonusTtkExports: true } },
       categories: {
         orderBy: { sortOrder: 'asc' },
         include: {

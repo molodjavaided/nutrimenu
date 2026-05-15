@@ -72,6 +72,8 @@ export interface AdminVenueDetail {
   id: string
   name: string
   slug: string
+  country: string | null
+  city: string | null
   address: string | null
   description: string | null
   status: VenueStatus
@@ -86,6 +88,9 @@ export interface AdminVenueDetail {
     plan: 'START' | 'STANDARD' | 'CUSTOM'
     paidUntil: string | null
     trialEndsAt: string | null
+    bonusItems: number
+    bonusAiImports: number
+    bonusTtkExports: number
   }
   categories: AdminVenueDetailCategory[]
 }
@@ -93,6 +98,7 @@ export interface AdminVenueDetail {
 export const adminKeys = {
   venues: ['admin', 'venues'] as const,
   venue: (id: string) => ['admin', 'venues', id] as const,
+  files: (id: string) => ['admin', 'venues', id, 'files'] as const,
 }
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
@@ -141,11 +147,57 @@ export const adminApi = {
 
   updatePlan: (
     id: string,
-    body: { plan?: 'START' | 'STANDARD' | 'CUSTOM'; paidUntil?: string | null; extendDays?: number },
-  ): Promise<{ plan: string; paidUntil: string | null; trialEndsAt: string | null }> =>
+    body: {
+      plan?: 'START' | 'STANDARD' | 'CUSTOM'
+      paidUntil?: string | null
+      extendPaidDays?: number
+      trialEndsAt?: string | null
+      extendTrialDays?: number
+      bonusItems?: number
+      bonusAiImports?: number
+      bonusTtkExports?: number
+    },
+  ): Promise<unknown> =>
     fetch(`/api/admin/venues/${id}/plan`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    }).then(r => jsonOrThrow<{ plan: string; paidUntil: string | null; trialEndsAt: string | null }>(r)),
+    }).then(r => jsonOrThrow<unknown>(r)),
+
+  fetchFiles: (id: string): Promise<VenueFile[]> =>
+    fetch(`/api/admin/venues/${id}/files`).then(r => jsonOrThrow<VenueFile[]>(r)),
+
+  uploadFile: async (
+    id: string,
+    file: File,
+    category: string,
+    notes?: string,
+  ): Promise<VenueFile> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('category', category)
+    if (notes) form.append('notes', notes)
+    return fetch(`/api/admin/venues/${id}/files`, { method: 'POST', body: form }).then(r =>
+      jsonOrThrow<VenueFile>(r),
+    )
+  },
+
+  deleteFile: (id: string, fileId: string): Promise<{ ok: true }> =>
+    fetch(`/api/admin/venues/${id}/files/${fileId}`, { method: 'DELETE' }).then(r =>
+      jsonOrThrow<{ ok: true }>(r),
+    ),
+}
+
+export interface VenueFile {
+  id: string
+  venueId: string
+  uploadedById: string
+  uploaderRole: 'OWNER' | 'ADMIN'
+  category: string
+  filename: string
+  url: string
+  size: number
+  mimeType: string
+  notes: string | null
+  createdAt: string
 }

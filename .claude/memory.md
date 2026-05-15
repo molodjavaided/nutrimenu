@@ -4,7 +4,7 @@
 
 - **Goal:** Админ-панель: безопасность + управление планом + миграция server state на TanStack Query
 - **Status:** In Progress
-- **Last Action (2026-05-15):** Список заведений переписан: вынесен `components/admin/VenueCard.tsx` (название + город/страна + 2 бейджа: статус заявки + состояние подписки). Quick-filters (На проверке / Триал ≤3д / Grace / Просрочено) с счётчиками. Сортировка (новые/старые/имя/статус) + пагинация 20/стр. Bulk approve через `PATCH /api/admin/venues/bulk` + чекбоксы у PENDING. API `/api/admin/venues` теперь возвращает country/city + trial/paid даты. Хелперы `getSubscriptionState` и `daysUntil` в `lib/admin-api.ts`.
+- **Last Action (2026-05-15):** Детальная страница venue: переработана структура. Добавлены: продление триала (+7/+14/+30д), бонусные лимиты сверх плана (bonusItems / bonusAiImports / bonusTtkExports — кнопки +10/+50/+100 и кастомный ввод), файлы заведения (drag&drop, 10MB, PDF/DOC/XLS/JPG/PNG/WEBP, категории menu_source/ttk/logo/photo/other, Vercel Blob). Миграция `add_bonus_limits_and_venue_files`. `getEffectiveLimits()` теперь учитывает бонусы (прибавляет к лимиту плана, сохраняются при смене плана). Новые компоненты `components/admin/BonusGrants.tsx`, `components/admin/VenueFiles.tsx`, `lib/venue-files.ts`. Endpoints: `/api/admin/venues/[id]/files` (GET/POST), `/api/admin/venues/[id]/files/[fileId]` (DELETE).
 
 ## ❌ Незавершённые задачи
 

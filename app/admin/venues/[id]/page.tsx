@@ -4,35 +4,24 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi, adminKeys, VenueStatus } from '@/lib/admin-api'
+import { adminApi, adminKeys, VenueStatus, getSubscriptionState, daysUntil } from '@/lib/admin-api'
+import { BonusGrants } from '@/components/admin/BonusGrants'
+import { VenueFiles } from '@/components/admin/VenueFiles'
 
-const STATUS_COLOR: Record<VenueStatus, string> = {
-  PENDING: '#B45309',
-  APPROVED: '#15803D',
-  REJECTED: '#DC2626',
-}
+const STATUS_COLOR: Record<VenueStatus, string> = { PENDING: '#B45309', APPROVED: '#15803D', REJECTED: '#DC2626' }
 const STATUS_BG: Record<VenueStatus, string> = {
   PENDING: 'rgba(180,83,9,0.1)',
   APPROVED: 'rgba(21,128,61,0.1)',
   REJECTED: 'rgba(220,38,38,0.1)',
 }
-
 const PLAN_LABEL: Record<string, string> = { START: 'Старт', STANDARD: 'Стандарт', CUSTOM: 'Индивидуальный' }
+
+const SUB_COLOR = { trial: '#7C3AED', paid: '#15803D', grace: '#B45309', expired: '#DC2626' } as const
+const SUB_LABEL = { trial: 'Триал', paid: 'Оплачено', grace: 'Grace', expired: 'Просрочено' } as const
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru-RU')
-}
-
-function userStateLabel(trialEndsAt: string | null, paidUntil: string | null): { label: string; color: string } {
-  const now = Date.now()
-  if (paidUntil && new Date(paidUntil).getTime() > now) return { label: 'Оплачено', color: '#15803D' }
-  if (trialEndsAt && new Date(trialEndsAt).getTime() > now) return { label: 'Триал', color: '#7C3AED' }
-  if (trialEndsAt) {
-    const graceEnd = new Date(trialEndsAt).getTime() + 30 * 24 * 60 * 60 * 1000
-    if (now < graceEnd) return { label: 'Grace', color: '#B45309' }
-  }
-  return { label: 'Просрочено', color: '#DC2626' }
 }
 
 export default function AdminVenueMenuPage() {
@@ -88,8 +77,7 @@ export default function AdminVenueMenuPage() {
   })
 
   const planMutation = useMutation({
-    mutationFn: (body: { plan?: 'START' | 'STANDARD' | 'CUSTOM'; extendDays?: number; paidUntil?: string | null }) =>
-      adminApi.updatePlan(id, body),
+    mutationFn: (body: Parameters<typeof adminApi.updatePlan>[1]) => adminApi.updatePlan(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.venue(id) }),
   })
 
@@ -128,13 +116,10 @@ export default function AdminVenueMenuPage() {
     return <p className="text-sm" style={{ color: '#7a748f' }}>Заведение не найдено</p>
   }
 
-  const totalItems = venue.categories.reduce((s, c) => s + c.items.length, 0)
-  const unavailableItems = venue.categories.reduce((s, c) => s + c.items.filter(i => !i.isAvailable).length, 0)
-  const lastItemUpdate = venue.categories
-    .flatMap(c => c.items)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]?.updatedAt
-
-  const state = userStateLabel(venue.owner.trialEndsAt, venue.owner.paidUntil)
+  const state = getSubscriptionState(venue.owner.trialEndsAt, venue.owner.paidUntil)
+  const trialDays = daysUntil(venue.owner.trialEndsAt)
+  const paidDays = daysUntil(venue.owner.paidUntil)
+  const location = [venue.city, venue.country].filter(Boolean).join(', ')
   const deleting = deleteMutation.isPending
   const canDelete = deleteConfirm.trim() === venue.name
 
@@ -193,8 +178,8 @@ export default function AdminVenueMenuPage() {
         Все заведения
       </button>
 
-      {/* Venue header */}
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: '#EAE7F8' }}>
+      {/* Header */}
+      <div className="rounded-2xl p-5 space-y-3" style={{ background: '#EAE7F8' }}>
         <div className="flex items-start gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -204,20 +189,26 @@ export default function AdminVenueMenuPage() {
                 disabled={statusMutation.isPending}
                 onChange={e => statusMutation.mutate(e.target.value as VenueStatus)}
                 className="px-2.5 py-1 rounded-xl text-xs font-medium outline-none cursor-pointer disabled:opacity-50"
-                style={{
-                  color: STATUS_COLOR[venue.status],
-                  background: STATUS_BG[venue.status],
-                  border: `1px solid ${STATUS_COLOR[venue.status]}30`,
-                }}
+                style={{ color: STATUS_COLOR[venue.status], background: STATUS_BG[venue.status], border: `1px solid ${STATUS_COLOR[venue.status]}30` }}
               >
                 <option value="PENDING">На проверке</option>
                 <option value="APPROVED">Одобрено</option>
                 <option value="REJECTED">Отклонено</option>
               </select>
             </div>
-            <p className="text-sm mt-0.5" style={{ color: '#9D99B8' }}>/{venue.slug}</p>
-            {venue.address && <p className="text-xs mt-1" style={{ color: '#9D99B8' }}>{venue.address}</p>}
-            {venue.description && <p className="text-xs mt-1 italic" style={{ color: '#B0A6DF' }}>{venue.description}</p>}
+            {location && <p className="text-sm mt-1" style={{ color: '#6B6490' }}>{location}</p>}
+            {venue.address && <p className="text-xs mt-0.5" style={{ color: '#9D99B8' }}>{venue.address}</p>}
+            <p className="text-xs mt-1.5" style={{ color: '#9D99B8' }}>
+              Зарегистрирован {formatDate(venue.createdAt)} · владелец {venue.owner.email}
+              {!venue.owner.emailVerified && (
+                <button
+                  onClick={() => verifyMutation.mutate()}
+                  disabled={verifyMutation.isPending}
+                  className="ml-2 px-1.5 py-0.5 rounded-md text-xs font-medium transition-all disabled:opacity-60"
+                  style={{ background: 'rgba(21,128,61,0.12)', color: '#15803D' }}
+                >{verifyMutation.isPending ? '…' : 'verify email'}</button>
+              )}
+            </p>
           </div>
 
           <div className="flex gap-2 flex-wrap">
@@ -228,8 +219,7 @@ export default function AdminVenueMenuPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
               style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
             >
-              <Eye size={13} />
-              Открыть меню
+              <Eye size={13} /> Открыть меню
             </a>
             <button
               onClick={() => setShowDelete(true)}
@@ -238,68 +228,14 @@ export default function AdminVenueMenuPage() {
             >Удалить</button>
           </div>
         </div>
-
-        {/* Owner info */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3" style={{ borderTop: '0.5px solid rgba(176,166,223,0.4)' }}>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Владелец</p>
-            <p className="text-sm font-medium mt-0.5 truncate" style={{ color: '#2C2950' }}>{venue.owner.email}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Email</p>
-            <p className="text-sm font-medium mt-0.5" style={{ color: venue.owner.emailVerified ? '#15803D' : '#DC2626' }}>
-              {venue.owner.emailVerified ? '✓ Подтверждён' : '✗ Не подтверждён'}
-            </p>
-            {!venue.owner.emailVerified && (
-              <button
-                onClick={() => verifyMutation.mutate()}
-                disabled={verifyMutation.isPending}
-                className="mt-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-60"
-                style={{ background: 'rgba(21,128,61,0.12)', color: '#15803D' }}
-              >{verifyMutation.isPending ? '…' : 'Подтвердить'}</button>
-            )}
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Импортов ТТК</p>
-            <p className="text-sm font-medium mt-0.5" style={{ color: '#2C2950' }}>{venue.owner.ttkImportCount}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Зарегистрирован</p>
-            <p className="text-sm font-medium mt-0.5" style={{ color: '#2C2950' }}>{formatDate(venue.owner.createdAt)}</p>
-          </div>
-        </div>
-
-        {/* Activity log */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3" style={{ borderTop: '0.5px solid rgba(176,166,223,0.4)' }}>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Категорий</p>
-            <p className="text-sm font-semibold" style={{ color: '#2C2950' }}>{venue.categories.length}</p>
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: '#9D99B8' }}>Позиций</p>
-            <p className="text-sm font-semibold" style={{ color: '#2C2950' }}>{totalItems}</p>
-          </div>
-          {unavailableItems > 0 && (
-            <div>
-              <p className="text-xs" style={{ color: '#9D99B8' }}>Скрыто</p>
-              <p className="text-sm font-semibold" style={{ color: '#B45309' }}>{unavailableItems}</p>
-            </div>
-          )}
-          {lastItemUpdate && (
-            <div>
-              <p className="text-xs" style={{ color: '#9D99B8' }}>Последнее изменение</p>
-              <p className="text-sm font-semibold" style={{ color: '#2C2950' }}>{formatDate(lastItemUpdate)}</p>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Plan management */}
+      {/* Plan & subscription */}
       <div className="rounded-2xl p-5 space-y-4" style={{ background: '#EAE7F8' }}>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs font-semibold" style={{ color: '#9D99B8' }}>ТАРИФ И ПОДПИСКА</p>
-          <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${state.color}1a`, color: state.color }}>
-            {state.label}
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${SUB_COLOR[state]}1a`, color: SUB_COLOR[state] }}>
+            {SUB_LABEL[state]}
           </span>
         </div>
 
@@ -322,28 +258,55 @@ export default function AdminVenueMenuPage() {
             <p className="text-xs mb-1" style={{ color: '#9D99B8' }}>Триал до</p>
             <p className="px-3 py-2 rounded-xl text-sm" style={{ background: 'rgba(255,255,255,0.5)', color: '#6B6490' }}>
               {formatDate(venue.owner.trialEndsAt)}
+              {trialDays != null && trialDays > 0 && <span className="ml-1.5 text-xs" style={{ color: '#B0A6DF' }}>({trialDays}д)</span>}
             </p>
           </div>
           <div>
             <p className="text-xs mb-1" style={{ color: '#9D99B8' }}>Оплачено до</p>
             <p className="px-3 py-2 rounded-xl text-sm font-medium" style={{ background: 'rgba(255,255,255,0.5)', color: '#2C2950' }}>
               {formatDate(venue.owner.paidUntil)}
+              {paidDays != null && paidDays > 0 && <span className="ml-1.5 text-xs" style={{ color: '#B0A6DF' }}>({paidDays}д)</span>}
             </p>
           </div>
         </div>
 
         <div>
-          <p className="text-xs mb-2" style={{ color: '#9D99B8' }}>Продлить оплату (от текущей даты окончания или от сегодня)</p>
+          <p className="text-xs mb-2" style={{ color: '#9D99B8' }}>Продлить триал</p>
+          <div className="flex gap-2 flex-wrap">
+            {[7, 14, 30].map(days => (
+              <button
+                key={days}
+                onClick={() => planMutation.mutate({ extendTrialDays: days })}
+                disabled={planMutation.isPending}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 active:scale-95"
+                style={{ background: 'rgba(124,58,237,0.12)', color: '#7C3AED' }}
+              >+{days}д</button>
+            ))}
+            {venue.owner.trialEndsAt && (
+              <button
+                onClick={() => {
+                  if (confirm('Сбросить триал?')) planMutation.mutate({ trialEndsAt: null })
+                }}
+                disabled={planMutation.isPending}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 active:scale-95"
+                style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
+              >Сбросить</button>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs mb-2" style={{ color: '#9D99B8' }}>Продлить оплату</p>
           <div className="flex gap-2 flex-wrap">
             {[
-              { label: '+1 месяц', days: 30 },
-              { label: '+3 месяца', days: 90 },
-              { label: '+6 месяцев', days: 180 },
+              { label: '+1 мес', days: 30 },
+              { label: '+3 мес', days: 90 },
+              { label: '+6 мес', days: 180 },
               { label: '+1 год', days: 365 },
             ].map(({ label, days }) => (
               <button
                 key={days}
-                onClick={() => planMutation.mutate({ extendDays: days })}
+                onClick={() => planMutation.mutate({ extendPaidDays: days })}
                 disabled={planMutation.isPending}
                 className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 active:scale-95"
                 style={{ background: 'rgba(139,92,246,0.12)', color: '#7C3AED' }}
@@ -355,7 +318,7 @@ export default function AdminVenueMenuPage() {
                   if (confirm('Сбросить дату оплаты?')) planMutation.mutate({ paidUntil: null })
                 }}
                 disabled={planMutation.isPending}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 active:scale-95 ml-auto"
+                className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 active:scale-95"
                 style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
               >Сбросить</button>
             )}
@@ -363,7 +326,16 @@ export default function AdminVenueMenuPage() {
         </div>
       </div>
 
-      {/* Admin tools row */}
+      {/* Bonus grants */}
+      <BonusGrants
+        venueId={id}
+        plan={venue.owner.plan}
+        bonusItems={venue.owner.bonusItems}
+        bonusAiImports={venue.owner.bonusAiImports}
+        bonusTtkExports={venue.owner.bonusTtkExports}
+      />
+
+      {/* Admin tools */}
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-2xl p-4 space-y-2.5" style={{ background: '#EAE7F8' }}>
           <p className="text-xs font-semibold" style={{ color: '#9D99B8' }}>ЗАМЕТКА АДМИНИСТРАТОРА</p>
@@ -414,6 +386,9 @@ export default function AdminVenueMenuPage() {
         </div>
       </div>
 
+      {/* Files */}
+      <VenueFiles venueId={id} />
+
       {/* Menu */}
       <div>
         <p className="text-xs font-semibold mb-3" style={{ color: '#9D99B8' }}>МЕНЮ</p>
@@ -432,9 +407,7 @@ export default function AdminVenueMenuPage() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm" style={{ color: '#2C2950' }}>{cat.name}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(176,166,223,0.3)', color: '#9D99B8' }}>
-                      {cat.items.length}
-                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(176,166,223,0.3)', color: '#9D99B8' }}>{cat.items.length}</span>
                   </div>
                   {expanded.has(cat.id) ? <ChevronDown size={15} style={{ color: '#9D99B8' }} /> : <ChevronRight size={15} style={{ color: '#9D99B8' }} />}
                 </button>
@@ -479,9 +452,7 @@ export default function AdminVenueMenuPage() {
                               {item.calories > 0 && (<span className="text-xs" style={{ color: '#B0A6DF' }}>{Math.round(item.calories)} ккал</span>)}
                               {[['Б', item.protein], ['Ж', item.fat], ['У', item.carbs]].map(([label, val]) =>
                                 Number(val) > 0 ? (
-                                  <span key={String(label)} className="text-xs" style={{ color: '#B0A6DF' }}>
-                                    {label}: {Number(val).toFixed(1)}г
-                                  </span>
+                                  <span key={String(label)} className="text-xs" style={{ color: '#B0A6DF' }}>{label}: {Number(val).toFixed(1)}г</span>
                                 ) : null
                               )}
                             </div>

@@ -35,6 +35,9 @@ model User {
   emailVerified       Boolean              @default(false)
   ttkImportCount      Int                  @default(0)
   ttkImportMonth      Int?
+  bonusItems          Int                  @default(0)
+  bonusAiImports      Int                  @default(0)
+  bonusTtkExports     Int                  @default(0)
   createdAt           DateTime             @default(now())
   venue               Venue?
   passwordResetTokens PasswordResetToken[]
@@ -74,6 +77,24 @@ model Venue {
   categories  Category[]
   menuItems   MenuItem[]
   ingredients IngredientRef[]
+  files       VenueFile[]
+}
+
+model VenueFile {
+  id           String   @id @default(cuid())
+  venueId      String
+  venue        Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploaderRole UserRole
+  category     String   // 'menu_source' | 'ttk' | 'logo' | 'photo' | 'other'
+  filename     String
+  url          String
+  size         Int
+  mimeType     String
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  @@index([venueId, createdAt])
 }
 
 model Category {

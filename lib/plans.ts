@@ -83,27 +83,43 @@ export interface EffectiveLimits {
   menuPublic: boolean // показывать ли публичное меню гостям
 }
 
+export interface BonusInput {
+  bonusItems?: number
+  bonusAiImports?: number
+  bonusTtkExports?: number
+}
+
+function addBonus(base: number, bonus = 0): number {
+  if (!Number.isFinite(base)) return base // Infinity stays Infinity
+  return base + bonus
+}
+
 /**
- * Effective limits for an owner based on their state.
+ * Effective limits for an owner based on their state + admin-granted bonuses.
  *
  * - trial: START features but AI=0 (AI только после оплаты)
  * - paid: лимиты по тарифу
  * - grace: конструктор работает, но новые блюда/AI/публичное меню заблокированы
  * - expired: всё заблокировано
+ *
+ * Bonuses add on top of the plan limit and persist across plan changes.
  */
 export function getEffectiveLimits(
-  user: UserStateInput & { plan: PlanId },
+  user: UserStateInput & { plan: PlanId } & BonusInput,
   now: Date = new Date()
 ): EffectiveLimits {
   const state = getUserState(user, now)
   const planDef = PLANS[user.plan]
+  const bItems = user.bonusItems ?? 0
+  const bAi = user.bonusAiImports ?? 0
+  const bTtk = user.bonusTtkExports ?? 0
 
   if (state === 'paid') {
     return {
       state,
-      maxItems: planDef.maxItems,
-      aiImportPerMonth: planDef.aiImportPerMonth,
-      ttkExportPerMonth: planDef.ttkExportPerMonth,
+      maxItems: addBonus(planDef.maxItems, bItems),
+      aiImportPerMonth: addBonus(planDef.aiImportPerMonth, bAi),
+      ttkExportPerMonth: planDef.ttkExportPerMonth == null ? (bTtk > 0 ? bTtk : null) : addBonus(planDef.ttkExportPerMonth, bTtk),
       canAddItems: true,
       canImportAi: true,
       menuPublic: true,
@@ -112,18 +128,18 @@ export function getEffectiveLimits(
   if (state === 'trial') {
     return {
       state,
-      maxItems: PLANS.START.maxItems,
-      aiImportPerMonth: 0,
-      ttkExportPerMonth: null,
+      maxItems: addBonus(PLANS.START.maxItems, bItems),
+      aiImportPerMonth: bAi, // в триале AI = 0 по плану, бонус всё равно действует
+      ttkExportPerMonth: bTtk > 0 ? bTtk : null,
       canAddItems: true,
-      canImportAi: false,
+      canImportAi: bAi > 0,
       menuPublic: true,
     }
   }
   if (state === 'grace') {
     return {
       state,
-      maxItems: PLANS.START.maxItems,
+      maxItems: addBonus(PLANS.START.maxItems, bItems),
       aiImportPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: true,

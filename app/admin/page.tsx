@@ -12,7 +12,7 @@ import {
 } from '@/lib/admin-api'
 import { VenueCard } from '@/components/admin/VenueCard'
 
-type QuickFilter = 'pending' | 'trial_ending' | 'grace' | 'expired' | null
+type QuickFilter = 'pending' | 'trial_ending' | 'awaiting_plan' | 'grace' | 'expired' | null
 type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'status'
 
 const PAGE_SIZE = 20
@@ -40,13 +40,14 @@ export default function AdminPage() {
     return venues.filter(v => {
       if (statusFilter !== 'ALL' && v.status !== statusFilter) return false
       if (quickFilter) {
-        const state = getSubscriptionState(v.owner.trialEndsAt, v.owner.paidUntil, now)
+        const state = getSubscriptionState(v.owner.plan, v.owner.trialEndsAt, v.owner.paidUntil, now)
         if (quickFilter === 'pending' && v.status !== 'PENDING') return false
         if (quickFilter === 'trial_ending') {
           if (state !== 'trial') return false
           const d = daysUntil(v.owner.trialEndsAt, now)
           if (d == null || d > 3) return false
         }
+        if (quickFilter === 'awaiting_plan' && state !== 'awaiting_plan') return false
         if (quickFilter === 'grace' && state !== 'grace') return false
         if (quickFilter === 'expired' && state !== 'expired') return false
       }
@@ -80,18 +81,19 @@ export default function AdminPage() {
   // Counters for quick-filter chips
   const counts = useMemo(() => {
     const now = Date.now()
-    let pending = 0, trialEnding = 0, grace = 0, expired = 0
+    let pending = 0, trialEnding = 0, awaitingPlan = 0, grace = 0, expired = 0
     for (const v of venues) {
       if (v.status === 'PENDING') pending++
-      const state = getSubscriptionState(v.owner.trialEndsAt, v.owner.paidUntil, now)
+      const state = getSubscriptionState(v.owner.plan, v.owner.trialEndsAt, v.owner.paidUntil, now)
       if (state === 'trial') {
         const d = daysUntil(v.owner.trialEndsAt, now)
         if (d != null && d <= 3) trialEnding++
       }
+      if (state === 'awaiting_plan') awaitingPlan++
       if (state === 'grace') grace++
       if (state === 'expired') expired++
     }
-    return { pending, trialEnding, grace, expired }
+    return { pending, trialEnding, awaitingPlan, grace, expired }
   }, [venues])
 
   const bulkApproveMutation = useMutation({
@@ -157,9 +159,10 @@ export default function AdminPage() {
       <div className="flex gap-2 flex-wrap mb-4">
         {[
           { key: 'pending' as const, label: 'На проверке', count: counts.pending, color: '#B45309' },
-          { key: 'trial_ending' as const, label: 'Триал ≤3д', count: counts.trialEnding, color: '#7C3AED' },
+          { key: 'trial_ending' as const, label: 'Тест ≤3д', count: counts.trialEnding, color: '#7C3AED' },
+          { key: 'awaiting_plan' as const, label: 'Ждёт тариф', count: counts.awaitingPlan, color: '#DC2626' },
           { key: 'grace' as const, label: 'Grace', count: counts.grace, color: '#B45309' },
-          { key: 'expired' as const, label: 'Просрочено', count: counts.expired, color: '#DC2626' },
+          { key: 'expired' as const, label: 'Просрочено', count: counts.expired, color: '#9D99B8' },
         ].map(f => {
           const active = quickFilter === f.key
           return (

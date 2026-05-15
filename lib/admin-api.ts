@@ -2,6 +2,8 @@
 
 export type VenueStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
+export type PlanId = 'TEST' | 'START' | 'STANDARD' | 'CUSTOM'
+
 export interface AdminVenue {
   id: string
   name: string
@@ -11,20 +13,24 @@ export interface AdminVenue {
   status: VenueStatus
   allowAdminEdit: boolean
   createdAt: string
-  owner: { email: string; trialEndsAt: string | null; paidUntil: string | null }
+  owner: { email: string; plan: PlanId; trialEndsAt: string | null; paidUntil: string | null }
 }
 
-export type SubscriptionState = 'trial' | 'paid' | 'grace' | 'expired'
+export type SubscriptionState = 'trial' | 'awaiting_plan' | 'paid' | 'grace' | 'expired'
 
 export function getSubscriptionState(
+  plan: PlanId,
   trialEndsAt: string | null,
   paidUntil: string | null,
   now: number = Date.now(),
 ): SubscriptionState {
+  if (plan === 'TEST') {
+    if (trialEndsAt && new Date(trialEndsAt).getTime() > now) return 'trial'
+    return 'awaiting_plan'
+  }
   if (paidUntil && new Date(paidUntil).getTime() > now) return 'paid'
-  if (trialEndsAt && new Date(trialEndsAt).getTime() > now) return 'trial'
-  if (trialEndsAt) {
-    const graceEnd = new Date(trialEndsAt).getTime() + 30 * 24 * 60 * 60 * 1000
+  if (paidUntil) {
+    const graceEnd = new Date(paidUntil).getTime() + 30 * 24 * 60 * 60 * 1000
     if (now < graceEnd) return 'grace'
   }
   return 'expired'
@@ -85,7 +91,7 @@ export interface AdminVenueDetail {
     emailVerified: boolean
     ttkImportCount: number
     createdAt: string
-    plan: 'START' | 'STANDARD' | 'CUSTOM'
+    plan: PlanId
     paidUntil: string | null
     trialEndsAt: string | null
     bonusItems: number
@@ -148,7 +154,7 @@ export const adminApi = {
   updatePlan: (
     id: string,
     body: {
-      plan?: 'START' | 'STANDARD' | 'CUSTOM'
+      plan?: PlanId
       paidUntil?: string | null
       extendPaidDays?: number
       trialEndsAt?: string | null

@@ -16,9 +16,10 @@ const STATUS_COLOR: Record<VenueStatus, string> = {
 
 const SUB_COLOR: Record<SubscriptionState, string> = {
   trial: '#7C3AED',
+  awaiting_plan: '#DC2626',
   paid: '#15803D',
   grace: '#B45309',
-  expired: '#DC2626',
+  expired: '#9D99B8',
 }
 
 function subscriptionLabel(state: SubscriptionState, trialEndsAt: string | null, paidUntil: string | null): string {
@@ -28,8 +29,9 @@ function subscriptionLabel(state: SubscriptionState, trialEndsAt: string | null,
   }
   if (state === 'trial') {
     const d = daysUntil(trialEndsAt)
-    return d != null ? `Триал ${d}д` : 'Триал'
+    return d != null ? `Тест ${d}д` : 'Тест'
   }
+  if (state === 'awaiting_plan') return 'Ждёт тариф'
   if (state === 'grace') return 'Grace'
   return 'Просрочка'
 }
@@ -42,7 +44,7 @@ interface Props {
 }
 
 export function VenueCard({ venue, selected, onToggleSelect, showCheckbox }: Props) {
-  const state = getSubscriptionState(venue.owner.trialEndsAt, venue.owner.paidUntil)
+  const state = getSubscriptionState(venue.owner.plan, venue.owner.trialEndsAt, venue.owner.paidUntil)
   const location = [venue.city, venue.country].filter(Boolean).join(', ') || '—'
 
   return (

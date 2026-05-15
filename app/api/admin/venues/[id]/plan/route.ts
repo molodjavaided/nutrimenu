@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 
 const schema = z.object({
-  plan: z.enum(['START', 'STANDARD', 'CUSTOM']).optional(),
+  plan: z.enum(['TEST', 'START', 'STANDARD', 'CUSTOM']).optional(),
   paidUntil: z.union([z.string().datetime(), z.null()]).optional(),
   /** Days to extend paidUntil from max(now, paidUntil). */
   extendPaidDays: z.number().int().min(1).max(3650).optional(),

@@ -4,9 +4,10 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi, adminKeys, VenueStatus, getSubscriptionState, daysUntil } from '@/lib/admin-api'
+import { adminApi, adminKeys, VenueStatus, PlanId, getSubscriptionState, daysUntil } from '@/lib/admin-api'
 import { BonusGrants } from '@/components/admin/BonusGrants'
 import { VenueFiles } from '@/components/admin/VenueFiles'
+import { PlanSwitchModal } from '@/components/admin/PlanSwitchModal'
 
 const STATUS_COLOR: Record<VenueStatus, string> = { PENDING: '#B45309', APPROVED: '#15803D', REJECTED: '#DC2626' }
 const STATUS_BG: Record<VenueStatus, string> = {
@@ -14,10 +15,10 @@ const STATUS_BG: Record<VenueStatus, string> = {
   APPROVED: 'rgba(21,128,61,0.1)',
   REJECTED: 'rgba(220,38,38,0.1)',
 }
-const PLAN_LABEL: Record<string, string> = { START: 'Старт', STANDARD: 'Стандарт', CUSTOM: 'Индивидуальный' }
+const PLAN_LABEL: Record<PlanId, string> = { TEST: 'Тест', START: 'Старт', STANDARD: 'Стандарт', CUSTOM: 'Индивидуальный' }
 
-const SUB_COLOR = { trial: '#7C3AED', paid: '#15803D', grace: '#B45309', expired: '#DC2626' } as const
-const SUB_LABEL = { trial: 'Триал', paid: 'Оплачено', grace: 'Grace', expired: 'Просрочено' } as const
+const SUB_COLOR = { trial: '#7C3AED', awaiting_plan: '#DC2626', paid: '#15803D', grace: '#B45309', expired: '#9D99B8' } as const
+const SUB_LABEL = { trial: 'Тест', awaiting_plan: 'Ждёт тариф', paid: 'Оплачено', grace: 'Grace', expired: 'Просрочено' } as const
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return '—'
@@ -41,6 +42,7 @@ export default function AdminVenueMenuPage() {
   const [copied, setCopied] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [planSwitchTarget, setPlanSwitchTarget] = useState<PlanId | null>(null)
 
   useEffect(() => {
     if (venue) {
@@ -116,7 +118,7 @@ export default function AdminVenueMenuPage() {
     return <p className="text-sm" style={{ color: '#7a748f' }}>Заведение не найдено</p>
   }
 
-  const state = getSubscriptionState(venue.owner.trialEndsAt, venue.owner.paidUntil)
+  const state = getSubscriptionState(venue.owner.plan, venue.owner.trialEndsAt, venue.owner.paidUntil)
   const trialDays = daysUntil(venue.owner.trialEndsAt)
   const paidDays = daysUntil(venue.owner.paidUntil)
   const location = [venue.city, venue.country].filter(Boolean).join(', ')
@@ -125,6 +127,19 @@ export default function AdminVenueMenuPage() {
 
   return (
     <div className="space-y-5">
+      {planSwitchTarget && (
+        <PlanSwitchModal
+          newPlan={planSwitchTarget}
+          pending={planMutation.isPending}
+          onCancel={() => setPlanSwitchTarget(null)}
+          onConfirm={(extendPaidDays) => {
+            const body: Parameters<typeof adminApi.updatePlan>[1] = { plan: planSwitchTarget }
+            if (extendPaidDays != null) body.extendPaidDays = extendPaidDays
+            planMutation.mutate(body, { onSuccess: () => setPlanSwitchTarget(null) })
+          }}
+        />
+      )}
+
       {showDelete && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -245,10 +260,21 @@ export default function AdminVenueMenuPage() {
             <select
               value={venue.owner.plan}
               disabled={planMutation.isPending}
-              onChange={e => planMutation.mutate({ plan: e.target.value as 'START' | 'STANDARD' | 'CUSTOM' })}
+              onChange={e => {
+                const next = e.target.value as PlanId
+                if (next === venue.owner.plan) return
+                if (next === 'TEST') {
+                  if (confirm('Вернуть на Тест? Платная подписка сбросится.')) {
+                    planMutation.mutate({ plan: 'TEST', paidUntil: null })
+                  }
+                  return
+                }
+                setPlanSwitchTarget(next)
+              }}
               className="w-full px-3 py-2 rounded-xl text-sm font-medium outline-none cursor-pointer disabled:opacity-50"
               style={{ background: 'rgba(255,255,255,0.7)', color: '#2C2950', border: '0.5px solid rgba(176,166,223,0.4)' }}
             >
+              <option value="TEST">🧪 {PLAN_LABEL.TEST} (авто)</option>
               <option value="START">{PLAN_LABEL.START}</option>
               <option value="STANDARD">{PLAN_LABEL.STANDARD}</option>
               <option value="CUSTOM">{PLAN_LABEL.CUSTOM}</option>

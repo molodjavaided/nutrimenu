@@ -6,7 +6,7 @@ import { adminApi, adminKeys } from '@/lib/admin-api'
 import { PLANS } from '@/lib/plans'
 import { Check, Pencil } from 'lucide-react'
 
-type PlanId = 'START' | 'STANDARD' | 'CUSTOM'
+type PlanId = 'TEST' | 'START' | 'STANDARD' | 'CUSTOM'
 
 interface Props {
   venueId: string

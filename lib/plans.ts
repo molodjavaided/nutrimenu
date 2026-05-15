@@ -1,12 +1,19 @@
-export type PlanId = 'START' | 'STANDARD' | 'CUSTOM'
+export type PlanId = 'TEST' | 'START' | 'STANDARD' | 'CUSTOM'
 
 export const PLANS = {
+  TEST: {
+    id: 'TEST' as PlanId,
+    name: 'Тест',
+    maxItems: 50,
+    aiImportPerMonth: 0,
+    ttkExportPerMonth: null as null | number,
+  },
   START: {
     id: 'START' as PlanId,
     name: 'Старт',
     maxItems: 50,
     aiImportPerMonth: 5,
-    ttkExportPerMonth: null as null | number, // null = blocked
+    ttkExportPerMonth: null as null | number,
   },
   STANDARD: {
     id: 'STANDARD' as PlanId,
@@ -24,6 +31,8 @@ export const PLANS = {
   },
 } as const
 
+export const ADMIN_ASSIGNABLE_PLANS: PlanId[] = ['START', 'STANDARD', 'CUSTOM']
+
 export const SERVICES = {
   MENU_DIGITIZATION: {
     id: 'MENU_DIGITIZATION',
@@ -39,22 +48,31 @@ export const TRIAL_DAYS = 14
 export const GRACE_DAYS = 30
 
 export type UserState =
-  | 'trial'    // в триале (14 дней с регистрации)
-  | 'paid'     // активная оплата
-  | 'grace'    // триал кончился, не оплатил, ещё 30 дней доступ к конструктору
-  | 'expired'  // grace кончился, всё заблокировано
+  | 'trial'          // TEST + триал ещё не истёк
+  | 'awaiting_plan'  // TEST + триал истёк, админ ещё не назначил тариф
+  | 'paid'           // платный тариф + paidUntil актуален
+  | 'grace'          // платный тариф + paidUntil истёк, 30д grace
+  | 'expired'        // grace кончился
 
 export interface UserStateInput {
+  plan?: PlanId
   trialEndsAt: Date | null
   paidUntil: Date | null
 }
 
 export function getUserState(user: UserStateInput, now: Date = new Date()): UserState {
   const t = now.getTime()
+  const plan = user.plan ?? 'START'
+
+  if (plan === 'TEST') {
+    if (user.trialEndsAt && user.trialEndsAt.getTime() > t) return 'trial'
+    return 'awaiting_plan'
+  }
+
+  // Paid plans (START / STANDARD / CUSTOM)
   if (user.paidUntil && user.paidUntil.getTime() > t) return 'paid'
-  if (user.trialEndsAt && user.trialEndsAt.getTime() > t) return 'trial'
-  if (user.trialEndsAt) {
-    const graceEnd = user.trialEndsAt.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000
+  if (user.paidUntil) {
+    const graceEnd = user.paidUntil.getTime() + GRACE_DAYS * 24 * 60 * 60 * 1000
     if (t < graceEnd) return 'grace'
   }
   return 'expired'
@@ -126,20 +144,34 @@ export function getEffectiveLimits(
     }
   }
   if (state === 'trial') {
+    // Тариф TEST: ограничения как Старт без AI
     return {
       state,
-      maxItems: addBonus(PLANS.START.maxItems, bItems),
-      aiImportPerMonth: bAi, // в триале AI = 0 по плану, бонус всё равно действует
+      maxItems: addBonus(PLANS.TEST.maxItems, bItems),
+      aiImportPerMonth: bAi, // план = 0, бонус действует
       ttkExportPerMonth: bTtk > 0 ? bTtk : null,
       canAddItems: true,
       canImportAi: bAi > 0,
       menuPublic: true,
     }
   }
+  if (state === 'awaiting_plan') {
+    // Тест закончился, админ ещё не назначил план: дашборд работает (на чтение/правку),
+    // но публичное меню скрыто и AI/новые блюда заблокированы — поощряем оплату.
+    return {
+      state,
+      maxItems: addBonus(PLANS.TEST.maxItems, bItems),
+      aiImportPerMonth: 0,
+      ttkExportPerMonth: null,
+      canAddItems: false,
+      canImportAi: false,
+      menuPublic: false,
+    }
+  }
   if (state === 'grace') {
     return {
       state,
-      maxItems: addBonus(PLANS.START.maxItems, bItems),
+      maxItems: addBonus(planDef.maxItems, bItems),
       aiImportPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: true,

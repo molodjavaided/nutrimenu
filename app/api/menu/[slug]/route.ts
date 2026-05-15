@@ -6,16 +6,17 @@ type MenuStatus = 'active' | 'coming_soon' | 'paused'
 
 function getMenuStatus(
   venueStatus: string,
+  plan: 'TEST' | 'START' | 'STANDARD' | 'CUSTOM',
   trialEndsAt: Date | null,
   paidUntil: Date | null,
 ): MenuStatus {
   if (venueStatus === 'REJECTED') return 'paused'
   if (venueStatus === 'PENDING') return 'coming_soon'
 
-  // APPROVED — публичное меню зависит от состояния оплаты/триала
-  const state = getUserState({ trialEndsAt, paidUntil })
+  // APPROVED — публичное меню зависит от состояния тарифа
+  const state = getUserState({ plan, trialEndsAt, paidUntil })
   if (state === 'paid' || state === 'trial') return 'active'
-  return 'paused' // grace / expired
+  return 'paused' // grace / expired / awaiting_plan
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const venue = await db.venue.findUnique({
     where: { slug },
     include: {
-      owner: { select: { trialEndsAt: true, paidUntil: true } },
+      owner: { select: { plan: true, trialEndsAt: true, paidUntil: true } },
       categories: {
         orderBy: { sortOrder: 'asc' },
         include: { items: { where: { isAvailable: true }, orderBy: { sortOrder: 'asc' } } },
@@ -36,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const menuStatus = getMenuStatus(venue.status, venue.owner.trialEndsAt, venue.owner.paidUntil)
+  const menuStatus = getMenuStatus(venue.status, venue.owner.plan, venue.owner.trialEndsAt, venue.owner.paidUntil)
 
   // For non-active menus return only venue branding, no dishes
   if (menuStatus !== 'active') {

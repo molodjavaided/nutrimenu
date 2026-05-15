@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   if (session.role !== 'ADMIN') {
     const user = await db.user.findUnique({
       where: { id: session.userId },
-      select: { emailVerified: true, ttkImportCount: true, ttkImportMonth: true, plan: true, trialEndsAt: true, paidUntil: true },
+      select: { emailVerified: true, ttkImportCount: true, ttkImportMonth: true, plan: true, trialEndsAt: true, paidUntil: true, bonusItems: true, bonusAiImports: true, bonusTtkExports: true },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (!user.emailVerified) {
@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
       plan: user.plan,
       trialEndsAt: user.trialEndsAt,
       paidUntil: user.paidUntil,
+      bonusItems: user.bonusItems,
+      bonusAiImports: user.bonusAiImports,
+      bonusTtkExports: user.bonusTtkExports,
     })
     if (!limits.canImportAi) {
       const isTrial = limits.state === 'trial'

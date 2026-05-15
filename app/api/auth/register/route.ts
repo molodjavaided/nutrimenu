@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const { user, venue } = await db.$transaction(async (tx: TransactionClient) => {
     const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000)
     const user = await tx.user.create({
-      data: { email: normalizedEmail, passwordHash, plan: 'START', trialEndsAt },
+      data: { email: normalizedEmail, passwordHash, plan: 'TEST', trialEndsAt },
     })
     const venue = await tx.venue.create({
       data: {

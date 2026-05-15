@@ -12,7 +12,7 @@ export async function GET() {
     db.venue.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        owner: { select: { email: true, trialEndsAt: true, paidUntil: true } },
+        owner: { select: { email: true, plan: true, trialEndsAt: true, paidUntil: true } },
         _count: { select: { categories: true } },
       },
     }),

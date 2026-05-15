@@ -9,7 +9,7 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    select: { emailVerified: true, ttkImportCount: true, ttkImportMonth: true, role: true, plan: true, trialEndsAt: true, paidUntil: true },
+    select: { emailVerified: true, ttkImportCount: true, ttkImportMonth: true, role: true, plan: true, trialEndsAt: true, paidUntil: true, bonusItems: true, bonusAiImports: true, bonusTtkExports: true },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -22,6 +22,9 @@ export async function GET() {
     plan: user.plan,
     trialEndsAt: user.trialEndsAt,
     paidUntil: user.paidUntil,
+    bonusItems: user.bonusItems,
+    bonusAiImports: user.bonusAiImports,
+    bonusTtkExports: user.bonusTtkExports,
   })
   const monthLimit = limits.aiImportPerMonth
 

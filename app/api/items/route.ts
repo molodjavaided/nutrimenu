@@ -23,13 +23,16 @@ export async function POST(req: NextRequest) {
   if (!session.impersonatingVenueId) {
     const user = await db.user.findUnique({
       where: { id: session.userId },
-      select: { plan: true, trialEndsAt: true, paidUntil: true, role: true },
+      select: { plan: true, trialEndsAt: true, paidUntil: true, role: true, bonusItems: true, bonusAiImports: true, bonusTtkExports: true },
     })
     if (user && user.role !== 'ADMIN') {
       const limits = getEffectiveLimits({
         plan: user.plan,
         trialEndsAt: user.trialEndsAt,
         paidUntil: user.paidUntil,
+        bonusItems: user.bonusItems,
+        bonusAiImports: user.bonusAiImports,
+        bonusTtkExports: user.bonusTtkExports,
       })
       if (!limits.canAddItems) {
         const msg = limits.state === 'grace' || limits.state === 'expired'

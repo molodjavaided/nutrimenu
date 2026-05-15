@@ -1,24 +1,23 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { adminApi, adminKeys, AdminVenue, VenueStatus } from '@/lib/admin-api'
+import {
+  adminApi,
+  adminKeys,
+  AdminVenue,
+  VenueStatus,
+  getSubscriptionState,
+  daysUntil,
+} from '@/lib/admin-api'
+import { VenueCard } from '@/components/admin/VenueCard'
 
-const STATUS_COLOR: Record<VenueStatus, string> = {
-  PENDING: '#B45309',
-  APPROVED: '#15803D',
-  REJECTED: '#DC2626',
-}
-const STATUS_BG: Record<VenueStatus, string> = {
-  PENDING: 'rgba(180,83,9,0.1)',
-  APPROVED: 'rgba(21,128,61,0.1)',
-  REJECTED: 'rgba(220,38,38,0.1)',
-}
+type QuickFilter = 'pending' | 'trial_ending' | 'grace' | 'expired' | null
+type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'status'
+
+const PAGE_SIZE = 20
 
 export default function AdminPage() {
-  const router = useRouter()
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -28,40 +27,101 @@ export default function AdminPage() {
   const venues = data?.venues ?? []
   const stats = data?.stats
 
-  const [deleteTarget, setDeleteTarget] = useState<AdminVenue | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState('')
-
-  const setStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: VenueStatus }) =>
-      adminApi.patchVenue(id, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.venues }),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => adminApi.deleteVenue(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: adminKeys.venues })
-      setDeleteTarget(null)
-      setDeleteConfirm('')
-    },
-  })
-
-  const impersonateMutation = useMutation({
-    mutationFn: (id: string) => adminApi.impersonate(id),
-    onSuccess: () => router.push('/dashboard'),
-  })
-
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<VenueStatus | 'ALL'>('ALL')
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
+  const [sort, setSort] = useState<SortKey>('date_desc')
+  const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
+    const now = Date.now()
     return venues.filter(v => {
       if (statusFilter !== 'ALL' && v.status !== statusFilter) return false
-      if (q && !v.name.toLowerCase().includes(q) && !v.owner.email.toLowerCase().includes(q) && !v.slug.includes(q)) return false
+      if (quickFilter) {
+        const state = getSubscriptionState(v.owner.trialEndsAt, v.owner.paidUntil, now)
+        if (quickFilter === 'pending' && v.status !== 'PENDING') return false
+        if (quickFilter === 'trial_ending') {
+          if (state !== 'trial') return false
+          const d = daysUntil(v.owner.trialEndsAt, now)
+          if (d == null || d > 3) return false
+        }
+        if (quickFilter === 'grace' && state !== 'grace') return false
+        if (quickFilter === 'expired' && state !== 'expired') return false
+      }
+      if (q) {
+        const hay = `${v.name} ${v.owner.email} ${v.slug} ${v.city ?? ''} ${v.country ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       return true
     })
-  }, [venues, search, statusFilter])
+  }, [venues, search, statusFilter, quickFilter])
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered]
+    switch (sort) {
+      case 'date_asc':
+        return arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      case 'name_asc':
+        return arr.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+      case 'status':
+        return arr.sort((a, b) => a.status.localeCompare(b.status))
+      case 'date_desc':
+      default:
+        return arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }
+  }, [filtered, sort])
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const pageItems = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  // Counters for quick-filter chips
+  const counts = useMemo(() => {
+    const now = Date.now()
+    let pending = 0, trialEnding = 0, grace = 0, expired = 0
+    for (const v of venues) {
+      if (v.status === 'PENDING') pending++
+      const state = getSubscriptionState(v.owner.trialEndsAt, v.owner.paidUntil, now)
+      if (state === 'trial') {
+        const d = daysUntil(v.owner.trialEndsAt, now)
+        if (d != null && d <= 3) trialEnding++
+      }
+      if (state === 'grace') grace++
+      if (state === 'expired') expired++
+    }
+    return { pending, trialEnding, grace, expired }
+  }, [venues])
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: (ids: string[]) => adminApi.bulkApprove(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.venues })
+      setSelected(new Set())
+    },
+  })
+
+  const selectedPendingIds = useMemo(() => {
+    const ids: string[] = []
+    for (const v of venues) {
+      if (selected.has(v.id) && v.status === 'PENDING') ids.push(v.id)
+    }
+    return ids
+  }, [selected, venues])
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  function resetFilter(next: QuickFilter) {
+    setQuickFilter(next)
+    setPage(1)
+  }
 
   if (isLoading) {
     return (
@@ -71,63 +131,8 @@ export default function AdminPage() {
     )
   }
 
-  const deleting = deleteMutation.isPending
-  const canDelete = deleteTarget && deleteConfirm.trim() === deleteTarget.name
-
   return (
     <>
-      {deleteTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
-          onClick={() => !deleting && (setDeleteTarget(null), setDeleteConfirm(''))}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 shadow-xl"
-            style={{ background: '#FEFEF2' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h3 className="text-base font-bold mb-1" style={{ color: '#2C2950' }}>Удалить заведение?</h3>
-            <p className="text-sm mb-1" style={{ color: '#6B6490' }}>
-              <span className="font-medium" style={{ color: '#2C2950' }}>{deleteTarget.name}</span>
-            </p>
-            <p className="text-xs mb-3" style={{ color: '#9D99B8' }}>
-              Владелец {deleteTarget.owner.email} и все данные меню будут удалены безвозвратно.
-            </p>
-            <label className="text-xs block mb-1.5" style={{ color: '#6B6490' }}>
-              Введите название заведения для подтверждения:
-            </label>
-            <input
-              type="text"
-              value={deleteConfirm}
-              onChange={e => setDeleteConfirm(e.target.value)}
-              placeholder={deleteTarget.name}
-              autoFocus
-              className="w-full mb-5 px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: '#EAE7F8', color: '#2C2950', border: '1px solid rgba(176,166,223,0.4)' }}
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setDeleteTarget(null); setDeleteConfirm('') }}
-                disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{ background: '#EAE7F8', color: '#6B6490' }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                disabled={deleting || !canDelete}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-                style={{ background: '#DC2626', color: '#fff' }}
-              >
-                {deleting ? '…' : 'Удалить'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold" style={{ color: '#2C2950' }}>Заведения</h1>
       </div>
@@ -148,6 +153,42 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Quick filters */}
+      <div className="flex gap-2 flex-wrap mb-4">
+        {[
+          { key: 'pending' as const, label: 'На проверке', count: counts.pending, color: '#B45309' },
+          { key: 'trial_ending' as const, label: 'Триал ≤3д', count: counts.trialEnding, color: '#7C3AED' },
+          { key: 'grace' as const, label: 'Grace', count: counts.grace, color: '#B45309' },
+          { key: 'expired' as const, label: 'Просрочено', count: counts.expired, color: '#DC2626' },
+        ].map(f => {
+          const active = quickFilter === f.key
+          return (
+            <button
+              key={f.key}
+              onClick={() => resetFilter(active ? null : f.key)}
+              className="text-xs px-3 py-1.5 rounded-full font-medium transition-all"
+              style={{
+                background: active ? f.color : `${f.color}14`,
+                color: active ? '#fff' : f.color,
+              }}
+            >
+              {f.label}
+              <span className="ml-1.5 opacity-70">{f.count}</span>
+            </button>
+          )
+        })}
+        {quickFilter && (
+          <button
+            onClick={() => resetFilter(null)}
+            className="text-xs px-3 py-1.5 rounded-full font-medium"
+            style={{ color: '#9D99B8', background: 'transparent' }}
+          >
+            Сбросить
+          </button>
+        )}
+      </div>
+
+      {/* Search + sort + status filter */}
       <div className="flex gap-2 mb-4 flex-col sm:flex-row">
         <div className="relative flex-1">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: '#9D99B8' }}>
@@ -157,15 +198,26 @@ export default function AdminPage() {
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск по названию, email, slug..."
+            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Название, email, город..."
             className="w-full pl-9 pr-4 py-2 rounded-xl text-sm outline-none"
             style={{ background: '#EAE7F8', color: '#2C2950' }}
           />
         </div>
         <select
+          value={sort}
+          onChange={e => setSort(e.target.value as SortKey)}
+          className="px-3 py-2 rounded-xl text-sm outline-none cursor-pointer"
+          style={{ background: '#EAE7F8', color: '#2C2950' }}
+        >
+          <option value="date_desc">Сначала новые</option>
+          <option value="date_asc">Сначала старые</option>
+          <option value="name_asc">По названию</option>
+          <option value="status">По статусу</option>
+        </select>
+        <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value as VenueStatus | 'ALL')}
+          onChange={e => { setStatusFilter(e.target.value as VenueStatus | 'ALL'); setPage(1) }}
           className="px-3 py-2 rounded-xl text-sm outline-none cursor-pointer"
           style={{ background: '#EAE7F8', color: '#2C2950' }}
         >
@@ -176,85 +228,75 @@ export default function AdminPage() {
         </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {/* Bulk approve bar */}
+      {selectedPendingIds.length > 0 && (
+        <div
+          className="rounded-xl px-4 py-2.5 mb-4 flex items-center gap-3"
+          style={{ background: 'rgba(21,128,61,0.1)', border: '1px solid rgba(21,128,61,0.3)' }}
+        >
+          <span className="text-sm font-medium" style={{ color: '#15803D' }}>
+            Выбрано на проверке: {selectedPendingIds.length}
+          </span>
+          <button
+            onClick={() => bulkApproveMutation.mutate(selectedPendingIds)}
+            disabled={bulkApproveMutation.isPending}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-60"
+            style={{ background: '#15803D', color: '#fff' }}
+          >
+            {bulkApproveMutation.isPending ? '…' : `Одобрить все (${selectedPendingIds.length})`}
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="text-xs font-medium transition-opacity hover:opacity-70"
+            style={{ color: '#15803D' }}
+          >
+            Снять выделение
+          </button>
+        </div>
+      )}
+
+      {sorted.length === 0 ? (
         <p className="text-sm text-center py-12" style={{ color: '#9D99B8' }}>
-          {search || statusFilter !== 'ALL' ? 'Ничего не найдено' : 'Нет заведений'}
+          {search || statusFilter !== 'ALL' || quickFilter ? 'Ничего не найдено' : 'Нет заведений'}
         </p>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {filtered.map(venue => {
-            const isUpdating = setStatusMutation.isPending && setStatusMutation.variables?.id === venue.id
-            const isEntering = impersonateMutation.isPending && impersonateMutation.variables === venue.id
-            return (
-              <div
+        <>
+          <div className="flex flex-col gap-2.5">
+            {pageItems.map((venue: AdminVenue) => (
+              <VenueCard
                 key={venue.id}
-                className="rounded-2xl px-4 py-3.5 flex items-center gap-3 flex-wrap"
-                style={{ background: '#EAE7F8' }}
+                venue={venue}
+                selected={selected.has(venue.id)}
+                onToggleSelect={() => toggleSelect(venue.id)}
+                showCheckbox={venue.status === 'PENDING'}
+              />
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                style={{ background: '#EAE7F8', color: '#2C2950' }}
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate" style={{ color: '#2C2950' }}>{venue.name}</p>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: '#9D99B8' }}>
-                    {venue.owner.email} · /{venue.slug}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#B0A6DF' }}>
-                    {new Date(venue.createdAt).toLocaleDateString('ru-RU')}
-                  </p>
-                </div>
-
-                <select
-                  value={venue.status}
-                  disabled={isUpdating}
-                  onChange={e => setStatusMutation.mutate({ id: venue.id, status: e.target.value as VenueStatus })}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-medium outline-none cursor-pointer disabled:opacity-50 transition-all shrink-0"
-                  style={{
-                    color: STATUS_COLOR[venue.status],
-                    background: STATUS_BG[venue.status],
-                    border: `1px solid ${STATUS_COLOR[venue.status]}30`,
-                  }}
-                >
-                  <option value="PENDING">На проверке</option>
-                  <option value="APPROVED">Одобрено</option>
-                  <option value="REJECTED">Отклонено</option>
-                </select>
-
-                <div className="flex gap-2 shrink-0 flex-wrap">
-                  <Link
-                    href={`/admin/venues/${venue.id}`}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                    style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
-                  >
-                    Открыть
-                  </Link>
-                  {venue.allowAdminEdit && (
-                    <button
-                      onClick={() => impersonateMutation.mutate(venue.id)}
-                      disabled={isEntering}
-                      className="px-3 py-1.5 rounded-xl text-xs font-medium disabled:opacity-50 transition-all active:scale-95 flex items-center gap-1"
-                      style={{ background: 'rgba(176,166,223,0.3)', color: '#2C2950' }}
-                    >
-                      {isEntering ? '…' : (
-                        <>
-                          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                            <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                            <path d="M10 2h4m0 0v4m0-4L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          Войти
-                        </>
-                      )}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setDeleteTarget(venue)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                    style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                ←
+              </button>
+              <span className="text-xs" style={{ color: '#6B6490' }}>
+                {safePage} из {pageCount} · всего {sorted.length}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                disabled={safePage === pageCount}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                style={{ background: '#EAE7F8', color: '#2C2950' }}
+              >
+                →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   )

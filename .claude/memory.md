@@ -4,7 +4,7 @@
 
 - **Goal:** Админ-панель: безопасность + управление планом + миграция server state на TanStack Query
 - **Status:** In Progress
-- **Last Action (2026-05-15):** Подключён @tanstack/react-query 5, добавлен `app/providers.tsx`, мигрированы обе страницы админки (`/admin`, `/admin/venues/[id]`) с инвалидацией кэша. Создан `lib/admin-api.ts` (типизированный клиент + queryKeys). Закрыты security #1 (server-side gate в `app/admin/layout.tsx` → redirect), #2 (impersonation TTL 2ч через `impersonationExpiresAt` в JWT), #6 (delete-by-name confirmation в обеих модалках). Добавлено управление планом: новый `POST /api/admin/venues/[id]/plan` (plan switch + extendDays + paidUntil) и UI-секция «Тариф и подписка» с быстрыми кнопками +1/+3/+6/+12 мес. Лого `/venues` обёрнут в Link на `/`. tsc чистый.
+- **Last Action (2026-05-15):** Список заведений переписан: вынесен `components/admin/VenueCard.tsx` (название + город/страна + 2 бейджа: статус заявки + состояние подписки). Quick-filters (На проверке / Триал ≤3д / Grace / Просрочено) с счётчиками. Сортировка (новые/старые/имя/статус) + пагинация 20/стр. Bulk approve через `PATCH /api/admin/venues/bulk` + чекбоксы у PENDING. API `/api/admin/venues` теперь возвращает country/city + trial/paid даты. Хелперы `getSubscriptionState` и `daysUntil` в `lib/admin-api.ts`.
 
 ## ❌ Незавершённые задачи
 

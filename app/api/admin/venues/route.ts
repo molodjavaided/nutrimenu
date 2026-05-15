@@ -11,7 +11,10 @@ export async function GET() {
   const [venues, counts] = await Promise.all([
     db.venue.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { owner: { select: { email: true } } },
+      include: {
+        owner: { select: { email: true, trialEndsAt: true, paidUntil: true } },
+        _count: { select: { categories: true } },
+      },
     }),
     db.venue.groupBy({
       by: ['status'],

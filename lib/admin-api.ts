@@ -6,10 +6,33 @@ export interface AdminVenue {
   id: string
   name: string
   slug: string
+  country: string | null
+  city: string | null
   status: VenueStatus
   allowAdminEdit: boolean
   createdAt: string
-  owner: { email: string }
+  owner: { email: string; trialEndsAt: string | null; paidUntil: string | null }
+}
+
+export type SubscriptionState = 'trial' | 'paid' | 'grace' | 'expired'
+
+export function getSubscriptionState(
+  trialEndsAt: string | null,
+  paidUntil: string | null,
+  now: number = Date.now(),
+): SubscriptionState {
+  if (paidUntil && new Date(paidUntil).getTime() > now) return 'paid'
+  if (trialEndsAt && new Date(trialEndsAt).getTime() > now) return 'trial'
+  if (trialEndsAt) {
+    const graceEnd = new Date(trialEndsAt).getTime() + 30 * 24 * 60 * 60 * 1000
+    if (now < graceEnd) return 'grace'
+  }
+  return 'expired'
+}
+
+export function daysUntil(iso: string | null, now: number = Date.now()): number | null {
+  if (!iso) return null
+  return Math.ceil((new Date(iso).getTime() - now) / (1000 * 60 * 60 * 24))
 }
 
 export interface AdminVenuesStats {
@@ -99,6 +122,13 @@ export const adminApi = {
 
   deleteVenue: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/admin/venues/${id}`, { method: 'DELETE' }).then(r => jsonOrThrow<{ ok: true }>(r)),
+
+  bulkApprove: (ids: string[]): Promise<{ updated: number }> =>
+    fetch('/api/admin/venues/bulk', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, status: 'APPROVED' }),
+    }).then(r => jsonOrThrow<{ updated: number }>(r)),
 
   impersonate: (id: string): Promise<{ ok: true }> =>
     fetch(`/api/admin/venues/${id}/impersonate`, { method: 'POST' }).then(r => jsonOrThrow<{ ok: true }>(r)),

@@ -13,12 +13,13 @@ export async function POST(_req: NextRequest) {
   }
   const token = process.env.TELEGRAM_BOT_TOKEN
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET
-  const base = process.env.NEXT_PUBLIC_BASE_URL
-  if (!token || !secret || !base) {
-    return NextResponse.json(
-      { error: 'Missing env: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, NEXT_PUBLIC_BASE_URL' },
-      { status: 500 },
-    )
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL
+  const missing: string[] = []
+  if (!token) missing.push('TELEGRAM_BOT_TOKEN')
+  if (!secret) missing.push('TELEGRAM_WEBHOOK_SECRET')
+  if (!base) missing.push('NEXT_PUBLIC_BASE_URL (or NEXT_PUBLIC_APP_URL)')
+  if (missing.length || !token || !secret || !base) {
+    return NextResponse.json({ error: `Missing env: ${missing.join(', ')}` }, { status: 500 })
   }
   const webhookUrl = `${base.replace(/\/$/, '')}/api/telegram/webhook`
 

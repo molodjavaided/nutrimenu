@@ -97,6 +97,16 @@ export default function MessagesPanel({ open, onClose, initialCategory }: Props)
     }
   }, [open, initialCategory, activeId, showCompose])
 
+  async function openTelegramBot() {
+    const r = await fetch('/api/telegram/start-link')
+    if (!r.ok) {
+      toast.error('Telegram-бот пока не настроен')
+      return
+    }
+    const data = (await r.json()) as { url: string }
+    window.open(data.url, '_blank')
+  }
+
   if (!open) return null
 
   function sendReply() {
@@ -125,7 +135,7 @@ export default function MessagesPanel({ open, onClose, initialCategory }: Props)
           <h2 className="font-semibold text-sm flex-1" style={{ color: '#2C2950' }}>
             {activeId ? 'Переписка с админом' : 'Сообщения'}
           </h2>
-          {!activeId && (
+          {!activeId && threads.length > 0 && (
             <button
               onClick={() => setShowCompose(true)}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
@@ -144,13 +154,30 @@ export default function MessagesPanel({ open, onClose, initialCategory }: Props)
             {isLoading ? (
               <p className="text-center text-xs py-8" style={{ color: '#9D99B8' }}>Загрузка…</p>
             ) : threads.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm mb-3" style={{ color: '#6B6490' }}>Сообщений ещё нет</p>
+              <div className="text-center py-8 px-2">
+                <p className="text-sm mb-4" style={{ color: '#6B6490' }}>
+                  Свяжитесь с админом — выберите канал
+                </p>
+                <button
+                  onClick={openTelegramBot}
+                  className="w-full mb-2 px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                  style={{ background: '#229ED9', color: '#fff' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 7.5a2.25 2.25 0 0 0 .126 4.073l3.9 1.205 2.165 5.633a1.5 1.5 0 0 0 2.526.521l2.2-2.2 4.5 3.6a1.5 1.5 0 0 0 2.434-1.05l2.05-15.555a2.25 2.25 0 0 0-2.379-2.342Z"/>
+                  </svg>
+                  Telegram (быстрее)
+                </button>
+                <p className="text-xs mb-3" style={{ color: '#9D99B8' }}>
+                  Бот задаст 5 вопросов и поможет прикрепить ТТК/фото
+                </p>
                 <button
                   onClick={() => setShowCompose(true)}
-                  className="px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ background: '#2C2950', color: '#FEFEF2' }}
-                >Написать первое</button>
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: '#EAE7F8', color: '#2C2950' }}
+                >
+                  Написать здесь в чате
+                </button>
               </div>
             ) : (
               threads.map(t => (

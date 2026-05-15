@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 import { feedbackRatelimit } from '@/lib/ratelimit'
-import { sendTelegramMessage, escapeHtml } from '@/lib/telegram'
+import { sendTelegramMessage, sendToChat, escapeHtml } from '@/lib/telegram'
 
 const schema = z.object({ message: z.string().trim().min(1).max(4000) })
 
@@ -67,6 +67,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const venueLine = venueName ? `\nЗаведение: <b>${escapeHtml(venueName)}</b>` : ''
     const text = `💬 <b>Ответ от владельца</b>${venueLine}\n\n${escapeHtml(parsed.data.message)}\n\n<i>thread: ${id}</i>`
     void sendTelegramMessage(text)
+  }
+
+  // Forward admin reply to owner's Telegram if linked
+  if (isAdmin && fb.userId) {
+    const owner = await db.user.findUnique({
+      where: { id: fb.userId },
+      select: { telegramChatId: true },
+    })
+    if (owner?.telegramChatId) {
+      void sendToChat(
+        owner.telegramChatId,
+        `💬 <b>Ответ от админа</b>\n\n${escapeHtml(parsed.data.message)}`,
+      )
+    }
   }
 
   return NextResponse.json(reply, { status: 201 })

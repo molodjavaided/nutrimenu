@@ -39,6 +39,8 @@ model User {
   bonusItems          Int                  @default(0)
   bonusAiImports      Int                  @default(0)
   bonusTtkExports     Int                  @default(0)
+  telegramChatId      String?              @unique
+  telegramUsername    String?
   createdAt           DateTime             @default(now())
   venue               Venue?
   passwordResetTokens PasswordResetToken[]
@@ -70,6 +72,8 @@ model Venue {
   status         VenueStatus @default(PENDING)
   allowAdminEdit Boolean     @default(false)
   adminNote      String?
+  briefingState  Json?
+  briefingCompletedAt DateTime?
   ownerId        String      @unique
   owner          User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt      DateTime    @default(now())

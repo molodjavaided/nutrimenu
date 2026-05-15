@@ -136,13 +136,26 @@ export default function MessagesPanel({ open, onClose, initialCategory }: Props)
             {activeId ? 'Переписка с админом' : 'Сообщения'}
           </h2>
           {!activeId && threads.length > 0 && (
-            <button
-              onClick={() => setShowCompose(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: '#2C2950', color: '#FEFEF2' }}
-            >
-              <MessageSquarePlus size={13} /> Написать
-            </button>
+            <>
+              <button
+                onClick={openTelegramBot}
+                title="Написать в Telegram-бота"
+                aria-label="Написать в Telegram"
+                className="flex items-center justify-center p-1.5 rounded-lg transition-all"
+                style={{ background: '#229ED9', color: '#fff' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-16.5 7.5a2.25 2.25 0 0 0 .126 4.073l3.9 1.205 2.165 5.633a1.5 1.5 0 0 0 2.526.521l2.2-2.2 4.5 3.6a1.5 1.5 0 0 0 2.434-1.05l2.05-15.555a2.25 2.25 0 0 0-2.379-2.342Z"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowCompose(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{ background: '#2C2950', color: '#FEFEF2' }}
+              >
+                <MessageSquarePlus size={13} /> Написать
+              </button>
+            </>
           )}
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: '#7a748f' }}>
             <X size={18} />

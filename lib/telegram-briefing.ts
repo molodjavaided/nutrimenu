@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { put } from '@vercel/blob'
-import { downloadTelegramFile, escapeHtml, getTelegramFile, sendToChat } from '@/lib/telegram'
+import { downloadTelegramFile, escapeHtml, getTelegramFile, sendTelegramMessage, sendToChat } from '@/lib/telegram'
 
 /**
  * Lightweight 5-question briefing run inside Telegram bot.
@@ -30,6 +30,7 @@ export interface BriefingState {
     type?: string
     dishes?: string
     when?: string
+    plan?: string
   }
   ttkFiles: number
   photoFiles: number
@@ -83,6 +84,29 @@ async function setState(venueId: string, state: BriefingState, finished = false)
 }
 
 /** Append a message to the venue's Feedback thread (creating it if needed). */
+async function notifyAdminGroup(venueId: string, ownerUserId: string, role: 'OWNER' | 'ADMIN', message: string): Promise<void> {
+  if (role !== 'OWNER') return
+  try {
+    const [venue, user] = await Promise.all([
+      db.venue.findUnique({ where: { id: venueId }, select: { name: true, slug: true, briefingState: true } }),
+      db.user.findUnique({ where: { id: ownerUserId }, select: { email: true, telegramUsername: true } }),
+    ])
+    const who = user?.telegramUsername ? `@${user.telegramUsername}` : (user?.email ?? ownerUserId)
+    const where = venue ? `${escapeHtml(venue.name)} <code>${escapeHtml(venue.slug)}</code>` : venueId
+    const plan = (venue?.briefingState as BriefingState | null)?.answers?.plan
+    const planLine = plan ? `Интерес: <b>${escapeHtml(plan)}</b>\n` : ''
+    await sendTelegramMessage(
+      `📨 <b>Сообщение от владельца</b>\n` +
+      `Заведение: ${where}\n` +
+      `От: ${escapeHtml(who)}\n` +
+      planLine +
+      `\n${escapeHtml(message)}`,
+    )
+  } catch (err) {
+    console.error('[briefing] notifyAdminGroup failed:', err)
+  }
+}
+
 async function mirrorToThread(venueId: string, ownerUserId: string, role: 'OWNER' | 'ADMIN', message: string): Promise<void> {
   let thread = await db.feedback.findFirst({
     where: { venueId, userId: ownerUserId, category: 'billing' },
@@ -113,6 +137,7 @@ async function mirrorToThread(venueId: string, ownerUserId: string, role: 'OWNER
       data: { lastReplyAt: new Date(), adminUnread: role === 'OWNER', ownerUnread: role === 'ADMIN' },
     }),
   ])
+  await notifyAdminGroup(venueId, ownerUserId, role, message)
 }
 
 /** Save an incoming file from Telegram to Vercel Blob + record VenueFile + mirror to thread. */
@@ -293,8 +318,13 @@ export async function startBriefing(venueId: string, ownerUserId: string, chatId
     data: { telegramChatId: String(chatId) },
   })
 
-  const state = initialState()
-  state.stage = 'q1_type'
+  const venuePrev = await db.venue.findUnique({ where: { id: venueId }, select: { briefingState: true } })
+  const prev = (venuePrev?.briefingState as BriefingState | null) ?? initialState()
+  const state: BriefingState = {
+    ...initialState(),
+    answers: { plan: prev.answers?.plan },
+    stage: 'q1_type',
+  }
   await setState(venueId, state)
 
   const venue = await db.venue.findUnique({ where: { id: venueId }, select: { name: true } })

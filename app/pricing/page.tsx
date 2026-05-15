@@ -69,7 +69,7 @@ const plans: Plan[] = [
       'Не нужно сидеть и вбивать вручную',
       'Готовое меню за 1–2 дня',
     ],
-    cta: { label: 'Заказать', href: 'mailto:hello@plate.menu?subject=Оцифровка%20меню' },
+    cta: { label: 'Заказать', href: '/go/telegram?plan=digitization' },
     accent: '#0EA5E9',
   },
   {
@@ -82,7 +82,7 @@ const plans: Plan[] = [
       'Сделаем лично под вас',
       'Нестандартные интеграции',
     ],
-    cta: { label: 'Связаться', href: 'mailto:hello@plate.menu?subject=Индивидуальная%20разработка' },
+    cta: { label: 'Связаться', href: '/go/telegram?plan=custom' },
     accent: '#1a1730',
   },
 ]
@@ -270,7 +270,7 @@ export default function PricingPage() {
             Напишите нам — поможем выбрать.
           </p>
           <Link
-            href="mailto:hello@plate.menu"
+            href="/go/telegram?plan=consult"
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200 hover:-translate-y-px"
             style={{ background: '#2C2950', color: '#FEFEF2' }}
           >

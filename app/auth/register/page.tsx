@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -20,6 +20,9 @@ type FormData = z.infer<typeof schema>
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnToRaw = searchParams.get('returnTo')
+  const returnTo = returnToRaw && returnToRaw.startsWith('/') ? returnToRaw : '/dashboard'
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -45,7 +48,7 @@ export default function RegisterPage() {
         setError(json.error ?? 'Ошибка регистрации')
         return
       }
-      router.push('/dashboard')
+      router.push(returnTo)
       router.refresh()
     } finally {
       setLoading(false)
@@ -147,7 +150,7 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm" style={{ color: '#7a748f' }}>
         Уже есть аккаунт?{' '}
-        <Link href="/auth/login" className="font-medium" style={{ color: '#7C3AED' }}>
+        <Link href={returnToRaw ? `/auth/login?returnTo=${encodeURIComponent(returnToRaw)}` : '/auth/login'} className="font-medium" style={{ color: '#7C3AED' }}>
           Войти
         </Link>
       </p>

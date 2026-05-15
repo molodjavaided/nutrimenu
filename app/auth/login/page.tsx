@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -15,6 +15,9 @@ type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnToRaw = searchParams.get('returnTo')
+  const returnTo = returnToRaw && returnToRaw.startsWith('/') ? returnToRaw : null
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -36,7 +39,7 @@ export default function LoginPage() {
         setError(json.error ?? 'Ошибка входа')
         return
       }
-      router.push(json.redirectTo ?? '/dashboard')
+      router.push(returnTo ?? json.redirectTo ?? '/dashboard')
       router.refresh()
     } finally {
       setLoading(false)

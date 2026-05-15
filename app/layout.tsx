@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppInitializer } from "@/components/AppInitializer";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,10 +56,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AppInitializer />
-        {children}
-        <Analytics />
-        <Toaster position="bottom-center" richColors />
+        <Providers>
+          <AppInitializer />
+          {children}
+          <Analytics />
+          <Toaster position="bottom-center" richColors />
+        </Providers>
       </body>
     </html>
   );

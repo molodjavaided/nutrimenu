@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSession, createSessionToken, setSessionCookie } from '@/lib/auth'
+import { getSession, createSessionToken, setSessionCookie, IMPERSONATION_TTL_MS } from '@/lib/auth'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
@@ -20,6 +20,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     venueId: session.venueId,
     role: 'ADMIN',
     impersonatingVenueId: id,
+    impersonationExpiresAt: Date.now() + IMPERSONATION_TTL_MS,
   })
 
   const res = NextResponse.json({ ok: true })

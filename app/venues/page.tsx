@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import PlateLogoIcon from '@/components/PlateLogoIcon'
 
 interface VenueCard {
@@ -47,12 +46,12 @@ export default function VenuesPage() {
     <div className="min-h-screen" style={{ backgroundColor: '#FEFEF2' }}>
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: '#EAE7F8' }}>
-        <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-text-primary)' }}>
             <PlateLogoIcon size={22} />
           </div>
           <span className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Plate</span>
-        </div>
+        </Link>
         <Link
           href="/auth/login"
           className="text-xs px-3 py-1.5 rounded-lg"

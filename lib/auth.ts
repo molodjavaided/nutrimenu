@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs'
 
 export const SESSION_COOKIE = 'nm_session'
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+/** Impersonation auto-expires after 2 hours, even if the session cookie is still valid. */
+export const IMPERSONATION_TTL_MS = 2 * 60 * 60 * 1000
 
 export interface SessionPayload {
   email: string
@@ -12,6 +14,8 @@ export interface SessionPayload {
   role: 'OWNER' | 'ADMIN'
   /** Set when ADMIN is impersonating a venue owner */
   impersonatingVenueId?: string
+  /** Unix ms when impersonation expires. Older sessions without this field are ignored if impersonating. */
+  impersonationExpiresAt?: number
 }
 
 function getSecret() {
@@ -39,13 +43,24 @@ export async function createSessionToken(payload: SessionPayload): Promise<strin
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    const { email, userId, venueId, role, impersonatingVenueId } = payload as Record<string, unknown>
+    const { email, userId, venueId, role, impersonatingVenueId, impersonationExpiresAt } =
+      payload as Record<string, unknown>
     if (typeof email !== 'string' || typeof userId !== 'string' || typeof venueId !== 'string') return null
-    return {
-      email, userId, venueId,
+    const base: SessionPayload = {
+      email,
+      userId,
+      venueId,
       role: role === 'ADMIN' ? 'ADMIN' : 'OWNER',
-      ...(typeof impersonatingVenueId === 'string' ? { impersonatingVenueId } : {}),
     }
+    if (typeof impersonatingVenueId === 'string') {
+      const exp = typeof impersonationExpiresAt === 'number' ? impersonationExpiresAt : 0
+      if (exp > Date.now()) {
+        base.impersonatingVenueId = impersonatingVenueId
+        base.impersonationExpiresAt = exp
+      }
+      // expired or missing expiry → silently drop impersonation; user falls back to admin identity
+    }
+    return base
   } catch {
     return null
   }

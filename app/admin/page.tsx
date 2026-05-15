@@ -1,32 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { adminApi, adminKeys, AdminVenue, VenueStatus } from '@/lib/admin-api'
 
-type VenueStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-
-interface Venue {
-  id: string
-  name: string
-  slug: string
-  status: VenueStatus
-  allowAdminEdit: boolean
-  createdAt: string
-  owner: { email: string }
-}
-
-interface Stats {
-  total: number
-  newThisWeek: number
-  byStatus: Record<string, number>
-}
-
-const STATUS_LABEL: Record<VenueStatus, string> = {
-  PENDING: 'На проверке',
-  APPROVED: 'Одобрено',
-  REJECTED: 'Отклонено',
-}
 const STATUS_COLOR: Record<VenueStatus, string> = {
   PENDING: '#B45309',
   APPROVED: '#15803D',
@@ -40,27 +19,40 @@ const STATUS_BG: Record<VenueStatus, string> = {
 
 export default function AdminPage() {
   const router = useRouter()
-  const [venues, setVenues] = useState<Venue[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState<string | null>(null)
-  const [entering, setEntering] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Venue | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const qc = useQueryClient()
 
-  // Filters
+  const { data, isLoading } = useQuery({
+    queryKey: adminKeys.venues,
+    queryFn: adminApi.fetchVenues,
+  })
+  const venues = data?.venues ?? []
+  const stats = data?.stats
+
+  const [deleteTarget, setDeleteTarget] = useState<AdminVenue | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+
+  const setStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: VenueStatus }) =>
+      adminApi.patchVenue(id, { status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminKeys.venues }),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteVenue(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.venues })
+      setDeleteTarget(null)
+      setDeleteConfirm('')
+    },
+  })
+
+  const impersonateMutation = useMutation({
+    mutationFn: (id: string) => adminApi.impersonate(id),
+    onSuccess: () => router.push('/dashboard'),
+  })
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<VenueStatus | 'ALL'>('ALL')
-
-  useEffect(() => {
-    fetch('/api/admin/venues')
-      .then(r => r.json())
-      .then(data => {
-        setVenues(data.venues ?? data)
-        setStats(data.stats ?? null)
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -71,45 +63,7 @@ export default function AdminPage() {
     })
   }, [venues, search, statusFilter])
 
-  async function setStatus(id: string, status: VenueStatus) {
-    setUpdating(id)
-    try {
-      const res = await fetch(`/api/admin/venues/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      })
-      if (res.ok) setVenues(prev => prev.map(v => v.id === id ? { ...v, status } : v))
-    } finally {
-      setUpdating(null)
-    }
-  }
-
-  async function enterVenue(id: string) {
-    setEntering(id)
-    try {
-      const res = await fetch(`/api/admin/venues/${id}/impersonate`, { method: 'POST' })
-      if (res.ok) router.push('/dashboard')
-    } finally {
-      setEntering(null)
-    }
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try {
-      const res = await fetch(`/api/admin/venues/${deleteTarget.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setVenues(prev => prev.filter(v => v.id !== deleteTarget.id))
-        setDeleteTarget(null)
-      }
-    } finally {
-      setDeleting(false)
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
         <div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }} />
@@ -117,14 +71,16 @@ export default function AdminPage() {
     )
   }
 
+  const deleting = deleteMutation.isPending
+  const canDelete = deleteTarget && deleteConfirm.trim() === deleteTarget.name
+
   return (
     <>
-      {/* Delete confirmation modal */}
       {deleteTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
-          onClick={() => !deleting && setDeleteTarget(null)}
+          onClick={() => !deleting && (setDeleteTarget(null), setDeleteConfirm(''))}
         >
           <div
             className="w-full max-w-sm rounded-2xl p-6 shadow-xl"
@@ -135,12 +91,24 @@ export default function AdminPage() {
             <p className="text-sm mb-1" style={{ color: '#6B6490' }}>
               <span className="font-medium" style={{ color: '#2C2950' }}>{deleteTarget.name}</span>
             </p>
-            <p className="text-xs mb-5" style={{ color: '#9D99B8' }}>
+            <p className="text-xs mb-3" style={{ color: '#9D99B8' }}>
               Владелец {deleteTarget.owner.email} и все данные меню будут удалены безвозвратно.
             </p>
+            <label className="text-xs block mb-1.5" style={{ color: '#6B6490' }}>
+              Введите название заведения для подтверждения:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={e => setDeleteConfirm(e.target.value)}
+              placeholder={deleteTarget.name}
+              autoFocus
+              className="w-full mb-5 px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: '#EAE7F8', color: '#2C2950', border: '1px solid rgba(176,166,223,0.4)' }}
+            />
             <div className="flex gap-2">
               <button
-                onClick={() => setDeleteTarget(null)}
+                onClick={() => { setDeleteTarget(null); setDeleteConfirm('') }}
                 disabled={deleting}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{ background: '#EAE7F8', color: '#6B6490' }}
@@ -148,9 +116,9 @@ export default function AdminPage() {
                 Отмена
               </button>
               <button
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleting || !canDelete}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
                 style={{ background: '#DC2626', color: '#fff' }}
               >
                 {deleting ? '…' : 'Удалить'}
@@ -160,12 +128,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold" style={{ color: '#2C2950' }}>Заведения</h1>
       </div>
 
-      {/* Stats */}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
@@ -182,14 +148,9 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Search + Filter */}
       <div className="flex gap-2 mb-4 flex-col sm:flex-row">
         <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-            width="14" height="14" viewBox="0 0 16 16" fill="none"
-            style={{ color: '#9D99B8' }}
-          >
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ color: '#9D99B8' }}>
             <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4" />
             <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
@@ -215,84 +176,84 @@ export default function AdminPage() {
         </select>
       </div>
 
-      {/* Venue list */}
       {filtered.length === 0 ? (
         <p className="text-sm text-center py-12" style={{ color: '#9D99B8' }}>
           {search || statusFilter !== 'ALL' ? 'Ничего не найдено' : 'Нет заведений'}
         </p>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {filtered.map(venue => (
-            <div
-              key={venue.id}
-              className="rounded-2xl px-4 py-3.5 flex items-center gap-3 flex-wrap"
-              style={{ background: '#EAE7F8' }}
-            >
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate" style={{ color: '#2C2950' }}>{venue.name}</p>
-                <p className="text-xs mt-0.5 truncate" style={{ color: '#9D99B8' }}>
-                  {venue.owner.email} · /{venue.slug}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: '#B0A6DF' }}>
-                  {new Date(venue.createdAt).toLocaleDateString('ru-RU')}
-                </p>
-              </div>
-
-              {/* Status selector */}
-              <select
-                value={venue.status}
-                disabled={updating === venue.id}
-                onChange={e => setStatus(venue.id, e.target.value as VenueStatus)}
-                className="px-2.5 py-1.5 rounded-xl text-xs font-medium outline-none cursor-pointer disabled:opacity-50 transition-all shrink-0"
-                style={{
-                  color: STATUS_COLOR[venue.status],
-                  background: STATUS_BG[venue.status],
-                  border: `1px solid ${STATUS_COLOR[venue.status]}30`,
-                }}
+          {filtered.map(venue => {
+            const isUpdating = setStatusMutation.isPending && setStatusMutation.variables?.id === venue.id
+            const isEntering = impersonateMutation.isPending && impersonateMutation.variables === venue.id
+            return (
+              <div
+                key={venue.id}
+                className="rounded-2xl px-4 py-3.5 flex items-center gap-3 flex-wrap"
+                style={{ background: '#EAE7F8' }}
               >
-                <option value="PENDING">На проверке</option>
-                <option value="APPROVED">Одобрено</option>
-                <option value="REJECTED">Отклонено</option>
-              </select>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate" style={{ color: '#2C2950' }}>{venue.name}</p>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: '#9D99B8' }}>
+                    {venue.owner.email} · /{venue.slug}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: '#B0A6DF' }}>
+                    {new Date(venue.createdAt).toLocaleDateString('ru-RU')}
+                  </p>
+                </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 shrink-0 flex-wrap">
-                <Link
-                  href={`/admin/venues/${venue.id}`}
-                  className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                  style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
+                <select
+                  value={venue.status}
+                  disabled={isUpdating}
+                  onChange={e => setStatusMutation.mutate({ id: venue.id, status: e.target.value as VenueStatus })}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-medium outline-none cursor-pointer disabled:opacity-50 transition-all shrink-0"
+                  style={{
+                    color: STATUS_COLOR[venue.status],
+                    background: STATUS_BG[venue.status],
+                    border: `1px solid ${STATUS_COLOR[venue.status]}30`,
+                  }}
                 >
-                  Открыть
-                </Link>
-                {venue.allowAdminEdit && (
-                  <button
-                    onClick={() => enterVenue(venue.id)}
-                    disabled={entering === venue.id}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium disabled:opacity-50 transition-all active:scale-95 flex items-center gap-1"
-                    style={{ background: 'rgba(176,166,223,0.3)', color: '#2C2950' }}
+                  <option value="PENDING">На проверке</option>
+                  <option value="APPROVED">Одобрено</option>
+                  <option value="REJECTED">Отклонено</option>
+                </select>
+
+                <div className="flex gap-2 shrink-0 flex-wrap">
+                  <Link
+                    href={`/admin/venues/${venue.id}`}
+                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                    style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
                   >
-                    {entering === venue.id ? '…' : (
-                      <>
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                          <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                          <path d="M10 2h4m0 0v4m0-4L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Войти
-                      </>
-                    )}
+                    Открыть
+                  </Link>
+                  {venue.allowAdminEdit && (
+                    <button
+                      onClick={() => impersonateMutation.mutate(venue.id)}
+                      disabled={isEntering}
+                      className="px-3 py-1.5 rounded-xl text-xs font-medium disabled:opacity-50 transition-all active:scale-95 flex items-center gap-1"
+                      style={{ background: 'rgba(176,166,223,0.3)', color: '#2C2950' }}
+                    >
+                      {isEntering ? '…' : (
+                        <>
+                          <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                            <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            <path d="M10 2h4m0 0v4m0-4L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Войти
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setDeleteTarget(venue)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
+                    style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
+                  >
+                    Удалить
                   </button>
-                )}
-                <button
-                  onClick={() => setDeleteTarget(venue)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
-                  style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
-                >
-                  Удалить
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </>

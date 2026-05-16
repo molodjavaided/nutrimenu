@@ -227,7 +227,10 @@ model IngredientRef {
   type           String  @default("mono")
   composition    Json?
   instructions   String?
+  barcode        String?
 
+  @@unique([venueId, barcode])
   @@index([venueId])
   @@index([isSystem])
+  @@index([barcode])
 }

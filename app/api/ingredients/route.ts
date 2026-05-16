@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       type: body.type ?? 'mono',
       composition: body.composition ?? null,
       instructions: body.instructions ?? null,
+      barcode: body.barcode?.trim() || null,
     },
   })
 

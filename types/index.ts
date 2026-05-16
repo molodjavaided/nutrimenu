@@ -187,4 +187,5 @@ export interface IngredientRef {
   type?: 'mono' | 'composite'
   composition?: CompositionRow[]
   instructions?: string
+  barcode?: string
 }

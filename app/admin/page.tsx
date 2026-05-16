@@ -11,6 +11,7 @@ import {
   daysUntil,
 } from '@/lib/admin-api'
 import { VenueCard } from '@/components/admin/VenueCard'
+import { BarcodeCachePanel } from '@/components/admin/BarcodeCachePanel'
 
 type QuickFilter = 'pending' | 'trial_ending' | 'awaiting_plan' | 'grace' | 'expired' | null
 type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'status'
@@ -138,6 +139,8 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-bold" style={{ color: '#2C2950' }}>Заведения</h1>
       </div>
+
+      <BarcodeCachePanel />
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

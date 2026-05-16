@@ -113,7 +113,11 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-sm" style={{ color: '#7a748f' }}>
         Первый раз?{' '}
-        <Link href="/auth/register" className="font-medium" style={{ color: '#7C3AED' }}>
+        <Link
+          href={returnToRaw ? `/auth/register?returnTo=${encodeURIComponent(returnToRaw)}` : '/auth/register'}
+          className="font-medium"
+          style={{ color: '#7C3AED' }}
+        >
           Зарегистрировать заведение
         </Link>
       </p>

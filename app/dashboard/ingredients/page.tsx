@@ -152,8 +152,8 @@ export default function IngredientsPage() {
         return
       }
 
-      // Level 2: Open Food Facts — prefill new-ingredient modal
-      if (res.ok && data.source === 'off' && data.prefill) {
+      // Level 2/3: Gemini grounded search (or cache hit) — prefill new-ingredient modal
+      if (res.ok && (data.source === 'gemini' || data.source === 'cache') && data.prefill) {
         setBarcodePreFill({
           name: (data.prefill.name ?? '').trim(),
           unit: 'г',
@@ -169,6 +169,10 @@ export default function IngredientsPage() {
         setBarcodeMode(false)
         setBarcodeInput('')
         setModalTarget(null)
+        const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
+        if (conf === 'low') toast.warning('AI-оценка КБЖУ — обязательно проверьте перед сохранением')
+        else if (conf === 'high') toast.success('Нашли точные данные')
+        else toast.success('Нашли данные — проверьте перед сохранением')
         return
       }
 

@@ -76,15 +76,21 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         return
       }
 
-      // Level 2: Open Food Facts — prefill the create form
-      if (res.ok && data.source === 'off' && data.prefill) {
+      // Level 2/3: Gemini grounded search (or cache hit) — prefill, ask to verify
+      if (res.ok && (data.source === 'gemini' || data.source === 'cache') && data.prefill) {
         setNewName(data.prefill.name ?? '')
         setNewCalories(data.prefill.caloriesPer100 ?? 0)
         setNewProtein(data.prefill.proteinPer100 ?? 0)
         setNewFat(data.prefill.fatPer100 ?? 0)
         setNewCarbs(data.prefill.carbsPer100 ?? 0)
         setNewBarcode(code)
-        setScanStatus('Нашли в Open Food Facts — проверьте данные и сохраните')
+        const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
+        const note = conf === 'low'
+          ? '⚠️ AI-оценка — проверьте КБЖУ перед сохранением'
+          : conf === 'medium'
+            ? 'Данные найдены, проверьте перед сохранением'
+            : 'Нашли точные данные'
+        setScanStatus(note)
         return
       }
 

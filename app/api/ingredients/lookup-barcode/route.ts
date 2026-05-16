@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getEffectiveVenueId, getSession } from '@/lib/auth'
+import { lookupBarcodeViaGemini } from '@/lib/gemini-barcode'
 
-interface OffNutriments {
-  'energy-kcal_100g'?: number
-  'energy-kcal'?: number
-  proteins_100g?: number
-  fat_100g?: number
-  carbohydrates_100g?: number
-}
-interface OffProduct {
-  product_name_ru?: string
-  product_name?: string
-  brands?: string
-  nutriments?: OffNutriments
-}
-interface OffResponse { status?: number; product?: OffProduct }
+// Stale-after: refetch from Gemini if cache is older than this.
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30 // 30 days
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -27,7 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Некорректный штрих-код' }, { status: 400 })
   }
 
-  // Level 1: local DB (this venue's catalog or system refs)
+  // Level 1: local IngredientRef (this venue or system)
   const localRef = await db.ingredientRef.findFirst({
     where: {
       barcode: code,
@@ -38,39 +27,89 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ source: 'local', ref: localRef })
   }
 
-  // Level 2: Open Food Facts
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`, {
-      headers: { 'User-Agent': 'Plate-NutriMenu/1.0 (yurchik.yuri.ru@gmail.com)' },
-      // Cache for a few hours on the edge — barcode → product is stable
-      next: { revalidate: 60 * 60 * 6 },
-    })
-    if (res.ok) {
-      const data = (await res.json()) as OffResponse
-      if (data.status === 1 && data.product) {
-        const p = data.product
-        const n = p.nutriments ?? {}
-        const name = (p.product_name_ru || p.product_name || '').trim()
-        const brand = (p.brands || '').split(',')[0]?.trim()
-        return NextResponse.json({
-          source: 'off',
-          barcode: code,
-          prefill: {
-            name: brand && name && !name.toLowerCase().includes(brand.toLowerCase())
-              ? `${name} (${brand})`
-              : name,
-            caloriesPer100: Math.round(n['energy-kcal_100g'] ?? n['energy-kcal'] ?? 0),
-            proteinPer100: Math.round((n.proteins_100g ?? 0) * 10) / 10,
-            fatPer100: Math.round((n.fat_100g ?? 0) * 10) / 10,
-            carbsPer100: Math.round((n.carbohydrates_100g ?? 0) * 10) / 10,
-          },
-        })
-      }
+  // Level 2: BarcodeCache (shared across venues)
+  const cached = await db.barcodeCache.findUnique({ where: { barcode: code } })
+  if (cached && Date.now() - cached.fetchedAt.getTime() < CACHE_TTL_MS) {
+    if (!cached.found) {
+      return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
     }
-  } catch (err) {
-    console.error('[lookup-barcode] OFF fetch failed:', err)
+    return NextResponse.json({
+      source: 'cache',
+      barcode: code,
+      confidence: cached.confidence,
+      prefill: prefillFromCache(cached),
+    })
   }
 
-  // Level 3: not found — client should open empty form with this barcode
-  return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
+  // Level 3: Gemini with Google Search grounding
+  const result = await lookupBarcodeViaGemini(code)
+
+  // Save into cache (positive or negative)
+  await db.barcodeCache.upsert({
+    where: { barcode: code },
+    update: {
+      name: result.name ?? null,
+      brand: result.brand ?? null,
+      calories: result.calories ?? null,
+      protein: result.protein ?? null,
+      fat: result.fat ?? null,
+      carbs: result.carbs ?? null,
+      confidence: result.confidence,
+      source: 'gemini',
+      found: result.found,
+      fetchedAt: new Date(),
+    },
+    create: {
+      barcode: code,
+      name: result.name ?? null,
+      brand: result.brand ?? null,
+      calories: result.calories ?? null,
+      protein: result.protein ?? null,
+      fat: result.fat ?? null,
+      carbs: result.carbs ?? null,
+      confidence: result.confidence,
+      source: 'gemini',
+      found: result.found,
+    },
+  })
+
+  if (!result.found) {
+    return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
+  }
+
+  return NextResponse.json({
+    source: 'gemini',
+    barcode: code,
+    confidence: result.confidence,
+    prefill: {
+      name: result.brand && result.name && !result.name.toLowerCase().includes(result.brand.toLowerCase())
+        ? `${result.name} (${result.brand})`
+        : (result.name ?? ''),
+      caloriesPer100: Math.round(result.calories ?? 0),
+      proteinPer100: Math.round((result.protein ?? 0) * 10) / 10,
+      fatPer100: Math.round((result.fat ?? 0) * 10) / 10,
+      carbsPer100: Math.round((result.carbs ?? 0) * 10) / 10,
+    },
+  })
+}
+
+function prefillFromCache(c: {
+  name: string | null
+  brand: string | null
+  calories: number | null
+  protein: number | null
+  fat: number | null
+  carbs: number | null
+}) {
+  const name = c.name ?? ''
+  const brand = c.brand ?? ''
+  return {
+    name: brand && name && !name.toLowerCase().includes(brand.toLowerCase())
+      ? `${name} (${brand})`
+      : name,
+    caloriesPer100: Math.round(c.calories ?? 0),
+    proteinPer100: Math.round((c.protein ?? 0) * 10) / 10,
+    fatPer100: Math.round((c.fat ?? 0) * 10) / 10,
+    carbsPer100: Math.round((c.carbs ?? 0) * 10) / 10,
+  }
 }

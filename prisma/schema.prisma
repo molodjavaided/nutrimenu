@@ -211,6 +211,22 @@ model MenuView {
   @@index([venueId])
 }
 
+model BarcodeCache {
+  barcode    String   @id
+  name       String?
+  brand      String?
+  calories   Float?
+  protein    Float?
+  fat        Float?
+  carbs      Float?
+  confidence String   @default("medium") // low / medium / high
+  source     String   @default("gemini") // gemini / off / manual
+  found      Boolean  @default(true)
+  fetchedAt  DateTime @default(now())
+
+  @@index([fetchedAt])
+}
+
 model IngredientRef {
   id             String  @id @default(cuid())
   venueId        String?

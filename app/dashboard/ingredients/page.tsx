@@ -153,7 +153,7 @@ export default function IngredientsPage() {
       }
 
       // Level 2/3: Gemini grounded search (or cache hit) — prefill new-ingredient modal
-      if (res.ok && (data.source === 'gemini' || data.source === 'cache') && data.prefill) {
+      if (res.ok && (data.source === 'gemini' || data.source === 'perplexity' || data.source === 'cache') && data.prefill) {
         setBarcodePreFill({
           name: (data.prefill.name ?? '').trim(),
           unit: 'г',

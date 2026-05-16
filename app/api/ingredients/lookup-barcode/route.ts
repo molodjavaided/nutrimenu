@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getEffectiveVenueId, getSession } from '@/lib/auth'
 import { lookupBarcodeViaGemini } from '@/lib/gemini-barcode'
+import { lookupBarcodeViaPerplexity } from '@/lib/perplexity-barcode'
 
 // Positive results are stable — cache for a month. Negative results may be
 // transient (Gemini missed it once), so re-try them after a day.
@@ -45,8 +46,19 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Level 3: Gemini with Google Search grounding
-  const result = await lookupBarcodeViaGemini(code)
+  // Level 3a: Gemini with Google Search grounding
+  let result = await lookupBarcodeViaGemini(code)
+  let usedSource: 'gemini' | 'perplexity' = 'gemini'
+
+  // Level 3b: fallback to Perplexity Sonar if Gemini missed.
+  // Different search index — sometimes catches RU products Gemini misses.
+  if (!result.found) {
+    const sonar = await lookupBarcodeViaPerplexity(code)
+    if (sonar.found) {
+      result = sonar
+      usedSource = 'perplexity'
+    }
+  }
 
   // Save into cache (positive or negative)
   await db.barcodeCache.upsert({
@@ -60,7 +72,7 @@ export async function GET(req: NextRequest) {
       carbs: result.carbs ?? null,
       ingredients: result.ingredients ?? null,
       confidence: result.confidence,
-      source: 'gemini',
+      source: usedSource,
       found: result.found,
       fetchedAt: new Date(),
     },
@@ -74,7 +86,7 @@ export async function GET(req: NextRequest) {
       carbs: result.carbs ?? null,
       ingredients: result.ingredients ?? null,
       confidence: result.confidence,
-      source: 'gemini',
+      source: usedSource,
       found: result.found,
     },
   })
@@ -84,7 +96,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    source: 'gemini',
+    source: usedSource,
     barcode: code,
     confidence: result.confidence,
     prefill: {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
+import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -129,12 +130,15 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const [pickerOpen, setPickerOpen] = useState(false)
   const [variantPickerTarget, setVariantPickerTarget] = useState<{ groupId: string; optionId: string } | null>(null)
 
-  // composition
-  const [ingredients, setIngredients] = useState<IngredientItem[]>([])
-  const [hasMultipleSizes, setHasMultipleSizes] = useState(false)
-  const [sizes, setSizes] = useState<Size[]>([{ id: 'default', name: '', unit: 'г' }])
-  const [amounts, setAmounts] = useState<AmountCell[]>([])
-  const [manualNutri, setManualNutri] = useState<Record<string, { calories: number; protein: number; fat: number; carbs: number; isManual: boolean }>>({})
+  // composition (typed reducer — replaces 5 useState calls)
+  const [composition, dispatch] = useReducer(compositionReducer, initialCompositionState)
+  const { ingredients, sizes, amounts, manualNutri, hasMultipleSizes } = composition
+
+  const setIngredients = useCallback((arr: IngredientItem[]) => dispatch({ type: 'SET_INGREDIENTS', ingredients: arr }), [])
+  const setSizes = useCallback((arr: Size[]) => dispatch({ type: 'SET_SIZES', sizes: arr }), [])
+  const setAmounts = useCallback((arr: AmountCell[]) => dispatch({ type: 'SET_AMOUNTS', amounts: arr }), [])
+  const setManualNutri = useCallback((m: ManualNutri) => dispatch({ type: 'SET_MANUAL_NUTRI', manualNutri: m }), [])
+  const setHasMultipleSizes = useCallback((v: boolean) => dispatch({ type: 'SET_HAS_MULTIPLE_SIZES', value: v }), [])
 
   // inline category create
   const [addingCategory, setAddingCategory] = useState(false)
@@ -737,96 +741,38 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     router.push('/dashboard/menu')
   }, [name, categoryId, description, photo, photoPosition, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, allergens, isEdit, itemId, router, calculateNutriForSize])
 
-  // ── composition handlers ─────────────────────────────────────────────────
+  // ── composition handlers (all via reducer dispatch) ──────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {
-    setIngredientRefs(prevRefs => {
-      const ref = prevRefs.find(r => r.id === ingredientRefId)
-      if (!ref) return prevRefs
-      const newIngredient: IngredientItem = {
-        id: crypto.randomUUID(),
-        ingredientRefId,
-        name: ref.name,
-        unit: ref.unit,
-      }
-      setIngredients(prev => [...prev, newIngredient])
-      return prevRefs
-    })
-  }, [])
+    const ref = ingredientRefs.find(r => r.id === ingredientRefId)
+    if (!ref) return
+    const ingredient: IngredientItem = {
+      id: crypto.randomUUID(),
+      ingredientRefId,
+      name: ref.name,
+      unit: ref.unit,
+    }
+    dispatch({ type: 'ADD_INGREDIENT', ingredient })
+  }, [ingredientRefs])
 
   const removeIngredient = useCallback((ingredientId: string) => {
-    setIngredients(prev => prev.filter(i => i.id !== ingredientId))
-    setAmounts(prev => prev.filter(a => a.ingredientId !== ingredientId))
+    dispatch({ type: 'REMOVE_INGREDIENT', ingredientId })
   }, [])
 
-  const addSize = useCallback(() => {
-    setSizes(prev => {
-      if (prev.length >= MAX_SIZES) {
-        alert(`Максимум ${MAX_SIZES} размеров`)
-        return prev
-      }
-      return [...prev, { id: crypto.randomUUID(), name: '', unit: 'г' }]
-    })
-  }, [])
-
-  const updateSizeName = useCallback((sizeId: string, newName: string) => {
-    setSizes(prev => prev.map(s => s.id === sizeId ? { ...s, name: newName } : s))
-  }, [])
-
-  const updateSizeUnit = useCallback((sizeId: string, newUnit: 'г' | 'мл') => {
-    setSizes(prev => prev.map(s => s.id === sizeId ? { ...s, unit: newUnit } : s))
-  }, [])
-
-  const updateSizePrice = useCallback((sizeId: string, newPrice: number | undefined) => {
-    setSizes(prev => prev.map(s => s.id === sizeId ? { ...s, price: newPrice } : s))
-  }, [])
-
-  const applySizePreset = useCallback((preset: { name: string; unit: 'г' | 'мл' }[]) => {
-    setSizes(preset.map(p => ({ id: crypto.randomUUID(), name: p.name, unit: p.unit })))
-    setAmounts([])
-    setManualNutri({})
-  }, [])
-
-  const removeSize = useCallback((sizeId: string) => {
-    setSizes(prev => {
-      if (prev.length <= 1) return prev
-      return prev.filter(s => s.id !== sizeId)
-    })
-    setAmounts(prev => prev.filter(a => a.sizeId !== sizeId))
-    setManualNutri(prev => {
-      const newManual = { ...prev }
-      delete newManual[sizeId]
-      return newManual
-    })
-  }, [])
-
-  const updateAmount = useCallback((ingredientId: string, sizeId: string, amount: number) => {
-    setAmounts(prev => {
-      const existing = prev.find(a => a.ingredientId === ingredientId && a.sizeId === sizeId)
-      if (existing) {
-        return prev.map(a =>
-          a.ingredientId === ingredientId && a.sizeId === sizeId
-            ? { ...a, amount }
-            : a
-        )
-      }
-      return [...prev, { ingredientId, sizeId, amount }]
-    })
-    setManualNutri(prev => {
-      if (prev[sizeId]?.isManual) {
-        const newManual = { ...prev }
-        delete newManual[sizeId]
-        return newManual
-      }
-      return prev
-    })
-  }, [])
-
-  const updateManualNutri = useCallback((sizeId: string, field: string, value: number) => {
-    setManualNutri(prev => {
-      const current = prev[sizeId] || { calories: 0, protein: 0, fat: 0, carbs: 0, isManual: true }
-      return { ...prev, [sizeId]: { ...current, [field]: value, isManual: true } }
-    })
-  }, [])
+  const addSize = useCallback(() => dispatch({ type: 'ADD_SIZE' }), [])
+  const updateSizeName = useCallback((sizeId: string, name: string) =>
+    dispatch({ type: 'UPDATE_SIZE_NAME', sizeId, name }), [])
+  const updateSizeUnit = useCallback((sizeId: string, unit: 'г' | 'мл') =>
+    dispatch({ type: 'UPDATE_SIZE_UNIT', sizeId, unit }), [])
+  const updateSizePrice = useCallback((sizeId: string, price: number | undefined) =>
+    dispatch({ type: 'UPDATE_SIZE_PRICE', sizeId, price }), [])
+  const applySizePreset = useCallback((preset: { name: string; unit: 'г' | 'мл' }[]) =>
+    dispatch({ type: 'APPLY_SIZE_PRESET', preset }), [])
+  const removeSize = useCallback((sizeId: string) =>
+    dispatch({ type: 'REMOVE_SIZE', sizeId }), [])
+  const updateAmount = useCallback((ingredientId: string, sizeId: string, amount: number) =>
+    dispatch({ type: 'UPDATE_AMOUNT', ingredientId, sizeId, amount }), [])
+  const updateManualNutri = useCallback((sizeId: string, field: string, value: number) =>
+    dispatch({ type: 'UPDATE_MANUAL_NUTRI', sizeId, field, value }), [])
 
   const getAmountFromComposition = useCallback((ingredientRefId: string, sizeId: string): number => {
     const ingredient = ingredients.find(i => i.ingredientRefId === ingredientRefId)

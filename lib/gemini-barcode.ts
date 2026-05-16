@@ -71,6 +71,10 @@ export async function lookupBarcodeViaGemini(code: string): Promise<BarcodeLooku
     generationConfig: {
       temperature: 0.2,
       maxOutputTokens: 2000,
+      // Gemini 2.5 Flash has thinking enabled by default — it can burn the
+      // entire output budget on hidden reasoning and return an empty text part.
+      // Disable thinking so all tokens go to the visible response.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   }
 
@@ -91,12 +95,22 @@ export async function lookupBarcodeViaGemini(code: string): Promise<BarcodeLooku
   }
 
   type GeminiResponse = {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> }
+      finishReason?: string
+    }>
+    usageMetadata?: { totalTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number }
+    promptFeedback?: { blockReason?: string }
   }
   const data = (await res.json().catch(() => null)) as GeminiResponse | null
   const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
   if (!text) {
-    console.warn('[gemini-barcode] empty response for', code)
+    console.warn('[gemini-barcode] empty response for', code, JSON.stringify({
+      finishReason: data?.candidates?.[0]?.finishReason,
+      blockReason: data?.promptFeedback?.blockReason,
+      usage: data?.usageMetadata,
+      partsCount: data?.candidates?.[0]?.content?.parts?.length ?? 0,
+    }))
     return { found: false, confidence: 'low' }
   }
 

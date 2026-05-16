@@ -16,20 +16,22 @@ export interface BarcodeLookupResult {
   protein?: number
   fat?: number
   carbs?: number
+  ingredients?: string
   confidence: 'low' | 'medium' | 'high'
 }
 
-const PROMPT = (code: string) => `Найди продукт со штрих-кодом ${code} в интернете (Перекрёсток, Лента, Магнит, ozon, Wildberries, Edadeal и т.п.). Если нашёл — верни строго JSON одной строкой, без markdown:
+const PROMPT = (code: string) => `Найди продукт со штрих-кодом ${code} в интернете. Верни строго JSON одной строкой, без markdown и пояснений.
 
-{"found": true, "name": "Название как на упаковке", "brand": "Бренд", "calories": число_ккал_на_100г, "protein": число_белков_на_100г, "fat": число_жиров_на_100г, "carbs": число_углеводов_на_100г, "confidence": "high"|"medium"|"low"}
+Если нашёл:
+{"found": true, "product_info": {"name": "Название без бренда", "brand": "Бренд"}, "nutritional_value_per_100g": {"calories": число_ккал, "protein": число_г_белков, "fat": число_г_жиров, "carbs": число_г_углеводов}, "ingredients": "состав как на упаковке через запятую", "confidence": "high"|"medium"|"low"}
+
+Если не нашёл точных данных:
+{"found": false}
 
 Правила:
-- name — без бренда (бренд отдельно).
-- КБЖУ — на 100 г/мл продукта (если есть только на порцию — пересчитай).
-- confidence: "high" если нашёл точные данные с упаковки; "medium" если из карточки магазина без явного КБЖУ; "low" если оценка по аналогам.
-- Если продукт не найден, верни {"found": false}.
-
-Без пояснений, только JSON.`
+- КБЖУ — строго на 100 г/мл (если на упаковке порция — пересчитай).
+- confidence: "high" — данные с упаковки/официального сайта производителя; "medium" — карточка магазина с явным КБЖУ; "low" — частичные данные.
+- Не выдумывай и не оценивай по аналогам. Нет точных данных → found: false.`
 
 function stripJsonFromText(text: string): string | null {
   // Gemini sometimes wraps JSON in ```json ... ```
@@ -67,8 +69,8 @@ export async function lookupBarcodeViaGemini(code: string): Promise<BarcodeLooku
     contents: [{ parts: [{ text: PROMPT(code) }] }],
     tools: [{ google_search: {} }],
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 600,
+      temperature: 0.2,
+      maxOutputTokens: 2000,
     },
   }
 
@@ -94,36 +96,49 @@ export async function lookupBarcodeViaGemini(code: string): Promise<BarcodeLooku
   const data = (await res.json().catch(() => null)) as GeminiResponse | null
   const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
   if (!text) {
+    console.warn('[gemini-barcode] empty response for', code)
     return { found: false, confidence: 'low' }
   }
 
   const jsonStr = stripJsonFromText(text)
-  if (!jsonStr) return { found: false, confidence: 'low' }
+  if (!jsonStr) {
+    console.warn('[gemini-barcode] no JSON in response for', code, '— text:', text.slice(0, 500))
+    return { found: false, confidence: 'low' }
+  }
 
   let parsed: Record<string, unknown>
   try {
     parsed = JSON.parse(jsonStr)
   } catch {
+    console.warn('[gemini-barcode] JSON parse failed for', code, '— jsonStr:', jsonStr.slice(0, 500))
     return { found: false, confidence: 'low' }
   }
 
   if (parsed.found === false) {
+    console.info('[gemini-barcode] explicitly not found for', code)
     return { found: false, confidence: 'low' }
   }
 
-  const name = typeof parsed.name === 'string' ? parsed.name.trim() : ''
+  const productInfo = (parsed.product_info ?? {}) as Record<string, unknown>
+  const nutri = (parsed.nutritional_value_per_100g ?? {}) as Record<string, unknown>
+
+  const name = typeof productInfo.name === 'string' ? productInfo.name.trim() : ''
   if (!name) {
+    console.warn('[gemini-barcode] missing product_info.name for', code, '— parsed:', parsed)
     return { found: false, confidence: 'low' }
   }
+
+  const ingredients = typeof parsed.ingredients === 'string' ? parsed.ingredients.trim() : ''
 
   return {
     found: true,
     name,
-    brand: typeof parsed.brand === 'string' ? parsed.brand.trim() || undefined : undefined,
-    calories: coerceNumber(parsed.calories),
-    protein: coerceNumber(parsed.protein),
-    fat: coerceNumber(parsed.fat),
-    carbs: coerceNumber(parsed.carbs),
+    brand: typeof productInfo.brand === 'string' ? productInfo.brand.trim() || undefined : undefined,
+    calories: coerceNumber(nutri.calories),
+    protein: coerceNumber(nutri.protein),
+    fat: coerceNumber(nutri.fat),
+    carbs: coerceNumber(nutri.carbs),
+    ingredients: ingredients || undefined,
     confidence: normalizeConfidence(parsed.confidence),
   }
 }

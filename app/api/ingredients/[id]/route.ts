@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       category: body.category ?? null,
       type: body.type,
       composition: body.composition ?? null,
+      compositionText: body.compositionText ?? null,
       instructions: body.instructions ?? null,
       barcode: body.barcode?.trim() || null,
     },

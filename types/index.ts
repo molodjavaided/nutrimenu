@@ -186,6 +186,7 @@ export interface IngredientRef {
   // Composite ingredient (sub-recipe) fields
   type?: 'mono' | 'composite'
   composition?: CompositionRow[]
+  compositionText?: string
   instructions?: string
   barcode?: string
 }

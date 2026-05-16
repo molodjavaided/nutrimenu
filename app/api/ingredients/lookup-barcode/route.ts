@@ -3,8 +3,10 @@ import { db } from '@/lib/db'
 import { getEffectiveVenueId, getSession } from '@/lib/auth'
 import { lookupBarcodeViaGemini } from '@/lib/gemini-barcode'
 
-// Stale-after: refetch from Gemini if cache is older than this.
-const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 30 // 30 days
+// Positive results are stable — cache for a month. Negative results may be
+// transient (Gemini missed it once), so re-try them after a day.
+const CACHE_TTL_POSITIVE_MS = 1000 * 60 * 60 * 24 * 30
+const CACHE_TTL_NEGATIVE_MS = 1000 * 60 * 60 * 24
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -12,6 +14,7 @@ export async function GET(req: NextRequest) {
   const venueId = getEffectiveVenueId(session)
 
   const code = (req.nextUrl.searchParams.get('code') ?? '').trim()
+  const force = req.nextUrl.searchParams.get('force') === '1'
   if (!code || !/^[0-9]{6,14}$/.test(code)) {
     return NextResponse.json({ error: 'Некорректный штрих-код' }, { status: 400 })
   }
@@ -27,9 +30,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ source: 'local', ref: localRef })
   }
 
-  // Level 2: BarcodeCache (shared across venues)
-  const cached = await db.barcodeCache.findUnique({ where: { barcode: code } })
-  if (cached && Date.now() - cached.fetchedAt.getTime() < CACHE_TTL_MS) {
+  // Level 2: BarcodeCache (shared across venues). Skip when force=1.
+  const cached = force ? null : await db.barcodeCache.findUnique({ where: { barcode: code } })
+  const ttl = cached?.found ? CACHE_TTL_POSITIVE_MS : CACHE_TTL_NEGATIVE_MS
+  if (cached && Date.now() - cached.fetchedAt.getTime() < ttl) {
     if (!cached.found) {
       return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
     }
@@ -54,6 +58,7 @@ export async function GET(req: NextRequest) {
       protein: result.protein ?? null,
       fat: result.fat ?? null,
       carbs: result.carbs ?? null,
+      ingredients: result.ingredients ?? null,
       confidence: result.confidence,
       source: 'gemini',
       found: result.found,
@@ -67,6 +72,7 @@ export async function GET(req: NextRequest) {
       protein: result.protein ?? null,
       fat: result.fat ?? null,
       carbs: result.carbs ?? null,
+      ingredients: result.ingredients ?? null,
       confidence: result.confidence,
       source: 'gemini',
       found: result.found,
@@ -89,6 +95,7 @@ export async function GET(req: NextRequest) {
       proteinPer100: Math.round((result.protein ?? 0) * 10) / 10,
       fatPer100: Math.round((result.fat ?? 0) * 10) / 10,
       carbsPer100: Math.round((result.carbs ?? 0) * 10) / 10,
+      compositionText: result.ingredients ?? '',
     },
   })
 }
@@ -100,6 +107,7 @@ function prefillFromCache(c: {
   protein: number | null
   fat: number | null
   carbs: number | null
+  ingredients: string | null
 }) {
   const name = c.name ?? ''
   const brand = c.brand ?? ''
@@ -111,5 +119,6 @@ function prefillFromCache(c: {
     proteinPer100: Math.round((c.protein ?? 0) * 10) / 10,
     fatPer100: Math.round((c.fat ?? 0) * 10) / 10,
     carbsPer100: Math.round((c.carbs ?? 0) * 10) / 10,
+    ingredients: c.ingredients ?? '',
   }
 }

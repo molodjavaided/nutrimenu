@@ -164,6 +164,7 @@ export default function IngredientsPage() {
           category: 'Прочее',
           type: 'mono',
           barcode: code,
+          compositionText: data.prefill.compositionText || undefined,
         })
         setBarcodeStatus('idle')
         setBarcodeMode(false)

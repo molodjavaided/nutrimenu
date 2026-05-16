@@ -46,6 +46,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
   // Composite fields
   const [composition, setComposition] = useState<CompositionRow[]>(editing?.composition ?? [])
   const [instructions, setInstructions] = useState(editing?.instructions ?? '')
+  const [compositionText, setCompositionText] = useState(editing?.compositionText ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
 
   // ── Derive existing categories for selector ──
@@ -134,6 +135,8 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       ...(editing?.barcode ? { barcode: editing.barcode } : {}),
     }
 
+    const trimmedComposition = compositionText.trim() || undefined
+
     if (mode === 'composite') {
       const n = computedNutri()
       onSave({
@@ -143,6 +146,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
         fatPer100:      n.fat,
         carbsPer100:    n.car,
         composition,
+        compositionText: trimmedComposition,
         instructions: instructions.trim() || undefined,
       })
     } else {
@@ -152,6 +156,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
         proteinPer100:  protein,
         fatPer100:      fat,
         carbsPer100:    carbs,
+        compositionText: trimmedComposition,
       })
     }
   }
@@ -324,6 +329,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
             {/* ══ MONO: manual КБЖУ ══ */}
             {mode === 'mono' && (
+              <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Ккал / 100 г</label>
@@ -350,6 +356,20 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }} />
                 </div>
               </div>
+
+              {/* Состав с упаковки (текст) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Состав</label>
+                <textarea
+                  value={compositionText}
+                  onChange={e => setCompositionText(e.target.value)}
+                  placeholder="молоко нормализованное, сахар, закваска..."
+                  rows={3}
+                  className="px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)', lineHeight: 1.5 }}
+                />
+              </div>
+              </>
             )}
 
             {/* ══ COMPOSITE: composition builder ══ */}

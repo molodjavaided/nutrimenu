@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       category: body.category ?? null,
       type: body.type ?? 'mono',
       composition: body.composition ?? null,
+      compositionText: body.compositionText ?? null,
       instructions: body.instructions ?? null,
       barcode: body.barcode?.trim() || null,
     },

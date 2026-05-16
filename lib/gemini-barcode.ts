@@ -20,18 +20,35 @@ export interface BarcodeLookupResult {
   confidence: 'low' | 'medium' | 'high'
 }
 
-const PROMPT = (code: string) => `Найди продукт со штрих-кодом ${code} в интернете. Верни строго JSON одной строкой, без markdown и пояснений.
+const PROMPT = (code: string) => {
+  const prefix = code.slice(0, 3)
+  const isRussian = /^46[0-9]$/.test(prefix)
+  const searchHint = isRussian
+    ? `Префикс ${prefix} = Россия. ОБЯЗАТЕЛЬНО используй google_search с КИРИЛЛИЧЕСКИМИ запросами:
+  • "штрих код ${code}"
+  • "${code} состав"
+  • "${code} купить ozon"
+  • "${code} калорийность"
+Целевые сайты: ozon.ru, wildberries.ru, market.yandex.ru, vprok.ru, perekrestok.ru, lenta.com, vkusvill.ru, magnit.ru, auchan.ru, goodsmatrix.ru, barcode-list.ru, ean13.ru. НЕ ищи на английском — для российских префиксов это бесполезно.`
+    : `Используй google_search на языке, подходящем под регион префикса ${prefix}.`
+
+  return `Найди продукт со штрих-кодом ${code}.
+
+${searchHint}
+
+Верни строго JSON одной строкой, без markdown и пояснений.
 
 Если нашёл:
 {"found": true, "product_info": {"name": "Название без бренда", "brand": "Бренд"}, "nutritional_value_per_100g": {"calories": число_ккал, "protein": число_г_белков, "fat": число_г_жиров, "carbs": число_г_углеводов}, "ingredients": "состав как на упаковке через запятую", "confidence": "high"|"medium"|"low"}
 
-Если не нашёл точных данных:
+Если не нашёл:
 {"found": false}
 
 Правила:
-- КБЖУ — строго на 100 г/мл (если на упаковке порция — пересчитай).
-- confidence: "high" — данные с упаковки/официального сайта производителя; "medium" — карточка магазина с явным КБЖУ; "low" — частичные данные.
-- Не выдумывай и не оценивай по аналогам. Нет точных данных → found: false.`
+- КБЖУ — строго на 100 г/мл (если на упаковке указана порция — пересчитай на 100).
+- confidence: "high" — данные с упаковки/официального сайта; "medium" — карточка магазина; "low" — частичные данные.
+- Не выдумывай и не оценивай по аналогам. Нет данных → found: false.`
+}
 
 function stripJsonFromText(text: string): string | null {
   // Gemini sometimes wraps JSON in ```json ... ```

@@ -162,11 +162,23 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const quickCarbs = values.quickCarbs
   const setQuickCarbs = makePlainSetter('quickCarbs')
 
-  // variants
-  const [variantGroups, setVariantGroups] = useState<VariantOption[]>([])
+  // variants (in RHF)
+  const variantGroups = values.variantGroups as VariantOption[]
+  const setVariantGroups = useCallback((arr: VariantOption[] | ((prev: VariantOption[]) => VariantOption[])) => {
+    const current = form.getValues('variantGroups') as VariantOption[]
+    const next = typeof arr === 'function' ? arr(current) : arr
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    form.setValue('variantGroups', next as any, { shouldDirty: true })
+  }, [form])
 
-  // addons
-  const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([])
+  // addons (in RHF)
+  const addonGroups = values.addonGroups as AddonGroup[]
+  const setAddonGroups = useCallback((arr: AddonGroup[] | ((prev: AddonGroup[]) => AddonGroup[])) => {
+    const current = form.getValues('addonGroups') as AddonGroup[]
+    const next = typeof arr === 'function' ? arr(current) : arr
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    form.setValue('addonGroups', next as any, { shouldDirty: true })
+  }, [form])
   const [addonPickerTarget, setAddonPickerTarget] = useState<{ groupId: string; addonId: string } | null>(null)
 
   // allergens (in RHF)

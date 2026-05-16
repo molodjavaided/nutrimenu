@@ -8,6 +8,7 @@ import { systemLibraries } from '@/lib/mock-data'
 const MY_LIBRARY_ID = 'my-library'
 import { SearchInput } from '@/components/ui/SearchInput'
 import IngredientFormModal from '@/components/dashboard/IngredientFormModal'
+import BarcodeScannerOverlay from '@/components/dashboard/BarcodeScannerOverlay'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
 
 const PRESET_CATEGORIES = ['Молоко', 'Крупа', 'Мясо и рыба', 'Овощи', 'Фрукты', 'Соусы', 'Выпечка', 'Прочее']
@@ -26,6 +27,7 @@ export default function IngredientsPage() {
   const [barcodeMode, setBarcodeMode] = useState(false)
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeStatus, setBarcodeStatus] = useState<BarcodeStatus>('idle')
+  const [scannerOpen, setScannerOpen] = useState(false)
   // Pre-filled data from barcode scan — opens the mono form modal
   const [barcodePreFill, setBarcodePreFill] = useState<Omit<IngredientRef, 'id'> | null>(null)
 
@@ -132,37 +134,66 @@ export default function IngredientsPage() {
     }
   }
 
-  async function handleBarcodeLookup() {
-    const code = barcodeInput.trim()
+  async function handleBarcodeLookup(input?: string) {
+    const code = (input ?? barcodeInput).trim()
     if (!code) return
     setBarcodeStatus('loading')
     try {
-      const res = await fetch(
-        `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`
-      )
+      const res = await fetch(`/api/ingredients/lookup-barcode?code=${encodeURIComponent(code)}`)
       const data = await res.json()
-      if (data.status !== 1 || !data.product) {
-        setBarcodeStatus('not_found')
+
+      // Level 1: local DB — open the existing ingredient for editing
+      if (res.ok && data.source === 'local' && data.ref) {
+        setBarcodeStatus('idle')
+        setBarcodeMode(false)
+        setBarcodeInput('')
+        toast.success('Уже в библиотеке — открываем для редактирования')
+        setModalTarget(data.ref as IngredientRef)
         return
       }
-      const p = data.product
-      const n = p.nutriments ?? {}
-      const name: string = p.product_name_ru || p.product_name || p.abbreviated_product_name || ''
-      setBarcodePreFill({
-        name: name.trim(),
-        unit: 'г',
-        caloriesPer100: Math.round(n['energy-kcal_100g'] ?? n['energy_100g'] ?? 0),
-        proteinPer100: Math.round((n['proteins_100g'] ?? 0) * 10) / 10,
-        fatPer100: Math.round((n['fat_100g'] ?? 0) * 10) / 10,
-        carbsPer100: Math.round((n['carbohydrates_100g'] ?? 0) * 10) / 10,
-        category: 'Прочее',
-        type: 'mono',
-      })
-      setBarcodeStatus('idle')
-      setBarcodeMode(false)
-      setBarcodeInput('')
-      // Open modal with pre-filled data as a new ingredient
-      setModalTarget(null)
+
+      // Level 2: Open Food Facts — prefill new-ingredient modal
+      if (res.ok && data.source === 'off' && data.prefill) {
+        setBarcodePreFill({
+          name: (data.prefill.name ?? '').trim(),
+          unit: 'г',
+          caloriesPer100: data.prefill.caloriesPer100 ?? 0,
+          proteinPer100: data.prefill.proteinPer100 ?? 0,
+          fatPer100: data.prefill.fatPer100 ?? 0,
+          carbsPer100: data.prefill.carbsPer100 ?? 0,
+          category: 'Прочее',
+          type: 'mono',
+          barcode: code,
+        })
+        setBarcodeStatus('idle')
+        setBarcodeMode(false)
+        setBarcodeInput('')
+        setModalTarget(null)
+        return
+      }
+
+      // Level 3: not found — open empty modal with barcode pinned
+      if (res.status === 404 || data.source === 'manual') {
+        setBarcodePreFill({
+          name: '',
+          unit: 'г',
+          caloriesPer100: 0,
+          proteinPer100: 0,
+          fatPer100: 0,
+          carbsPer100: 0,
+          category: 'Прочее',
+          type: 'mono',
+          barcode: code,
+        })
+        setBarcodeStatus('idle')
+        setBarcodeMode(false)
+        setBarcodeInput('')
+        setModalTarget(null)
+        toast.info(`Код ${code} не найден — заполните вручную, штрих-код сохранится`)
+        return
+      }
+
+      setBarcodeStatus('not_found')
     } catch {
       setBarcodeStatus('error')
     }
@@ -330,7 +361,16 @@ export default function IngredientsPage() {
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button
-                    onClick={handleBarcodeLookup}
+                    onClick={() => setScannerOpen(true)}
+                    className="h-11 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                    style={{ background: '#FEFEF2', color: 'var(--color-text-primary)', border: '0.5px solid rgba(176,166,223,0.5)' }}
+                    title="Сканировать камерой"
+                  >
+                    📷
+                    <span className="hidden sm:inline">Камера</span>
+                  </button>
+                  <button
+                    onClick={() => handleBarcodeLookup()}
                     disabled={!barcodeInput.trim() || barcodeStatus === 'loading'}
                     className="flex-1 sm:flex-none h-11 px-5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
                     style={{
@@ -583,6 +623,17 @@ export default function IngredientsPage() {
             </button>
           </div>
         </>
+      )}
+
+      {/* ── Barcode scanner overlay ── */}
+      {scannerOpen && (
+        <BarcodeScannerOverlay
+          onDetect={code => {
+            setScannerOpen(false)
+            void handleBarcodeLookup(code)
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
 
       {/* ── Ingredient form modal ── */}

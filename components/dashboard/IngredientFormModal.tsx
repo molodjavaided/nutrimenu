@@ -131,6 +131,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       category,
       isSystem: false as const,
       type: mode,
+      ...(editing?.barcode ? { barcode: editing.barcode } : {}),
     }
 
     if (mode === 'composite') {

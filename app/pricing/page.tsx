@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import SiteNav from '@/components/landing/SiteNav'
 import DigitizationCounter from '@/components/pricing/DigitizationCounter'
+import DigitizationPriceText from '@/components/pricing/DigitizationPriceText'
+import { DigitizationProvider } from '@/components/pricing/DigitizationContext'
 import { getSession } from '@/lib/auth'
 
 export const metadata: Metadata = {
@@ -140,7 +142,8 @@ export default async function PricingPage() {
 
         {/* Tariff cards */}
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-20 w-full">
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const card = (
             <div
               key={plan.id}
               className="relative p-6 rounded-3xl flex flex-col transition-all hover:-translate-y-1"
@@ -171,7 +174,7 @@ export default async function PricingPage() {
                   fontSize: 'clamp(1.5rem, 3vw, 2rem)',
                   color: '#2C2950',
                 }}>
-                  {plan.price}
+                  {plan.id === 'digitization' ? <DigitizationPriceText /> : plan.price}
                 </span>
                 {plan.priceSub && (
                   <span className="text-sm" style={{ color: '#6B6490' }}>{plan.priceSub}</span>
@@ -229,7 +232,11 @@ export default async function PricingPage() {
                 </Link>
               )}
             </div>
-          ))}
+            )
+            return plan.id === 'digitization'
+              ? <DigitizationProvider key={plan.id}>{card}</DigitizationProvider>
+              : card
+          })}
         </section>
 
         {/* FAQ placeholder */}

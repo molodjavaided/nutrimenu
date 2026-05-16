@@ -527,10 +527,8 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     }
   }, [ingredients, amounts, ingredientRefs, manualNutri])
 
-  // ── save ─────────────────────────────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    if (!name || !categoryId) return
-
+  // ── save (validated via zod on submit) ───────────────────────────────────
+  const handleSave = form.handleSubmit(async () => {
     if (mode === 'quick') {
       const quickItem = {
         id: itemId ?? crypto.randomUUID(),
@@ -570,7 +568,10 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       return
     }
 
-    if (ingredients.length === 0) return
+    if (ingredients.length === 0) {
+      toast.error('Добавьте хотя бы один ингредиент')
+      return
+    }
 
     if (sizes.length > 1 && sizes.some(s => !s.name.trim())) {
       toast.error('Назовите все размеры (например, S/M/L)')
@@ -751,7 +752,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     router.push('/dashboard/menu')
-  }, [name, categoryId, description, photo, photoPosition, price, isAvailable, mode, quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs, ingredients, sizes, amounts, ingredientRefs, variantGroups, addonGroups, allergens, isEdit, itemId, router, calculateNutriForSize])
+  }, () => {
+    toast.error('Проверьте обязательные поля')
+  })
 
   // ── composition handlers (all via reducer dispatch) ──────────────────────
   const addIngredient = useCallback((ingredientRefId: string) => {

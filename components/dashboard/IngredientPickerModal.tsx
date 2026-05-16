@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { IngredientLibrary, IngredientRef } from '@/types'
 import { resolveIngredientPer100 } from '@/lib/utils'
+import BarcodeScannerOverlay from './BarcodeScannerOverlay'
 
 interface Props {
   libraries: IngredientLibrary[]
@@ -37,15 +38,10 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const [newBarcode, setNewBarcode] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Barcode scanner state
-  const [scanning, setScanning] = useState(false)
-  const [scanMode, setScanMode] = useState<'camera' | 'manual'>('camera')
+  // Barcode scanner — delegates to shared overlay
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [scanError, setScanError] = useState('')
   const [scanStatus, setScanStatus] = useState('')
-  const [manualCode, setManualCode] = useState('')
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const rafRef = useRef<number>(0)
 
   useEffect(() => { searchRef.current?.focus() }, [])
   useEffect(() => { setSearch(''); searchRef.current?.focus() }, [activeLibId])
@@ -65,67 +61,15 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
     grouped[cat].push(ing)
   }
 
-  const stopScanner = useCallback(() => {
-    cancelAnimationFrame(rafRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = null
-    setScanning(false)
-    setScanError('')
-    setScanStatus('')
-    setManualCode('')
-  }, [])
-
-  const startScanner = useCallback(async () => {
-    setScanError('')
-    setScanStatus('Открываем камеру…')
-    setScanMode('camera')
-    setScanning(true)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      if (!('BarcodeDetector' in window)) {
-        setScanError('Ваш браузер не поддерживает сканирование штрих-кодов. Введите штрих-код вручную.')
-        setScanStatus('')
-        return
-      }
-      // @ts-expect-error BarcodeDetector is experimental
-      const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] })
-      setScanStatus('Наведите камеру на штрих-код')
-
-      const tick = async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2) { rafRef.current = requestAnimationFrame(tick); return }
-        try {
-          const barcodes = await detector.detect(videoRef.current)
-          if (barcodes.length > 0) {
-            const code = barcodes[0].rawValue as string
-            stopScanner()
-            await lookupBarcode(code)
-            return
-          }
-        } catch { /* ignore frame errors */ }
-        rafRef.current = requestAnimationFrame(tick)
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    } catch {
-      setScanError('Не удалось получить доступ к камере')
-      setScanStatus('')
-    }
-  }, [stopScanner])
-
   async function lookupBarcode(code: string) {
     setScanStatus(`Ищем продукт (${code})…`)
-    setScanning(true)
+    setScanError('')
     try {
       const res = await fetch(`/api/ingredients/lookup-barcode?code=${encodeURIComponent(code)}`)
       const data = await res.json()
 
       // Level 1: local DB — instantly select and close
       if (res.ok && data.source === 'local' && data.ref) {
-        stopScanner()
         setCreating(false)
         onSelect(data.ref as IngredientRef)
         onClose()
@@ -150,7 +94,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
     } catch {
       setScanError('Ошибка при поиске продукта')
     } finally {
-      setScanning(false)
+      setScanStatus('')
     }
   }
 
@@ -238,7 +182,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                 />
                 <button
                   type="button"
-                  onClick={startScanner}
+                  onClick={() => setScannerOpen(true)}
                   title="Сканировать штрих-код"
                   className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-colors"
                   style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
@@ -449,126 +393,16 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           )}
         </div>
       </div>
-      {/* Barcode overlay */}
-      {scanning && (
-        <div
-          className="absolute inset-0 z-10 flex flex-col rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(22,20,50,0.97)' }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-3">
-            <p className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>Штрих-код</p>
-            <button
-              onClick={stopScanner}
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}
-            >✕</button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 px-5 pb-4">
-            {(['camera', 'manual'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setScanError('')
-                  setScanStatus('')
-                  setScanMode(tab)
-                  if (tab === 'camera' && !streamRef.current) {
-                    startScanner()
-                  }
-                  if (tab === 'manual') {
-                    cancelAnimationFrame(rafRef.current)
-                    streamRef.current?.getTracks().forEach(t => t.stop())
-                    streamRef.current = null
-                  }
-                }}
-                className="flex-1 py-2 rounded-xl text-sm font-medium transition-all"
-                style={{
-                  background: scanMode === tab ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.85)',
-                }}
-              >
-                {tab === 'camera' ? '📷 Камера' : '⌨️ Вручную'}
-              </button>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 flex flex-col items-center justify-center px-5 gap-5">
-            {scanStatus?.startsWith('Ищем') ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 animate-spin"
-                  style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }} />
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{scanStatus}</p>
-              </div>
-            ) : scanMode === 'camera' ? (
-              scanError ? (
-                <p className="text-sm text-center px-4" style={{ color: '#FCA5A5' }}>{scanError}</p>
-              ) : (
-                <div className="relative w-full max-w-xs">
-                  <video
-                    ref={videoRef}
-                    muted
-                    playsInline
-                    className="w-full rounded-xl"
-                    style={{ aspectRatio: '4/3', objectFit: 'cover' }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div style={{
-                      width: 220, height: 100,
-                      border: '2px solid rgba(139,92,246,0.9)',
-                      borderRadius: 10,
-                      boxShadow: '0 0 0 2000px rgba(0,0,0,0.45)',
-                    }} />
-                  </div>
-                  <p className="text-xs text-center mt-3" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                    {scanStatus || 'Наведите камеру на штрих-код'}
-                  </p>
-                </div>
-              )
-            ) : (
-              /* Manual input mode */
-              <div className="w-full max-w-xs flex flex-col gap-3">
-                <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                  Введите цифры штрих-кода с упаковки
-                </p>
-                <input
-                  autoFocus
-                  type="text"
-                  inputMode="numeric"
-                  value={manualCode}
-                  onChange={e => { setManualCode(e.target.value.replace(/\D/g, '')); setScanError('') }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && manualCode.length >= 8) {
-                      const code = manualCode
-                      setManualCode('')
-                      stopScanner()
-                      lookupBarcode(code)
-                    }
-                  }}
-                  placeholder="4600000000000"
-                  maxLength={14}
-                  className="w-full h-12 px-4 rounded-xl text-base outline-none text-center tracking-widest"
-                  style={{ background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.25)', color: '#fff' }}
-                />
-                {scanError && <p className="text-xs text-center" style={{ color: '#FCA5A5' }}>{scanError}</p>}
-                <button
-                  onClick={() => { if (manualCode.length >= 8) { const code = manualCode; setManualCode(''); stopScanner(); lookupBarcode(code) } }}
-                  disabled={manualCode.length < 8}
-                  className="w-full h-11 rounded-xl text-sm font-medium disabled:opacity-40 transition-opacity"
-                  style={{ background: '#8B5CF6', color: '#fff' }}
-                >
-                  Найти продукт
-                </button>
-                <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  минимум 8 цифр
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+      {scannerOpen && (
+        <BarcodeScannerOverlay
+          onDetect={(code) => {
+            setScannerOpen(false)
+            void lookupBarcode(code)
+          }}
+          onClose={() => setScannerOpen(false)}
+        />
       )}
+
     </div>
   )
 }

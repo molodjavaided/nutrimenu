@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import SiteNav from '@/components/landing/SiteNav'
+import DigitizationCounter from '@/components/pricing/DigitizationCounter'
 import { getSession } from '@/lib/auth'
 
 export const metadata: Metadata = {
@@ -38,7 +39,6 @@ function buildPlans(isAuthed: boolean): Plan[] {
       '1 точка, до 50 блюд',
       'QR-меню гостям',
       'Конструктор + Ингредиенты + КБЖУ',
-      'AI-импорт: 5 операций/мес',
       'Аналитика спроса',
     ],
     cta: startCta,
@@ -53,11 +53,9 @@ function buildPlans(isAuthed: boolean): Plan[] {
     features: [
       { text: '1 точка, до 200 блюд', note: '+1 190 ₽ за доп. точку' },
       'Всё из Старта',
-      'AI-импорт: 15 операций/мес',
       'ТТК-экспорт без ограничений',
       'Обратная связь в Telegram',
       'Кастомизация (лого / цвета / шрифт)',
-      'Food cost и наценка',
     ],
     cta: { label: 'В разработке', href: '#', disabled: true },
     highlight: true,
@@ -68,7 +66,7 @@ function buildPlans(isAuthed: boolean): Plan[] {
     name: 'Оцифровка меню',
     price: '5 000 ₽',
     priceSub: 'разово',
-    tagline: 'Мы оцифруем меню за вас',
+    tagline: 'Посчитаем КБЖУ ваших блюд и оцифруем меню за вас',
     features: [
       'Пришлите файлы — внесём всё сами',
       'Не нужно сидеть и вбивать вручную',
@@ -208,7 +206,9 @@ export default async function PricingPage() {
                 })}
               </ul>
 
-              {plan.cta.disabled ? (
+              {plan.id === 'digitization' ? (
+                <DigitizationCounter accent={plan.accent} />
+              ) : plan.cta.disabled ? (
                 <span
                   className="text-center px-4 py-3 rounded-xl font-semibold text-sm cursor-not-allowed"
                   style={{ background: 'rgba(44,41,80,0.06)', color: '#B0A6DF', border: '1px solid rgba(176,166,223,0.3)' }}

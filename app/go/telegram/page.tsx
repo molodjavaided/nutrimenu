@@ -5,14 +5,17 @@ import { signStartToken } from '@/lib/telegram'
 import { initialState, type BriefingState } from '@/lib/telegram-briefing'
 
 interface PageProps {
-  searchParams: Promise<{ plan?: string }>
+  searchParams: Promise<{ plan?: string; dishes?: string }>
 }
 
 export const dynamic = 'force-dynamic'
 
 export default async function GoTelegramPage({ searchParams }: PageProps) {
-  const { plan } = await searchParams
-  const planParam = plan ? `?plan=${encodeURIComponent(plan)}` : ''
+  const { plan, dishes } = await searchParams
+  const qs = new URLSearchParams()
+  if (plan) qs.set('plan', plan)
+  if (dishes) qs.set('dishes', dishes)
+  const planParam = qs.toString() ? `?${qs.toString()}` : ''
   const returnTo = `/go/telegram${planParam}`
 
   const session = await getSession()
@@ -34,13 +37,16 @@ export default async function GoTelegramPage({ searchParams }: PageProps) {
     )
   }
 
-  if (plan) {
+  if (plan || dishes) {
     const venue = await db.venue.findUnique({
       where: { id: session.venueId },
       select: { briefingState: true },
     })
     const current = (venue?.briefingState as BriefingState | null) ?? initialState()
-    current.answers = { ...current.answers, plan }
+    current.answers = {
+      ...current.answers,
+      ...(plan ? { plan: dishes ? `${plan}:${dishes}` : plan } : {}),
+    }
     await db.venue.update({
       where: { id: session.venueId },
       data: { briefingState: current as unknown as object },

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import SiteNav from '@/components/landing/SiteNav'
+import { getSession } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: 'Тарифы — Plate',
@@ -22,7 +23,11 @@ type Plan = {
   accent: string
 }
 
-const plans: Plan[] = [
+function buildPlans(isAuthed: boolean): Plan[] {
+  const startCta = isAuthed
+    ? { label: 'Купить', href: '/go/telegram?plan=start' }
+    : { label: 'Попробуй 14 дней бесплатно', href: '/auth/register' }
+  return [
   {
     id: 'start',
     name: 'Старт',
@@ -36,7 +41,7 @@ const plans: Plan[] = [
       'AI-импорт: 5 операций/мес',
       'Аналитика спроса',
     ],
-    cta: { label: 'Попробуй 14 дней бесплатно', href: '/auth/register' },
+    cta: startCta,
     accent: '#8B5CF6',
   },
   {
@@ -85,10 +90,13 @@ const plans: Plan[] = [
     cta: { label: 'Связаться', href: '/go/telegram?plan=custom' },
     accent: '#1a1730',
   },
-]
+  ]
+}
 
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const session = await getSession()
+  const plans = buildPlans(!!session)
   return (
     <div
       className="min-h-screen flex flex-col relative overflow-hidden"

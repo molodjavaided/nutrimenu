@@ -1,10 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
+import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -78,15 +81,47 @@ export interface UseItemFormStateArgs {
 export function useItemFormState({ itemId, initialCategoryId }: UseItemFormStateArgs) {
   const router = useRouter()
 
+  // ── RHF: validated form fields (basic + quick + mode) ───────────────────
+  const form = useForm<ItemFormValues>({
+    resolver: zodResolver(itemFormSchema),
+    defaultValues: { ...defaultItemFormValues, categoryId: initialCategoryId ?? '' },
+    mode: 'onSubmit',
+  })
+
+  const values = form.watch()
+
+  function makePlainSetter<K extends keyof ItemFormValues>(key: K) {
+    return (v: ItemFormValues[K]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      form.setValue(key as any, v as any, { shouldDirty: true })
+    }
+  }
+  function makeUpdaterSetter<K extends keyof ItemFormValues>(key: K) {
+    return (v: ItemFormValues[K] | ((prev: ItemFormValues[K]) => ItemFormValues[K])) => {
+      const current = form.getValues(key) as ItemFormValues[K]
+      const next = typeof v === 'function' ? (v as (p: ItemFormValues[K]) => ItemFormValues[K])(current) : v
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      form.setValue(key as any, next as any, { shouldDirty: true })
+    }
+  }
+
+  const categoryId = values.categoryId
+  const setCategoryId = makePlainSetter('categoryId')
+  const name = values.name
+  const setName = makePlainSetter('name')
+  const price = values.price
+  const setPrice = makePlainSetter('price')
+  const isAvailable = values.isAvailable
+  const setIsAvailable = makeUpdaterSetter('isAvailable')
+  const description = values.description
+  const setDescription = makePlainSetter('description')
+  const photo = values.photo
+  const setPhoto = makePlainSetter('photo')
+  const photoPosition = values.photoPosition
+  const setPhotoPosition = makePlainSetter('photoPosition')
+
   // ── basic ────────────────────────────────────────────────────────────────
   const [categories, setCategories] = useState<Category[]>([])
-  const [categoryId, setCategoryId] = useState(initialCategoryId ?? '')
-  const [name, setName] = useState('')
-  const [price, setPrice] = useState('')
-  const [isAvailable, setIsAvailable] = useState(true)
-  const [description, setDescription] = useState('')
-  const [photo, setPhoto] = useState('')
-  const [photoPosition, setPhotoPosition] = useState<'top' | 'center' | 'bottom'>('center')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
   const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
@@ -105,16 +140,23 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const [addingCategory, setAddingCategory] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
 
-  // mode
-  const [mode, setMode] = useState<'quick' | 'detailed'>('quick')
+  // mode (in RHF)
+  const mode = values.mode
+  const setMode = makePlainSetter('mode')
 
-  // quick mode
-  const [quickWeight, setQuickWeight] = useState<number>(0)
-  const [quickWeightUnit, setQuickWeightUnit] = useState<'г' | 'мл'>('г')
-  const [quickCalories, setQuickCalories] = useState<number>(0)
-  const [quickProtein, setQuickProtein] = useState<number>(0)
-  const [quickFat, setQuickFat] = useState<number>(0)
-  const [quickCarbs, setQuickCarbs] = useState<number>(0)
+  // quick mode (in RHF)
+  const quickWeight = values.quickWeight
+  const setQuickWeight = makePlainSetter('quickWeight')
+  const quickWeightUnit = values.quickWeightUnit
+  const setQuickWeightUnit = makePlainSetter('quickWeightUnit')
+  const quickCalories = values.quickCalories
+  const setQuickCalories = makePlainSetter('quickCalories')
+  const quickProtein = values.quickProtein
+  const setQuickProtein = makePlainSetter('quickProtein')
+  const quickFat = values.quickFat
+  const setQuickFat = makePlainSetter('quickFat')
+  const quickCarbs = values.quickCarbs
+  const setQuickCarbs = makePlainSetter('quickCarbs')
 
   // variants
   const [variantGroups, setVariantGroups] = useState<VariantOption[]>([])
@@ -123,8 +165,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([])
   const [addonPickerTarget, setAddonPickerTarget] = useState<{ groupId: string; addonId: string } | null>(null)
 
-  // allergens
-  const [allergens, setAllergens] = useState<string[]>([])
+  // allergens (in RHF)
+  const allergens = values.allergens
+  const setAllergens = makeUpdaterSetter('allergens')
 
   // load flags
   const isInitialLoad = useRef(true)

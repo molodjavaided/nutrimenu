@@ -34,6 +34,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const [newFat, setNewFat] = useState(0)
   const [newCarbs, setNewCarbs] = useState(0)
   const [newUnit, setNewUnit] = useState<'г' | 'мл' | 'шт'>('г')
+  const [newBarcode, setNewBarcode] = useState('')
   const [saving, setSaving] = useState(false)
 
   // Barcode scanner state
@@ -119,25 +120,36 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
     setScanStatus(`Ищем продукт (${code})…`)
     setScanning(true)
     try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`)
+      const res = await fetch(`/api/ingredients/lookup-barcode?code=${encodeURIComponent(code)}`)
       const data = await res.json()
-      if (data.status !== 1 || !data.product) {
-        setScanError(`Продукт с кодом ${code} не найден в базе Open Food Facts`)
-        setScanStatus('')
+
+      // Level 1: local DB — instantly select and close
+      if (res.ok && data.source === 'local' && data.ref) {
+        stopScanner()
+        setCreating(false)
+        onSelect(data.ref as IngredientRef)
+        onClose()
         return
       }
-      const p = data.product
-      const name: string = p.product_name_ru || p.product_name || ''
-      const nutriments = p.nutriments ?? {}
-      setNewName(name)
-      setNewCalories(Math.round(nutriments['energy-kcal_100g'] ?? nutriments['energy-kcal'] ?? 0))
-      setNewProtein(Math.round((nutriments['proteins_100g'] ?? 0) * 10) / 10)
-      setNewFat(Math.round((nutriments['fat_100g'] ?? 0) * 10) / 10)
-      setNewCarbs(Math.round((nutriments['carbohydrates_100g'] ?? 0) * 10) / 10)
+
+      // Level 2: Open Food Facts — prefill the create form
+      if (res.ok && data.source === 'off' && data.prefill) {
+        setNewName(data.prefill.name ?? '')
+        setNewCalories(data.prefill.caloriesPer100 ?? 0)
+        setNewProtein(data.prefill.proteinPer100 ?? 0)
+        setNewFat(data.prefill.fatPer100 ?? 0)
+        setNewCarbs(data.prefill.carbsPer100 ?? 0)
+        setNewBarcode(code)
+        setScanStatus('Нашли в Open Food Facts — проверьте данные и сохраните')
+        return
+      }
+
+      // Level 3: not found — keep form open with barcode pinned so user fills manually
+      setNewBarcode(code)
+      setScanError(`Продукт ${code} не найден — заполните данные вручную, штрих-код сохранится`)
     } catch {
       setScanError('Ошибка при поиске продукта')
     } finally {
-      setScanStatus('')
       setScanning(false)
     }
   }
@@ -158,6 +170,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           carbsPer100: newCarbs,
           type: 'mono',
           category: 'Прочее',
+          barcode: newBarcode || undefined,
         }),
       })
       if (res.ok) {
@@ -170,6 +183,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         setNewProtein(0)
         setNewFat(0)
         setNewCarbs(0)
+        setNewBarcode('')
       }
     } finally {
       setSaving(false)

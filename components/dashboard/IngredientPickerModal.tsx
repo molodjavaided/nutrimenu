@@ -88,7 +88,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
       }
 
       // Level 2/3: Gemini grounded search (or cache hit) — prefill, ask to verify
-      if (res.ok && (data.source === 'sonar' || data.source === 'cache') && data.prefill) {
+      if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache') && data.prefill) {
         const p = data.prefill
         setNewName(p.name ?? '')
         setNewCalories(p.caloriesPer100 ?? 0)

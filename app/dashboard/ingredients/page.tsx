@@ -160,7 +160,7 @@ export default function IngredientsPage() {
       }
 
       // Level 2/3: Gemini grounded search (or cache hit) — prefill new-ingredient modal
-      if (res.ok && (data.source === 'sonar' || data.source === 'cache') && data.prefill) {
+      if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache') && data.prefill) {
         const p = data.prefill
         const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
         setBarcodePreFill({

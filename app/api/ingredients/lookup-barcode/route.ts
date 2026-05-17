@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getEffectiveVenueId, getSession } from '@/lib/auth'
 import { lookupBarcodeViaSonar } from '@/lib/sonar-barcode'
+import { lookupBarcodeViaOFF } from '@/lib/openfoodfacts'
 
 const CACHE_TTL_POSITIVE_MS = 1000 * 60 * 60 * 24 * 30
 const CACHE_TTL_NEGATIVE_MS = 1000 * 60 * 60 * 24
@@ -38,16 +39,27 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Level 3: Perplexity Sonar Pro via OpenRouter
-  const result = await lookupBarcodeViaSonar(code)
-  const usedSource = 'sonar' as const
+  // Level 3a: Open Food Facts (free, deterministic, authoritative when it hits)
+  let result = await lookupBarcodeViaOFF(code)
+  let usedSource: 'off' | 'sonar' = 'off'
 
-  if (result.status === 'transient') {
-    console.error('[lookup-barcode] sonar transient-failed for', code, result.reason)
-    return NextResponse.json(
-      { source: 'transient', barcode: code, error: 'AI временно недоступен, попробуйте ещё раз' },
-      { status: 503 },
-    )
+  // Level 3b: Sonar Pro fallback if OFF didn't find a usable record
+  if (result.status !== 'found') {
+    const sonar = await lookupBarcodeViaSonar(code)
+    if (sonar.status === 'found' || sonar.status === 'not_found') {
+      result = sonar
+      usedSource = 'sonar'
+    } else if (result.status === 'transient' && sonar.status === 'transient') {
+      console.error('[lookup-barcode] both OFF + Sonar transient-failed for', code)
+      return NextResponse.json(
+        { source: 'transient', barcode: code, error: 'AI временно недоступен, попробуйте ещё раз' },
+        { status: 503 },
+      )
+    } else if (sonar.status === 'transient') {
+      // OFF said not_found, Sonar blew up — treat as not_found
+      result = { status: 'not_found' }
+      usedSource = 'sonar'
+    }
   }
 
   // Persist (positive or real negative)

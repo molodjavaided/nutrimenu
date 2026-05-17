@@ -152,26 +152,38 @@ export default function IngredientsPage() {
         return
       }
 
+      // Transient AI failure — don't poison cache, prompt to retry
+      if (res.status === 503 || data.source === 'transient') {
+        setBarcodeStatus('error')
+        toast.error(data.error ?? 'AI временно недоступен, попробуйте ещё раз')
+        return
+      }
+
       // Level 2/3: Gemini grounded search (or cache hit) — prefill new-ingredient modal
-      if (res.ok && (data.source === 'gemini' || data.source === 'perplexity' || data.source === 'cache') && data.prefill) {
+      if (res.ok && (data.source === 'sonar' || data.source === 'cache') && data.prefill) {
+        const p = data.prefill
+        const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
         setBarcodePreFill({
-          name: (data.prefill.name ?? '').trim(),
+          name: (p.name ?? '').trim(),
           unit: 'г',
-          caloriesPer100: data.prefill.caloriesPer100 ?? 0,
-          proteinPer100: data.prefill.proteinPer100 ?? 0,
-          fatPer100: data.prefill.fatPer100 ?? 0,
-          carbsPer100: data.prefill.carbsPer100 ?? 0,
-          category: 'Прочее',
+          caloriesPer100: p.caloriesPer100 ?? 0,
+          proteinPer100: p.proteinPer100 ?? 0,
+          fatPer100: p.fatPer100 ?? 0,
+          carbsPer100: p.carbsPer100 ?? 0,
+          category: p.category || 'Прочее',
           type: 'mono',
           barcode: code,
-          compositionText: data.prefill.compositionText || undefined,
+          compositionText: p.compositionText || undefined,
+          manufacturer: p.manufacturer || undefined,
+          packageSize: p.packageSize || undefined,
         })
         setBarcodeStatus('idle')
         setBarcodeMode(false)
         setBarcodeInput('')
         setModalTarget(null)
         const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
-        if (conf === 'low') toast.warning('AI-оценка КБЖУ — обязательно проверьте перед сохранением')
+        if (!hasFullNutri) toast.warning('Название нашли, КБЖУ — впишите с упаковки')
+        else if (conf === 'low') toast.warning('AI-оценка КБЖУ — обязательно проверьте перед сохранением')
         else if (conf === 'high') toast.success('Нашли точные данные')
         else toast.success('Нашли данные — проверьте перед сохранением')
         return

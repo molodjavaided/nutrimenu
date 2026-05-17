@@ -212,18 +212,21 @@ model MenuView {
 }
 
 model BarcodeCache {
-  barcode    String   @id
-  name       String?
-  brand      String?
-  calories   Float?
-  protein    Float?
-  fat        Float?
-  carbs      Float?
-  ingredients String?
-  confidence String   @default("medium") // low / medium / high
-  source     String   @default("gemini") // gemini / off / manual
-  found      Boolean  @default(true)
-  fetchedAt  DateTime @default(now())
+  barcode      String   @id
+  name         String?
+  brand        String?
+  manufacturer String?
+  category     String?
+  packageSize  String?
+  calories     Float?
+  protein      Float?
+  fat          Float?
+  carbs        Float?
+  ingredients  String?
+  confidence   String   @default("medium") // low / medium / high
+  source       String   @default("gemini") // gemini / perplexity / manual
+  found        Boolean  @default(true)
+  fetchedAt    DateTime @default(now())
 
   @@index([fetchedAt])
 }
@@ -246,6 +249,8 @@ model IngredientRef {
   compositionText String?
   instructions   String?
   barcode        String?
+  manufacturer   String?
+  packageSize    String?
 
   @@unique([venueId, barcode])
   @@index([venueId])

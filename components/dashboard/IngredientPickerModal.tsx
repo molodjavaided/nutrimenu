@@ -36,6 +36,10 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const [newCarbs, setNewCarbs] = useState(0)
   const [newUnit, setNewUnit] = useState<'г' | 'мл' | 'шт'>('г')
   const [newBarcode, setNewBarcode] = useState('')
+  const [newManufacturer, setNewManufacturer] = useState('')
+  const [newPackageSize, setNewPackageSize] = useState('')
+  const [newCompositionText, setNewCompositionText] = useState('')
+  const [newCategory, setNewCategory] = useState('Прочее')
   const [saving, setSaving] = useState(false)
 
   // Barcode scanner — delegates to shared overlay
@@ -76,20 +80,35 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         return
       }
 
-      // Level 2/3: Gemini grounded search (or cache hit) — prefill, ask to verify
-      if (res.ok && (data.source === 'gemini' || data.source === 'perplexity' || data.source === 'cache') && data.prefill) {
-        setNewName(data.prefill.name ?? '')
-        setNewCalories(data.prefill.caloriesPer100 ?? 0)
-        setNewProtein(data.prefill.proteinPer100 ?? 0)
-        setNewFat(data.prefill.fatPer100 ?? 0)
-        setNewCarbs(data.prefill.carbsPer100 ?? 0)
+      // Transient AI failure — keep form clean, ask user to retry
+      if (res.status === 503 || data.source === 'transient') {
         setNewBarcode(code)
+        setScanError(data.error ?? 'AI временно недоступен, попробуйте ещё раз')
+        return
+      }
+
+      // Level 2/3: Gemini grounded search (or cache hit) — prefill, ask to verify
+      if (res.ok && (data.source === 'sonar' || data.source === 'cache') && data.prefill) {
+        const p = data.prefill
+        setNewName(p.name ?? '')
+        setNewCalories(p.caloriesPer100 ?? 0)
+        setNewProtein(p.proteinPer100 ?? 0)
+        setNewFat(p.fatPer100 ?? 0)
+        setNewCarbs(p.carbsPer100 ?? 0)
+        setNewBarcode(code)
+        setNewManufacturer(p.manufacturer ?? '')
+        setNewPackageSize(p.packageSize ?? '')
+        setNewCompositionText(p.compositionText ?? '')
+        setNewCategory(p.category || 'Прочее')
+        const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
         const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
-        const note = conf === 'low'
-          ? '⚠️ AI-оценка — проверьте КБЖУ перед сохранением'
-          : conf === 'medium'
-            ? 'Данные найдены, проверьте перед сохранением'
-            : 'Нашли точные данные'
+        const note = !hasFullNutri
+          ? '⚠️ Название нашли, КБЖУ — впишите с упаковки'
+          : conf === 'low'
+            ? '⚠️ AI-оценка — проверьте КБЖУ перед сохранением'
+            : conf === 'medium'
+              ? 'Данные найдены, проверьте перед сохранением'
+              : 'Нашли точные данные'
         setScanStatus(note)
         return
       }
@@ -119,8 +138,11 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           fatPer100: newFat,
           carbsPer100: newCarbs,
           type: 'mono',
-          category: 'Прочее',
+          category: newCategory || 'Прочее',
           barcode: newBarcode || undefined,
+          manufacturer: newManufacturer || undefined,
+          packageSize: newPackageSize || undefined,
+          compositionText: newCompositionText || undefined,
         }),
       })
       if (res.ok) {
@@ -134,6 +156,10 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         setNewFat(0)
         setNewCarbs(0)
         setNewBarcode('')
+        setNewManufacturer('')
+        setNewPackageSize('')
+        setNewCompositionText('')
+        setNewCategory('Прочее')
       }
     } finally {
       setSaving(false)

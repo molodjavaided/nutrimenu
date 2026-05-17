@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       compositionText: body.compositionText ?? null,
       instructions: body.instructions ?? null,
       barcode: body.barcode?.trim() || null,
+      manufacturer: body.manufacturer?.trim() || null,
+      packageSize: body.packageSize?.trim() || null,
     },
   })
 

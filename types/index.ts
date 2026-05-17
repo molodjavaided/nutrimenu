@@ -189,4 +189,6 @@ export interface IngredientRef {
   compositionText?: string
   instructions?: string
   barcode?: string
+  manufacturer?: string
+  packageSize?: string
 }

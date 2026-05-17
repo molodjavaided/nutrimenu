@@ -182,7 +182,12 @@ export default function IngredientsPage() {
         setBarcodeInput('')
         setModalTarget(null)
         const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
-        if (!hasFullNutri) toast.warning('Название нашли, КБЖУ — впишите с упаковки')
+        const warning = data.warning as string | undefined
+        if (warning === 'zero-calories-with-sugar') {
+          toast.error('⚠️ КБЖУ выглядят подозрительно: у напитка с сахаром почти нет калорий. Перепроверьте с упаковкой.')
+        } else if (warning === 'calories-vs-carbs-mismatch') {
+          toast.error('⚠️ КБЖУ не сходятся: углеводов много, а калорий мало. Перепроверьте.')
+        } else if (!hasFullNutri) toast.warning('Название нашли, КБЖУ — впишите с упаковки')
         else if (conf === 'low') toast.warning('AI-оценка КБЖУ — обязательно проверьте перед сохранением')
         else if (conf === 'high') toast.success('Нашли точные данные')
         else toast.success('Нашли данные — проверьте перед сохранением')

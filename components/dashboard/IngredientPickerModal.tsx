@@ -102,13 +102,18 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         setNewCategory(p.category || 'Прочее')
         const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
         const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
-        const note = !hasFullNutri
-          ? '⚠️ Название нашли, КБЖУ — впишите с упаковки'
-          : conf === 'low'
-            ? '⚠️ AI-оценка — проверьте КБЖУ перед сохранением'
-            : conf === 'medium'
-              ? 'Данные найдены, проверьте перед сохранением'
-              : 'Нашли точные данные'
+        const warning = data.warning as string | undefined
+        const note = warning === 'zero-calories-with-sugar'
+          ? '⚠️ КБЖУ подозрительные: напиток с сахаром, но мало калорий. Сверьте с упаковкой.'
+          : warning === 'calories-vs-carbs-mismatch'
+            ? '⚠️ КБЖУ не сходятся: углеводов много, а калорий мало. Сверьте.'
+            : !hasFullNutri
+              ? '⚠️ Название нашли, КБЖУ — впишите с упаковки'
+              : conf === 'low'
+                ? '⚠️ AI-оценка — проверьте КБЖУ перед сохранением'
+                : conf === 'medium'
+                  ? 'Данные найдены, проверьте перед сохранением'
+                  : 'Нашли точные данные'
         setScanStatus(note)
         return
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
+import { mirrorIngredientToCache } from '@/lib/barcode-cache-upsert'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
@@ -30,6 +31,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       manufacturer: body.manufacturer?.trim() || null,
       packageSize: body.packageSize?.trim() || null,
     },
+  })
+
+  await mirrorIngredientToCache({
+    barcode: ingredient.barcode,
+    name: ingredient.name,
+    brand: null,
+    manufacturer: ingredient.manufacturer,
+    category: ingredient.category,
+    packageSize: ingredient.packageSize,
+    caloriesPer100: ingredient.caloriesPer100,
+    proteinPer100: ingredient.proteinPer100,
+    fatPer100: ingredient.fatPer100,
+    carbsPer100: ingredient.carbsPer100,
+    compositionText: ingredient.compositionText,
   })
 
   return NextResponse.json(ingredient)

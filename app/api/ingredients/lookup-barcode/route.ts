@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getEffectiveVenueId, getSession } from '@/lib/auth'
 import { lookupBarcodeViaSonar } from '@/lib/sonar-barcode'
 import { lookupBarcodeViaOFF } from '@/lib/openfoodfacts'
+import { isValidBarcodeChecksum, isNutritionSuspicious } from '@/lib/barcode-validate'
 
 const CACHE_TTL_POSITIVE_MS = 1000 * 60 * 60 * 24 * 30
 const CACHE_TTL_NEGATIVE_MS = 1000 * 60 * 60 * 24
@@ -17,6 +18,9 @@ export async function GET(req: NextRequest) {
   if (!code || !/^[0-9]{6,14}$/.test(code)) {
     return NextResponse.json({ error: 'Некорректный штрих-код' }, { status: 400 })
   }
+  if (!isValidBarcodeChecksum(code)) {
+    return NextResponse.json({ error: 'Битый штрих-код (не сходится контрольная сумма)' }, { status: 400 })
+  }
 
   // Level 1: local IngredientRef
   const localRef = await db.ingredientRef.findFirst({
@@ -24,10 +28,13 @@ export async function GET(req: NextRequest) {
   })
   if (localRef) return NextResponse.json({ source: 'local', ref: localRef })
 
-  // Level 2: BarcodeCache
-  const cached = force ? null : await db.barcodeCache.findUnique({ where: { barcode: code } })
+  // Level 2: BarcodeCache. User-verified entries never expire and are never
+  // bypassed by force=1 — they represent ground truth from someone with a package in hand.
+  const cached = await db.barcodeCache.findUnique({ where: { barcode: code } })
+  const isUserVerified = cached?.source === 'user' && cached?.found
+  const skipCache = force && !isUserVerified
   const ttl = cached?.found ? CACHE_TTL_POSITIVE_MS : CACHE_TTL_NEGATIVE_MS
-  if (cached && Date.now() - cached.fetchedAt.getTime() < ttl) {
+  if (!skipCache && cached && (isUserVerified || Date.now() - cached.fetchedAt.getTime() < ttl)) {
     if (!cached.found) {
       return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
     }
@@ -95,10 +102,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ source: 'manual', barcode: code }, { status: 404 })
   }
 
+  const sanity = isNutritionSuspicious({
+    name: result.name,
+    ingredients: result.ingredients,
+    calories: result.calories ?? null,
+    carbs: result.carbs ?? null,
+  })
+
   return NextResponse.json({
     source: usedSource,
     barcode: code,
-    confidence: result.confidence,
+    // Downgrade confidence when sanity check fails so UI shows a stronger warning
+    confidence: sanity.suspicious ? 'low' : result.confidence,
+    warning: sanity.suspicious ? sanity.reason : undefined,
     prefill: buildPrefill({
       name: result.name,
       brand: result.brand ?? null,

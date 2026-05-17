@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { Category, IngredientLibrary, IngredientRef, SizeOption } from '@/types'
+import type { Category, IngredientLibrary, IngredientRef, ProcessingType, SizeOption } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
@@ -21,6 +21,7 @@ export interface IngredientItem {
   ingredientRefId: string
   name: string
   unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
+  processing?: ProcessingType  // ТТК: способ обработки
 }
 
 export interface Size {
@@ -162,6 +163,12 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const quickCarbs = values.quickCarbs
   const setQuickCarbs = makePlainSetter('quickCarbs')
 
+  // ТТК (in RHF)
+  const finalWeight = values.finalWeight
+  const setFinalWeight = makePlainSetter('finalWeight')
+  const servingSize = values.servingSize
+  const setServingSize = makePlainSetter('servingSize')
+
   // variants (in RHF)
   const variantGroups = values.variantGroups as VariantOption[]
   const setVariantGroups = useCallback((arr: VariantOption[] | ((prev: VariantOption[]) => VariantOption[])) => {
@@ -262,10 +269,12 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         return
       }
 
-      setMode('detailed')
+      setMode((found.item.creationMode === 'ttk' ? 'ttk' : 'composition'))
+      if (typeof found.item.finalWeight === 'number') setFinalWeight(found.item.finalWeight)
+      if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
 
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number }> }>
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
@@ -280,6 +289,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
               ingredientRefId: comp.ingredientId,
               name: ref?.name || `Неизвестный ингредиент (${comp.ingredientId})`,
               unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
+              processing: comp.processing,
             }
           })
           setIngredients(loadedIngredients)
@@ -325,7 +335,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         }
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number }>
+        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType }>
         const ingredientIdMap = new Map<string, string>()
 
         const loadedIngredients = compositionData.map(comp => {
@@ -337,6 +347,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
             ingredientRefId: comp.ingredientId,
             name: ref?.name || `ID: ${comp.ingredientId}`,
             unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
+            processing: comp.processing,
           }
         })
         setIngredients(loadedIngredients)
@@ -548,6 +559,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         composition: [],
         sizes: [],
         variantGroups: [],
+        creationMode: 'quick',
         categoryId,
       }
       if (isEdit) {
@@ -608,6 +620,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
           ingredientId: ingredient.ingredientRefId,
           amount,
           unit: ingredient.unit,
+          ...(mode === 'ttk' && ingredient.processing && ingredient.processing !== 'raw'
+            ? { processing: ingredient.processing }
+            : {}),
         }]
       })
 
@@ -731,6 +746,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
       modifierGroups: modifierGroupsToSave.length > 0 ? modifierGroupsToSave : undefined,
       allergens: allergens.length > 0 ? allergens : undefined,
+      creationMode: mode,
+      finalWeight: mode === 'ttk' ? finalWeight : undefined,
+      servingSize: mode === 'ttk' ? servingSize : undefined,
       categoryId,
       venueId: '1',
       isAvailable,
@@ -773,6 +791,13 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     dispatch({ type: 'REMOVE_INGREDIENT', ingredientId })
   }, [])
 
+  const updateIngredientProcessing = useCallback((ingredientId: string, processing: ProcessingType | undefined) => {
+    dispatch({
+      type: 'SET_INGREDIENTS',
+      ingredients: ingredients.map(i => i.id === ingredientId ? { ...i, processing } : i),
+    })
+  }, [ingredients])
+
   const addSize = useCallback(() => dispatch({ type: 'ADD_SIZE' }), [])
   const updateSizeName = useCallback((sizeId: string, name: string) =>
     dispatch({ type: 'UPDATE_SIZE_NAME', sizeId, name }), [])
@@ -814,13 +839,15 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     quickWeight, setQuickWeight, quickWeightUnit, setQuickWeightUnit,
     quickCalories, setQuickCalories, quickProtein, setQuickProtein,
     quickFat, setQuickFat, quickCarbs, setQuickCarbs,
+    // ttk
+    finalWeight, setFinalWeight, servingSize, setServingSize,
     // composition
     ingredients, setIngredients,
     hasMultipleSizes, setHasMultipleSizes,
     sizes, setSizes,
     amounts, setAmounts,
     manualNutri, setManualNutri,
-    addIngredient, removeIngredient,
+    addIngredient, removeIngredient, updateIngredientProcessing,
     addSize, updateSizeName, updateSizeUnit, updateSizePrice, applySizePreset, removeSize,
     updateAmount, updateManualNutri,
     calculateNutriForSize, getAmountFromComposition,

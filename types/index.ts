@@ -82,11 +82,29 @@ export interface ModifierGroup {
   allowCustomGrams?: boolean
 }
 
+// Способ тепловой/холодной обработки ингредиента в блюде
+export type ProcessingType = 'raw' | 'boil' | 'fry' | 'stew' | 'bake' | 'deep_fry' | 'steam'
+
+// Коэффициенты выхода (готовый вес / сырой нетто) по способам обработки
+export interface YieldCoefficients {
+  boil?: number       // варка (крупы ~2.5, мясо ~0.6, овощи ~0.9)
+  fry?: number        // жарка (мясо ~0.65)
+  stew?: number       // тушение (овощи ~0.8)
+  bake?: number       // запекание
+  deep_fry?: number   // фритюр
+  steam?: number      // на пару
+}
+
 // Строка состава блюда
 export interface CompositionRow {
   ingredientId: string
-  amount: number
+  amount: number              // основной вес (брутто, если используется ТТК-режим)
   unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
+  // ТТК-поля (опциональны; работают, если заданы)
+  processing?: ProcessingType        // способ обработки
+  coldLossOverride?: number          // % холодных потерь (перебивает дефолт по ингредиенту)
+  yieldOverride?: number             // коэффициент выхода (перебивает дефолт по ингредиенту)
+  oilAbsorption?: number             // 0..1 — доля впитанного масла (для категории oil)
 }
 
 // Один объём/размер блюда
@@ -131,6 +149,10 @@ export interface MenuItem {
   composition?: CompositionRow[]
   variantGroups?: VariantGroup[]
   modifierGroups?: ModifierGroup[]
+  // ТТК-расширение
+  creationMode?: 'quick' | 'composition' | 'ttk'  // как было создано (для UI-маршрутизации)
+  finalWeight?: number       // финальный вес готового блюда, г. Если задан — КБЖУ/100г считается от него.
+  servingSize?: number       // г на одну порцию (для расчёта количества порций и себестоимости порции)
 }
 
 export interface SelectedVariants {
@@ -170,6 +192,19 @@ export interface IngredientLibrary {
   ingredients: IngredientRef[]
 }
 
+// Категория ингредиента — нужна для дефолтных коэффициентов и UI
+export type IngredientCategory =
+  | 'grain'      // крупы, паста (увеличиваются при варке)
+  | 'meat'       // говядина, свинина, баранина
+  | 'poultry'    // курица, индейка
+  | 'fish'       // рыба, морепродукты
+  | 'vegetable'  // овощи
+  | 'fruit'      // фрукты, ягоды
+  | 'dairy'      // молочка
+  | 'oil'        // масла (используется «ловушка для масла»)
+  | 'liquid'     // вода, бульон, сок
+  | 'other'
+
 // Справочник ингредиентов
 export interface IngredientRef {
   id: string
@@ -181,8 +216,12 @@ export interface IngredientRef {
   proteinPer100: number
   fatPer100: number
   carbsPer100: number
-  category?: string
+  category?: IngredientCategory | string  // string для обратной совместимости со старыми данными
   isSystem?: boolean
+  // ТТК-поля
+  yieldCoefficients?: YieldCoefficients  // дефолтные коэффициенты выхода по способам обработки
+  coldLossPercent?: number               // дефолт холодных потерь (зачистка): 0..100
+  pricePerKg?: number                    // закупочная цена, руб/кг (брутто). Для расчёта фуд-коста.
   // Composite ingredient (sub-recipe) fields
   type?: 'mono' | 'composite'
   composition?: CompositionRow[]

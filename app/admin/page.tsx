@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin-api'
 import { VenueCard } from '@/components/admin/VenueCard'
 import { BarcodeCachePanel } from '@/components/admin/BarcodeCachePanel'
+import { IngredientBackfillPanel } from '@/components/admin/IngredientBackfillPanel'
 
 type QuickFilter = 'pending' | 'trial_ending' | 'awaiting_plan' | 'grace' | 'expired' | null
 type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'status'
@@ -140,7 +141,10 @@ export default function AdminPage() {
         <h1 className="text-xl font-bold" style={{ color: '#2C2950' }}>Заведения</h1>
       </div>
 
-      <BarcodeCachePanel />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <BarcodeCachePanel />
+        <IngredientBackfillPanel />
+      </div>
 
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

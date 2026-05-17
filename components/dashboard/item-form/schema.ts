@@ -45,13 +45,16 @@ export const itemFormSchema = z.object({
   photo: z.string(),
   photoPosition: z.enum(['top', 'center', 'bottom']),
   allergens: z.array(z.string()),
-  mode: z.enum(['quick', 'detailed']),
+  mode: z.enum(['quick', 'composition', 'ttk']),
   quickWeight: z.number().min(0),
   quickWeightUnit: z.enum(['г', 'мл']),
   quickCalories: z.number().min(0),
   quickProtein: z.number().min(0),
   quickFat: z.number().min(0),
   quickCarbs: z.number().min(0),
+  // ТТК-поля (используются в режиме 'ttk')
+  finalWeight: z.number().min(0).optional(),
+  servingSize: z.number().min(0).optional(),
   variantGroups: z.array(variantGroupSchema),
   addonGroups: z.array(addonGroupSchema),
 })
@@ -74,6 +77,8 @@ export const defaultItemFormValues: ItemFormValues = {
   quickProtein: 0,
   quickFat: 0,
   quickCarbs: 0,
+  finalWeight: undefined,
+  servingSize: undefined,
   variantGroups: [],
   addonGroups: [],
 }

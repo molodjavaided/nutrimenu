@@ -3,6 +3,11 @@
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { MAX_SIZES, type ItemFormState } from './useItemFormState'
+import { PROCESSING_LABELS } from '@/lib/cooking-coefficients'
+import { expectedDishYield, resolveCostOfDish } from '@/lib/utils'
+import type { ProcessingType } from '@/types'
+
+const PROCESSING_OPTIONS: ProcessingType[] = ['raw', 'boil', 'fry', 'stew', 'bake', 'steam', 'deep_fry']
 
 export default function CompositionSection({ s }: { s: ItemFormState }) {
   return (
@@ -14,6 +19,18 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
               <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}>
                 {ing.name}
               </span>
+              {s.mode === 'ttk' && (
+                <FormSelect
+                  value={ing.processing ?? 'raw'}
+                  onChange={e => s.updateIngredientProcessing(ing.id, e.target.value as ProcessingType)}
+                  className="w-32"
+                  title="Способ обработки — влияет на финальный вес и КБЖУ"
+                >
+                  {PROCESSING_OPTIONS.map(p => (
+                    <option key={p} value={p}>{PROCESSING_LABELS[p]}</option>
+                  ))}
+                </FormSelect>
+              )}
               <RemoveButton onClick={() => s.removeIngredient(ing.id)} />
             </div>
           ))}
@@ -345,6 +362,96 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
           </div>
         </div>
       )}
+
+      {s.mode === 'ttk' && <TTKExtras s={s} />}
     </>
+  )
+}
+
+function TTKExtras({ s }: { s: ItemFormState }) {
+  const firstSizeId = s.sizes[0]?.id ?? 'default'
+  const composition = s.ingredients.flatMap(ing => {
+    const amount = s.amounts.find(a => a.ingredientId === ing.id && a.sizeId === firstSizeId)?.amount ?? 0
+    if (!amount) return []
+    return [{
+      ingredientId: ing.ingredientRefId,
+      amount,
+      unit: ing.unit,
+      processing: ing.processing,
+    }]
+  })
+  const expected = composition.length > 0 ? expectedDishYield(composition, s.ingredientRefs) : 0
+  const cost = composition.length > 0 ? resolveCostOfDish(composition, s.ingredientRefs) : null
+
+  const servings = s.finalWeight && s.servingSize && s.servingSize > 0
+    ? Math.floor(s.finalWeight / s.servingSize)
+    : null
+  const costPerServing = cost && servings && servings > 0
+    ? Math.round((cost.totalCost / servings) * 100) / 100
+    : null
+
+  return (
+    <div className="mt-6 p-4 rounded-2xl space-y-4" style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)' }}>
+      <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+        <span>📋</span>
+        <span>Технологическая карта</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <FormField label="Финальный вес блюда, г">
+          <div className="flex gap-2">
+            <FormInput
+              type="number"
+              value={s.finalWeight ?? ''}
+              onChange={e => s.setFinalWeight(e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="—"
+              className="flex-1"
+            />
+            {expected > 0 && (
+              <button
+                type="button"
+                onClick={() => s.setFinalWeight(expected)}
+                className="px-3 py-2 rounded-xl text-xs whitespace-nowrap"
+                style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
+                title="Подставить ожидаемый вес по коэффициентам обработки"
+              >
+                ≈ {expected} г
+              </button>
+            )}
+          </div>
+          {expected > 0 && (
+            <div className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              Ожидаемый по коэффициентам: ≈ {expected} г
+            </div>
+          )}
+        </FormField>
+
+        <FormField label="Размер порции, г">
+          <FormInput
+            type="number"
+            value={s.servingSize ?? ''}
+            onChange={e => s.setServingSize(e.target.value ? parseFloat(e.target.value) : undefined)}
+            placeholder="—"
+          />
+          {servings ? (
+            <div className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              ≈ {servings} порций из этого блюда
+            </div>
+          ) : null}
+        </FormField>
+      </div>
+
+      {cost && (
+        <div className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
+          {cost.totalCost > 0 && <div>Себестоимость блюда: <b style={{ color: 'var(--color-text-primary)' }}>{cost.totalCost.toFixed(2)} ₽</b></div>}
+          {costPerServing !== null && <div>Себестоимость порции: <b style={{ color: 'var(--color-text-primary)' }}>{costPerServing.toFixed(2)} ₽</b></div>}
+          {cost.missingPrices.length > 0 && (
+            <div style={{ color: 'var(--color-text-muted)' }}>
+              Цена не задана для: {cost.missingPrices.slice(0, 3).join(', ')}{cost.missingPrices.length > 3 ? '…' : ''}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

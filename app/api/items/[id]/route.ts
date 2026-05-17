@@ -50,6 +50,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (data.composition !== undefined) updateData.composition = data.composition
   if (data.variantGroups !== undefined) updateData.variantGroups = data.variantGroups
   if (data.modifierGroups !== undefined) updateData.modifierGroups = data.modifierGroups
+  if (data.creationMode !== undefined) updateData.creationMode = data.creationMode ?? null
+  if (data.finalWeight !== undefined) updateData.finalWeight = data.finalWeight ?? null
+  if (data.servingSize !== undefined) updateData.servingSize = data.servingSize ?? null
 
   const item = await db.menuItem.update({
     where: { id, venueId: venueId },

@@ -30,6 +30,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       barcode: body.barcode?.trim() || null,
       manufacturer: body.manufacturer?.trim() || null,
       packageSize: body.packageSize?.trim() || null,
+      yieldCoefficients: body.yieldCoefficients ?? null,
+      coldLossPercent: body.coldLossPercent ?? null,
+      pricePerKg: body.pricePerKg ?? null,
     },
   })
 

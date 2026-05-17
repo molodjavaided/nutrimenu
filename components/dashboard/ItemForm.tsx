@@ -25,7 +25,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       </h1>
 
       <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#EAE7F8' }}>
-        {(['quick', 'detailed'] as const).map(m => (
+        {(['quick', 'composition', 'ttk'] as const).map(m => (
           <button
             key={m}
             onClick={() => s.setMode(m)}
@@ -34,23 +34,28 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               ? { background: 'var(--color-text-primary)', color: '#FEFEF2' }
               : { color: 'var(--color-text-secondary)' }
             }
+            title={
+              m === 'quick' ? 'Название + КБЖУ вручную, без состава' :
+              m === 'composition' ? 'Список ингредиентов с количеством' :
+              'Технико-технологическая карта: брутто, обработка, выход, фуд-кост'
+            }
           >
-            {m === 'quick' ? 'Быстро' : 'С составом'}
+            {m === 'quick' ? 'Быстро' : m === 'composition' ? 'По составу' : 'По ТТК'}
           </button>
         ))}
       </div>
 
       <BasicSection s={s} />
 
-      {s.mode === 'detailed' && (
+      {s.mode !== 'quick' && (
         <div className="mb-8">
           <CompositionSection s={s} />
         </div>
       )}
 
-      {s.mode === 'detailed' && <VariantsSection s={s} />}
+      {s.mode !== 'quick' && <VariantsSection s={s} />}
 
-      {s.mode === 'detailed' && <AddonsSection s={s} />}
+      {s.mode !== 'quick' && <AddonsSection s={s} />}
 
       <div className="flex justify-between pt-4 border-t" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
         <button

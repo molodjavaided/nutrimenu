@@ -136,6 +136,9 @@ model MenuItem {
   composition    Json?
   variantGroups  Json?
   modifierGroups Json?
+  creationMode   String?
+  finalWeight    Float?
+  servingSize    Float?
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -251,6 +254,9 @@ model IngredientRef {
   barcode        String?
   manufacturer   String?
   packageSize    String?
+  yieldCoefficients Json?
+  coldLossPercent   Float?
+  pricePerKg        Float?
 
   @@unique([venueId, barcode])
   @@index([venueId])

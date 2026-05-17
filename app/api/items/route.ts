@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
       composition: rest.composition ?? [],
       variantGroups: rest.variantGroups ?? [],
       modifierGroups: rest.modifierGroups ?? [],
+      creationMode: rest.creationMode ?? null,
+      finalWeight: rest.finalWeight ?? null,
+      servingSize: rest.servingSize ?? null,
       sortOrder: count,
     },
   })

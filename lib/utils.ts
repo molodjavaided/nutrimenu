@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { MenuItem, NutriTotal, SelectedModifiers, SelectedVariants, TrackerItem, ModifierGroup, CompositionRow, IngredientRef, Modifier } from '@/types'
+import { asCategory, getColdLossPercent, getYieldCoef } from './cooking-coefficients'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -211,12 +212,111 @@ export function resolveIngredientPer100(
   }
 }
 
+/**
+ * Эффективный «вклад» строки состава в итоговое блюдо с учётом обработки.
+ * Возвращает калории/БЖУ, который ингредиент приносит в блюдо, и его вклад в финальный вес.
+ *
+ * Математика:
+ *  - brutto = effective grams (с учётом weightPerUnit для шт)
+ *  - netto  = brutto × (1 − coldLoss%)
+ *  - yieldFactor = коэффициент выхода по способу обработки
+ *  - finalGrams = netto × yieldFactor (масса, которая попадёт в готовое блюдо)
+ *  - Калории «не теряются» при тепловой обработке (вода нейтральна), поэтому считаются от netto.
+ *  - Исключение: масло. Для категории oil + жарка → в блюдо попадает только oilAbsorption доля
+ *    и массы, и калорий (остальное остаётся на сковороде).
+ */
+export function resolveCompositionRowContribution(
+  row: CompositionRow,
+  ref: IngredientRef,
+  per100: { caloriesPer100: number; proteinPer100: number; fatPer100: number; carbsPer100: number }
+): { calories: number; protein: number; fat: number; carbs: number; finalGrams: number } {
+  const brutto = (row.unit === 'шт' && ref.weightPerUnit)
+    ? row.amount * ref.weightPerUnit
+    : row.amount
+
+  const category = asCategory(ref.category)
+  const processing = row.processing ?? 'raw'
+
+  // Особый случай: масло при жарке/фритюре — в блюдо идёт только впитанная часть
+  if (category === 'oil' && (processing === 'fry' || processing === 'deep_fry' || processing === 'bake')) {
+    const absorb = row.oilAbsorption ?? row.yieldOverride
+      ?? ref.yieldCoefficients?.[processing]
+      ?? getYieldCoef(processing, undefined, undefined, 'oil')
+    const ratio = (brutto * absorb) / 100
+    return {
+      calories: per100.caloriesPer100 * ratio,
+      protein:  per100.proteinPer100  * ratio,
+      fat:      per100.fatPer100      * ratio,
+      carbs:    per100.carbsPer100    * ratio,
+      finalGrams: brutto * absorb,
+    }
+  }
+
+  const coldLoss = getColdLossPercent(row.coldLossOverride, ref.coldLossPercent, category)
+  const netto = brutto * (1 - coldLoss / 100)
+  const yieldFactor = processing === 'raw'
+    ? 1
+    : getYieldCoef(processing, row.yieldOverride, ref.yieldCoefficients, category)
+
+  const ratio = netto / 100
+  return {
+    calories: per100.caloriesPer100 * ratio,
+    protein:  per100.proteinPer100  * ratio,
+    fat:      per100.fatPer100      * ratio,
+    carbs:    per100.carbsPer100    * ratio,
+    finalGrams: netto * yieldFactor,
+  }
+}
+
+/**
+ * Оценить финальный вес блюда по составу (для подсказки «≈ X г» в форме).
+ */
+export function expectedDishYield(
+  composition: CompositionRow[],
+  ingredientRefs: IngredientRef[]
+): number {
+  let total = 0
+  for (const row of composition) {
+    const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+    if (!ref || !row.amount) continue
+    const per100 = resolveIngredientPer100(ref, ingredientRefs)
+    total += resolveCompositionRowContribution(row, ref, per100).finalGrams
+  }
+  return Math.round(total)
+}
+
+/**
+ * Себестоимость блюда (руб) и порции по pricePerKg ингредиентов.
+ * Считается от веса БРУТТО — ресторан платит за грязный продукт.
+ */
+export function resolveCostOfDish(
+  composition: CompositionRow[],
+  ingredientRefs: IngredientRef[]
+): { totalCost: number; missingPrices: string[] } {
+  let totalCost = 0
+  const missingPrices: string[] = []
+  for (const row of composition) {
+    const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+    if (!ref || !row.amount) continue
+    if (ref.pricePerKg === undefined || ref.pricePerKg === null) {
+      missingPrices.push(ref.name)
+      continue
+    }
+    const brutto = (row.unit === 'шт' && ref.weightPerUnit)
+      ? row.amount * ref.weightPerUnit
+      : row.amount
+    totalCost += (brutto / 1000) * ref.pricePerKg
+  }
+  return { totalCost: Math.round(totalCost * 100) / 100, missingPrices }
+}
+
 // Расчёт КБЖУ из состава с учётом замен ингредиентов
 export function resolveNutriFromComposition(
   composition: CompositionRow[],
   ingredientRefs: IngredientRef[],
   modifierGroups: ModifierGroup[],
-  selectedModifiers: SelectedModifiers
+  selectedModifiers: SelectedModifiers,
+  options?: { finalWeight?: number }
 ): { calories: number; protein: number; fat: number; carbs: number } {
   // Строим карту замен: replacesIngredientId → modifier
   const replacements = new Map<string, { modifier: Modifier; amount: number; unit: 'г' | 'мл' | 'шт' | 'кг' | 'л' }>()
@@ -238,6 +338,10 @@ export function resolveNutriFromComposition(
     }
   }
 
+  // options.finalWeight зарезервирован для будущих сценариев нормализации
+  // (например, отображение КБЖУ на 100 г готового блюда), здесь же возвращаем
+  // абсолютные значения — нормализацию делает форма через item.weight.
+  void options
   let calories = 0, protein = 0, fat = 0, carbs = 0
 
   for (const row of composition) {
@@ -251,18 +355,14 @@ export function resolveNutriFromComposition(
       continue
     }
 
-    // Resolve recursively — handles composite ingredients inside dishes
     const ref = ingredientRefs.find(r => r.id === row.ingredientId)
     if (!ref || !row.amount) continue
     const per100 = resolveIngredientPer100(ref, ingredientRefs)
-    const effectiveGrams = (row.unit === 'шт' && ref.weightPerUnit)
-      ? row.amount * ref.weightPerUnit
-      : row.amount
-    const ratio = effectiveGrams / 100
-    calories += per100.caloriesPer100 * ratio
-    protein  += per100.proteinPer100  * ratio
-    fat      += per100.fatPer100      * ratio
-    carbs    += per100.carbsPer100    * ratio
+    const contribution = resolveCompositionRowContribution(row, ref, per100)
+    calories += contribution.calories
+    protein  += contribution.protein
+    fat      += contribution.fat
+    carbs    += contribution.carbs
   }
 
   return {

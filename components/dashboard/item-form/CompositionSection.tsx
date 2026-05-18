@@ -4,6 +4,8 @@ import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/f
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { MAX_SIZES, type ItemFormState } from './useItemFormState'
 import { expectedDishYield, resolveCostOfDish } from '@/lib/utils'
+import { asCategory } from '@/lib/cooking-coefficients'
+import { findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
 import ProcessingChip from './ProcessingChip'
 
 export default function CompositionSection({ s }: { s: ItemFormState }) {
@@ -11,23 +13,58 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
     <>
       <FormField label="Состав" required>
         <div className="space-y-2">
-          {s.ingredients.map(ing => (
-            <div key={ing.id} className="flex items-center gap-2">
-              <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}>
-                {ing.name}
-              </span>
-              {s.mode === 'ttk' && (
-                <ProcessingChip
-                  processing={ing.processing}
-                  yieldOverride={ing.yieldOverride}
-                  ingredientRef={s.ingredientRefs.find(r => r.id === ing.ingredientRefId)}
-                  onChangeProcessing={p => s.updateIngredientProcessing(ing.id, p)}
-                  onChangeYieldOverride={v => s.updateIngredientYieldOverride(ing.id, v)}
-                />
-              )}
-              <RemoveButton onClick={() => s.removeIngredient(ing.id)} />
-            </div>
-          ))}
+          {s.ingredients.map(ing => {
+            const ref = s.ingredientRefs.find(r => r.id === ing.ingredientRefId)
+            const srcCategory = asCategory(ref?.category)
+            const suggestions = s.mode === 'ttk' && ing.processing && ing.processing !== 'raw'
+              ? suggestCompanions(ing.processing, srcCategory)
+              : []
+            return (
+              <div key={ing.id}>
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 px-3 py-2 rounded-xl text-sm" style={{ background: '#EAE7F8', color: 'var(--color-text-primary)' }}>
+                    {ing.name}
+                  </span>
+                  {s.mode === 'ttk' && (
+                    <ProcessingChip
+                      processing={ing.processing}
+                      yieldOverride={ing.yieldOverride}
+                      ingredientRef={ref}
+                      onChangeProcessing={p => s.updateIngredientProcessing(ing.id, p)}
+                      onChangeYieldOverride={v => s.updateIngredientYieldOverride(ing.id, v)}
+                    />
+                  )}
+                  <RemoveButton onClick={() => s.removeIngredient(ing.id)} />
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="ml-2 mt-1 flex flex-wrap gap-1.5">
+                    {suggestions.map(sg => {
+                      const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
+                      if (!companionRef) return null
+                      if (s.ingredients.some(i => i.ingredientRefId === companionRef.id)) return null
+                      const firstSize = s.sizes[0]
+                      const baseAmount = firstSize
+                        ? (s.amounts.find(a => a.ingredientId === ing.id && a.sizeId === firstSize.id)?.amount ?? 0)
+                        : 0
+                      const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
+                      return (
+                        <button
+                          key={sg.kind}
+                          type="button"
+                          onClick={() => s.addCompanionIngredient(ing.id, companionRef.id, sg.ratio)}
+                          className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
+                          style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
+                          title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
+                        >
+                          🪄 {sg.label}{preview ? ` ~${preview}${companionRef.unit}` : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           <button
             type="button"

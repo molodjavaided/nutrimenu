@@ -75,6 +75,9 @@ export const mockIngredients: IngredientRef[] = [
   { id: 'ing-kefir-15', name: 'Кефир 1.5%', unit: 'мл', caloriesPer100: 41, proteinPer100: 3.3, fatPer100: 1.5, carbsPer100: 4.1, category: 'Яйца и молочное' },
   { id: 'ing-kefir-32', name: 'Кефир 3.2%', unit: 'мл', caloriesPer100: 56, proteinPer100: 2.8, fatPer100: 3.2, carbsPer100: 4.1, category: 'Яйца и молочное' },
 
+  // ─── ЖИДКОСТИ ────────────────────────────────────────────────────────────
+  { id: 'ing-water', name: 'Вода', unit: 'мл', caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0, category: 'Жидкости' },
+
   // ─── МАСЛА И ЖИРЫ ────────────────────────────────────────────────────────
   { id: 'ing-butter', name: 'Масло сливочное', unit: 'г', caloriesPer100: 748, proteinPer100: 0.8, fatPer100: 82.5, carbsPer100: 0.8, category: 'Масла' },
   { id: 'ing-butter-ghee', name: 'Масло топлёное', unit: 'г', caloriesPer100: 892, proteinPer100: 0, fatPer100: 99.0, carbsPer100: 0, category: 'Масла' },

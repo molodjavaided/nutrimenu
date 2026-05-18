@@ -806,6 +806,27 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     })
   }, [ingredients])
 
+  const addCompanionIngredient = useCallback((sourceIngredientId: string, refId: string, ratio: number) => {
+    const ref = ingredientRefs.find(r => r.id === refId)
+    if (!ref) return
+    if (ingredients.some(i => i.ingredientRefId === refId)) return
+    const newId = crypto.randomUUID()
+    const newIngredient: IngredientItem = {
+      id: newId,
+      ingredientRefId: refId,
+      name: ref.name,
+      unit: ref.unit,
+    }
+    dispatch({ type: 'ADD_INGREDIENT', ingredient: newIngredient })
+    for (const size of sizes) {
+      const src = amounts.find(a => a.ingredientId === sourceIngredientId && a.sizeId === size.id)
+      const baseAmount = src?.amount ?? 0
+      if (baseAmount <= 0) continue
+      const computed = Math.max(1, Math.round(baseAmount * ratio))
+      dispatch({ type: 'UPDATE_AMOUNT', ingredientId: newId, sizeId: size.id, amount: computed })
+    }
+  }, [ingredientRefs, ingredients, sizes, amounts])
+
   const updateIngredientYieldOverride = useCallback((ingredientId: string, yieldOverride: number | undefined) => {
     dispatch({
       type: 'SET_INGREDIENTS',
@@ -862,7 +883,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     sizes, setSizes,
     amounts, setAmounts,
     manualNutri, setManualNutri,
-    addIngredient, removeIngredient, updateIngredientProcessing, updateIngredientYieldOverride,
+    addIngredient, removeIngredient, updateIngredientProcessing, updateIngredientYieldOverride, addCompanionIngredient,
     addSize, updateSizeName, updateSizeUnit, updateSizePrice, applySizePreset, removeSize,
     updateAmount, updateManualNutri,
     calculateNutriForSize, getAmountFromComposition,

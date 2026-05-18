@@ -62,9 +62,11 @@ const VALID_CATEGORIES: IngredientCategory[] = [
 const RU_CATEGORY_ALIAS: Record<string, IngredientCategory> = {
   'крупы и мука': 'grain',
   'крупы': 'grain',
+  'крупа': 'grain',
   'паста': 'grain',
   'бобовые': 'grain',
   'мясо': 'meat',
+  'мясо и рыба': 'meat',
   'птица': 'poultry',
   'рыба': 'fish',
   'рыба / морепродукты': 'fish',
@@ -75,9 +77,12 @@ const RU_CATEGORY_ALIAS: Record<string, IngredientCategory> = {
   'ягоды': 'fruit',
   'яйца и молочное': 'dairy',
   'молочка': 'dairy',
+  'молоко': 'dairy',
   'масла': 'oil',
   'масло / жиры': 'oil',
   'жидкости': 'liquid',
+  'соусы': 'other',
+  'выпечка': 'other',
   'прочее': 'other',
 }
 

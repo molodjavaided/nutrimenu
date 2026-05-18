@@ -22,6 +22,7 @@ export interface IngredientItem {
   name: string
   unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
   processing?: ProcessingType  // ТТК: способ обработки
+  yieldOverride?: number  // ТТК: ручной коэффициент выхода (если перебивает ГОСТ/ref)
 }
 
 export interface Size {
@@ -274,7 +275,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
 
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType }> }>
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
@@ -290,6 +291,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
               name: ref?.name || `Неизвестный ингредиент (${comp.ingredientId})`,
               unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
               processing: comp.processing,
+              yieldOverride: comp.yieldOverride,
             }
           })
           setIngredients(loadedIngredients)
@@ -335,7 +337,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         }
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType }>
+        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number }>
         const ingredientIdMap = new Map<string, string>()
 
         const loadedIngredients = compositionData.map(comp => {
@@ -348,6 +350,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
             name: ref?.name || `ID: ${comp.ingredientId}`,
             unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
             processing: comp.processing,
+            yieldOverride: comp.yieldOverride,
           }
         })
         setIngredients(loadedIngredients)
@@ -623,6 +626,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
           ...(mode === 'ttk' && ingredient.processing && ingredient.processing !== 'raw'
             ? { processing: ingredient.processing }
             : {}),
+          ...(mode === 'ttk' && ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
+            ? { yieldOverride: ingredient.yieldOverride }
+            : {}),
         }]
       })
 
@@ -794,7 +800,16 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
   const updateIngredientProcessing = useCallback((ingredientId: string, processing: ProcessingType | undefined) => {
     dispatch({
       type: 'SET_INGREDIENTS',
-      ingredients: ingredients.map(i => i.id === ingredientId ? { ...i, processing } : i),
+      ingredients: ingredients.map(i => i.id === ingredientId
+        ? { ...i, processing, yieldOverride: processing === 'raw' ? undefined : i.yieldOverride }
+        : i),
+    })
+  }, [ingredients])
+
+  const updateIngredientYieldOverride = useCallback((ingredientId: string, yieldOverride: number | undefined) => {
+    dispatch({
+      type: 'SET_INGREDIENTS',
+      ingredients: ingredients.map(i => i.id === ingredientId ? { ...i, yieldOverride } : i),
     })
   }, [ingredients])
 
@@ -847,7 +862,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     sizes, setSizes,
     amounts, setAmounts,
     manualNutri, setManualNutri,
-    addIngredient, removeIngredient, updateIngredientProcessing,
+    addIngredient, removeIngredient, updateIngredientProcessing, updateIngredientYieldOverride,
     addSize, updateSizeName, updateSizeUnit, updateSizePrice, applySizePreset, removeSize,
     updateAmount, updateManualNutri,
     calculateNutriForSize, getAmountFromComposition,

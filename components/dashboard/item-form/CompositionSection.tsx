@@ -3,11 +3,8 @@
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { MAX_SIZES, type ItemFormState } from './useItemFormState'
-import { PROCESSING_LABELS } from '@/lib/cooking-coefficients'
 import { expectedDishYield, resolveCostOfDish } from '@/lib/utils'
-import type { ProcessingType } from '@/types'
-
-const PROCESSING_OPTIONS: ProcessingType[] = ['raw', 'boil', 'fry', 'stew', 'bake', 'steam', 'deep_fry']
+import ProcessingChip from './ProcessingChip'
 
 export default function CompositionSection({ s }: { s: ItemFormState }) {
   return (
@@ -20,16 +17,13 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
                 {ing.name}
               </span>
               {s.mode === 'ttk' && (
-                <FormSelect
-                  value={ing.processing ?? 'raw'}
-                  onChange={e => s.updateIngredientProcessing(ing.id, e.target.value as ProcessingType)}
-                  className="w-32"
-                  title="Способ обработки — влияет на финальный вес и КБЖУ"
-                >
-                  {PROCESSING_OPTIONS.map(p => (
-                    <option key={p} value={p}>{PROCESSING_LABELS[p]}</option>
-                  ))}
-                </FormSelect>
+                <ProcessingChip
+                  processing={ing.processing}
+                  yieldOverride={ing.yieldOverride}
+                  ingredientRef={s.ingredientRefs.find(r => r.id === ing.ingredientRefId)}
+                  onChangeProcessing={p => s.updateIngredientProcessing(ing.id, p)}
+                  onChangeYieldOverride={v => s.updateIngredientYieldOverride(ing.id, v)}
+                />
               )}
               <RemoveButton onClick={() => s.removeIngredient(ing.id)} />
             </div>
@@ -378,6 +372,7 @@ function TTKExtras({ s }: { s: ItemFormState }) {
       amount,
       unit: ing.unit,
       processing: ing.processing,
+      yieldOverride: ing.yieldOverride,
     }]
   })
   const expected = composition.length > 0 ? expectedDishYield(composition, s.ingredientRefs) : 0

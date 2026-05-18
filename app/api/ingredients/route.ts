@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 import { mirrorIngredientToCache } from '@/lib/barcode-cache-upsert'
-import { asCategory } from '@/lib/cooking-coefficients'
+import { resolveCategory } from '@/lib/cooking-coefficients'
 
 export async function GET() {
   const session = await getSession()
@@ -15,7 +15,7 @@ export async function GET() {
   })
 
   return NextResponse.json(
-    ingredients.map(i => ({ ...i, category: asCategory(i.category ?? undefined) ?? null }))
+    ingredients.map(i => ({ ...i, category: resolveCategory(i.category ?? undefined, i.name) ?? null }))
   )
 }
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       proteinPer100: body.proteinPer100 ?? 0,
       fatPer100: body.fatPer100 ?? 0,
       carbsPer100: body.carbsPer100 ?? 0,
-      category: asCategory(body.category) ?? null,
+      category: resolveCategory(body.category, body.name) ?? null,
       type: body.type ?? 'mono',
       composition: body.composition ?? null,
       compositionText: body.compositionText ?? null,

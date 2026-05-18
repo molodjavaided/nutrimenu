@@ -110,6 +110,51 @@ export function asCategory(value: string | undefined): IngredientCategory | unde
   return RU_CATEGORY_ALIAS[value.trim().toLowerCase()]
 }
 
+// ── Auto-detect category by ingredient name (no AI, just substring patterns) ──
+// Порядок важен: специфичные паттерны выше более общих.
+const NAME_PATTERNS: Array<{ patterns: RegExp; category: IngredientCategory }> = [
+  // Сливочное масло — это молочка, а не растительное масло. Должно быть выше 'масло'.
+  { patterns: /сливочн.*масл|масло сливочн|топлён.*масл|топлен.*масл|гхи/i, category: 'dairy' },
+  // Растительные масла и жиры
+  { patterns: /масло|oil|маргарин|сало|жир\b/i, category: 'oil' },
+  // Птица (раньше мяса, потому что «курица» содержит «кур»)
+  { patterns: /куриц|кур(\b|[ -])|индейк|индюш|утк|утин|гус(ь|и|ын)|цыпл|бройлер|перепел/i, category: 'poultry' },
+  // Мясо
+  { patterns: /мясо|говяд|свин|телятин|баранин|конин|оленин|кролик|бекон|ветчин|колбас|фарш|стейк|вырезк/i, category: 'meat' },
+  // Рыба и морепродукты
+  { patterns: /рыб|лосось|сёмг|семг|форель|треск|минтай|скумбри|тунец|горбуш|сельд|килька|кета|нерка|судак|щука|карп|окунь|креветк|кальмар|мидии|морепрод|икр(а|у|ы)|анчоус|сардин/i, category: 'fish' },
+  // Молочка
+  { patterns: /молок|сливк|сметан|кефир|йогурт|ряженк|творог|сыр|брынз|моцарелл|фет(а|у)|маскарпоне|рикотт|пармез|чеддер|яйц|яиц/i, category: 'dairy' },
+  // Крупы / мука / бобовые / паста / хлеб
+  { patterns: /круп|\bрис\b|рисов|греч|овсян|перлов|пшен|ячмен|манн|кускус|булгур|киноа|паста\b|макарон|спагетт|лапш|муч|мука|хлеб|тесто|пшениц|рож|отруб|фасол|нут\b|чечевиц|горох|боб/i, category: 'grain' },
+  // Зелень / овощи / грибы
+  { patterns: /овощ|картоф|морков|\bлук\b|чеснок|помидор|томат|огурец|капуст|перец|кабач|баклажан|тыкв|свёкл|свекл|редис|зелен|укроп|петрушк|кинз|базилик|шпинат|салат|руккол|грибы|шампиньон|вёшенк|вешенк|спарж|брокколи|фасоль струч/i, category: 'vegetable' },
+  // Фрукты / ягоды / орехи
+  { patterns: /фрукт|яблок|груш|банан|апельсин|мандарин|лимон|лайм|киви|ягод|клубник|малин|черник|голубик|смородин|вишн|череш|виноград|ананас|манго|авокадо|дын|арбуз|персик|абрикос|слив(а|ы|у)|инжир|финик|изюм|курага|чернослив|орех|миндал|фундук|кешью|фисташ|кедров|арахис/i, category: 'fruit' },
+  // Жидкости (без молочки и масел, они выше)
+  { patterns: /вода|бульон|сок\b|уксус|вино\b|пиво|компот/i, category: 'liquid' },
+]
+
+export function inferCategoryFromName(name: string | undefined): IngredientCategory | undefined {
+  if (!name) return undefined
+  const trimmed = name.trim()
+  if (!trimmed) return undefined
+  for (const { patterns, category } of NAME_PATTERNS) {
+    if (patterns.test(trimmed)) return category
+  }
+  return undefined
+}
+
+/**
+ * Финальный резолв категории: явная категория → авто-детект по имени → undefined.
+ */
+export function resolveCategory(rawCategory: string | undefined, name: string | undefined): IngredientCategory | undefined {
+  const explicit = asCategory(rawCategory)
+  if (explicit && explicit !== 'other') return explicit
+  const inferred = inferCategoryFromName(name)
+  return inferred ?? explicit
+}
+
 /**
  * Получить коэффициент выхода для строки: override → ref → дефолт по категории → 1.
  */

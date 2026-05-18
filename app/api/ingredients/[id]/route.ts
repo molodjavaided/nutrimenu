@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 import { mirrorIngredientToCache } from '@/lib/barcode-cache-upsert'
-import { asCategory } from '@/lib/cooking-coefficients'
+import { resolveCategory } from '@/lib/cooking-coefficients'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       proteinPer100: body.proteinPer100,
       fatPer100: body.fatPer100,
       carbsPer100: body.carbsPer100,
-      category: asCategory(body.category) ?? null,
+      category: resolveCategory(body.category, body.name) ?? null,
       type: body.type,
       composition: body.composition ?? null,
       compositionText: body.compositionText ?? null,

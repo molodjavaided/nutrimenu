@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 import { getEffectiveLimits } from '@/lib/plans'
-import { asCategory } from '@/lib/cooking-coefficients'
+import { resolveCategory } from '@/lib/cooking-coefficients'
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
           proteinPer100: ing.proteinPer100,
           fatPer100: ing.fatPer100,
           carbsPer100: ing.carbsPer100,
-          category: asCategory(ing.category ?? undefined) ?? null,
+          category: resolveCategory(ing.category ?? undefined, ing.name) ?? null,
           type: ing.type,
           composition: ing.composition ?? undefined,
           instructions: ing.instructions ?? null,

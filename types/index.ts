@@ -216,7 +216,7 @@ export interface IngredientRef {
   proteinPer100: number
   fatPer100: number
   carbsPer100: number
-  category?: IngredientCategory | string  // string для обратной совместимости со старыми данными
+  category?: IngredientCategory
   isSystem?: boolean
   // ТТК-поля
   yieldCoefficients?: YieldCoefficients  // дефолтные коэффициенты выхода по способам обработки

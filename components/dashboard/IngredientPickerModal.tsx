@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { IngredientLibrary, IngredientRef } from '@/types'
+import { IngredientLibrary, IngredientRef, IngredientCategory } from '@/types'
 import { resolveIngredientPer100 } from '@/lib/utils'
+import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 import BarcodeScannerOverlay from './BarcodeScannerOverlay'
 
 interface Props {
@@ -39,7 +40,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const [newManufacturer, setNewManufacturer] = useState('')
   const [newPackageSize, setNewPackageSize] = useState('')
   const [newCompositionText, setNewCompositionText] = useState('')
-  const [newCategory, setNewCategory] = useState('Прочее')
+  const [newCategory, setNewCategory] = useState<IngredientCategory>('other')
   const [saving, setSaving] = useState(false)
 
   // Barcode scanner — delegates to shared overlay
@@ -60,7 +61,8 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const categoryOrder: string[] = []
   const grouped: Record<string, IngredientRef[]> = {}
   for (const ing of filtered) {
-    const cat = ing.category ?? 'Прочее'
+    const enumCat = asCategory(ing.category) ?? 'other'
+    const cat = CATEGORY_LABELS[enumCat]
     if (!grouped[cat]) { grouped[cat] = []; categoryOrder.push(cat) }
     grouped[cat].push(ing)
   }
@@ -99,7 +101,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         setNewManufacturer(p.manufacturer ?? '')
         setNewPackageSize(p.packageSize ?? '')
         setNewCompositionText(p.compositionText ?? '')
-        setNewCategory(p.category || 'Прочее')
+        setNewCategory(asCategory(p.category) ?? 'other')
         const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
         const conf = data.confidence as 'low' | 'medium' | 'high' | undefined
         const warning = data.warning as string | undefined
@@ -143,7 +145,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           fatPer100: newFat,
           carbsPer100: newCarbs,
           type: 'mono',
-          category: newCategory || 'Прочее',
+          category: newCategory,
           barcode: newBarcode || undefined,
           manufacturer: newManufacturer || undefined,
           packageSize: newPackageSize || undefined,
@@ -164,7 +166,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         setNewManufacturer('')
         setNewPackageSize('')
         setNewCompositionText('')
-        setNewCategory('Прочее')
+        setNewCategory('other')
       }
     } finally {
       setSaving(false)

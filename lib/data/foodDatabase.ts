@@ -320,6 +320,8 @@ export const initialFoodDatabase: FoodCategory[] = [
 
 // ─── Converter: FoodCategory[] → IngredientLibrary ───────────────────────────
 
+import { asCategory } from '@/lib/cooking-coefficients'
+
 function foodItemToIngredientRef(item: FoodItem, categoryTitle: string): IngredientRef {
   const isPiece = item.weightPerPiece != null
   return {
@@ -331,7 +333,7 @@ function foodItemToIngredientRef(item: FoodItem, categoryTitle: string): Ingredi
     proteinPer100: item.proteins,
     fatPer100: item.fats,
     carbsPer100: item.carbs,
-    category: categoryTitle,
+    category: asCategory(categoryTitle) ?? 'other',
     isSystem: true,
   }
 }

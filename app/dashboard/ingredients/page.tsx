@@ -2,16 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { IngredientLibrary, IngredientRef } from '@/types'
+import { IngredientLibrary, IngredientRef, IngredientCategory } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
+import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 
 const MY_LIBRARY_ID = 'my-library'
 import { SearchInput } from '@/components/ui/SearchInput'
 import IngredientFormModal from '@/components/dashboard/IngredientFormModal'
 import BarcodeScannerOverlay from '@/components/dashboard/BarcodeScannerOverlay'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
-
-const PRESET_CATEGORIES = ['Молоко', 'Крупа', 'Мясо и рыба', 'Овощи', 'Фрукты', 'Соусы', 'Выпечка', 'Прочее']
 
 type BarcodeStatus = 'idle' | 'loading' | 'not_found' | 'error'
 
@@ -170,7 +169,7 @@ export default function IngredientsPage() {
           proteinPer100: p.proteinPer100 ?? 0,
           fatPer100: p.fatPer100 ?? 0,
           carbsPer100: p.carbsPer100 ?? 0,
-          category: p.category || 'Прочее',
+          category: asCategory(p.category) ?? 'other',
           type: 'mono',
           barcode: code,
           compositionText: p.compositionText || undefined,
@@ -203,7 +202,7 @@ export default function IngredientsPage() {
           proteinPer100: 0,
           fatPer100: 0,
           carbsPer100: 0,
-          category: 'Прочее',
+          category: 'other',
           type: 'mono',
           barcode: code,
         })
@@ -225,16 +224,11 @@ export default function IngredientsPage() {
     i.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const allCategories = [
-    ...PRESET_CATEGORIES,
-    ...Array.from(new Set(
-      ingredients.map(i => i.category ?? 'Прочее').filter(c => !PRESET_CATEGORIES.includes(c))
-    )),
-  ]
+  const allCategories = Object.keys(CATEGORY_LABELS) as IngredientCategory[]
 
   const grouped = allCategories.reduce<Record<string, IngredientRef[]>>((acc, cat) => {
-    const items = filtered.filter(i => (i.category ?? 'Прочее') === cat)
-    if (items.length > 0) acc[cat] = items
+    const items = filtered.filter(i => (asCategory(i.category) ?? 'other') === cat)
+    if (items.length > 0) acc[CATEGORY_LABELS[cat]] = items
     return acc
   }, {})
 

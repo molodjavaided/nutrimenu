@@ -6,10 +6,6 @@ import { resolveIngredientPer100 } from '@/lib/utils'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 import IngredientPickerModal from './IngredientPickerModal'
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const PRESET_CATEGORIES = ['Молоко', 'Крупа', 'Мясо и рыба', 'Овощи', 'Фрукты', 'Соусы', 'Выпечка', 'Прочее']
-
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -31,12 +27,9 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
   // ── Form state ──
   const [mode, setMode] = useState<'mono' | 'composite'>(editing?.type ?? 'mono')
   const [name, setName] = useState(editing?.name ?? '')
-  const [category, setCategory] = useState(editing?.category ?? 'Прочее')
+  const [category, setCategory] = useState<IngredientCategory>(asCategory(editing?.category) ?? 'other')
   const [unit, setUnit] = useState<'г' | 'мл' | 'шт'>(editing?.unit ?? 'г')
   const [weightPerUnit, setWeightPerUnit] = useState<number>(editing?.weightPerUnit ?? 0)
-  const [isCustomCategory, setIsCustomCategory] = useState(
-    !!editing?.category && !PRESET_CATEGORIES.includes(editing.category)
-  )
 
   // Mono fields
   const [calories, setCalories] = useState(editing?.caloriesPer100 ?? 0)
@@ -52,7 +45,6 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
   // ТТК (опционально)
   const [pricePerKg, setPricePerKg] = useState<number | undefined>(editing?.pricePerKg)
-  const [cookingCategory, setCookingCategory] = useState<IngredientCategory | undefined>(asCategory(editing?.category))
   const [coldLossPercent, setColdLossPercent] = useState<number | undefined>(editing?.coldLossPercent)
   const [yieldCoefficients, setYieldCoefficients] = useState<YieldCoefficients | undefined>(editing?.yieldCoefficients)
   const [aiLoading, setAiLoading] = useState(false)
@@ -69,21 +61,13 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
         return
       }
       const meta = data.meta as { category: IngredientCategory; coldLossPercent?: number; yieldCoefficients?: YieldCoefficients }
-      setCookingCategory(meta.category)
+      setCategory(meta.category)
       if (meta.coldLossPercent !== undefined) setColdLossPercent(meta.coldLossPercent)
       if (meta.yieldCoefficients) setYieldCoefficients(meta.yieldCoefficients)
     } finally {
       setAiLoading(false)
     }
   }
-
-  // ── Derive existing categories for selector ──
-  const myLib = libraries.find(l => !l.isSystem)
-  const userIngredients = myLib?.ingredients ?? []
-  const customCategories = Array.from(
-    new Set(userIngredients.map(i => i.category ?? 'Прочее').filter(c => !PRESET_CATEGORIES.includes(c)))
-  )
-  const allCategories = [...PRESET_CATEGORIES, ...customCategories]
 
   // ── Live-computed КБЖУ for composite mode ──
   const computedNutri = useCallback((): { cal: number; pro: number; fat: number; car: number; weight: number } => {
@@ -157,7 +141,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       name: name.trim(),
       unit,
       ...(unit === 'шт' && weightPerUnit > 0 ? { weightPerUnit } : {}),
-      category: cookingCategory ?? category,
+      category,
       isSystem: false as const,
       type: mode,
       ...(editing?.barcode ? { barcode: editing.barcode } : {}),
@@ -290,39 +274,16 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                 {/* Category */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Категория</label>
-                  {isCustomCategory ? (
-                    <div className="flex gap-1">
-                      <input
-                        value={category}
-                        onChange={e => setCategory(e.target.value)}
-                        placeholder="Название категории"
-                        className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
-                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                      />
-                      <button
-                        onClick={() => { setIsCustomCategory(false); setCategory('Прочее') }}
-                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-muted)' }}
-                      >✕</button>
-                    </div>
-                  ) : (
-                    <select
-                      value={category}
-                      onChange={e => {
-                        if (e.target.value === '__custom__') {
-                          setIsCustomCategory(true); setCategory('')
-                        } else {
-                          setCategory(e.target.value)
-                        }
-                      }}
-                      className="h-11 px-2 rounded-xl text-sm outline-none"
-                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                    >
-                      {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                      <option disabled>──────────</option>
-                      <option value="__custom__">+ Создать категорию...</option>
-                    </select>
-                  )}
+                  <select
+                    value={category}
+                    onChange={e => setCategory(e.target.value as IngredientCategory)}
+                    className="h-11 px-2 rounded-xl text-sm outline-none"
+                    style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+                  >
+                    {(Object.keys(CATEGORY_LABELS) as IngredientCategory[]).map(c => (
+                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Unit */}
@@ -570,20 +531,6 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
                     className="h-10 px-3 rounded-xl text-sm outline-none"
                     style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
                   />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Кулинарная категория</label>
-                  <select
-                    value={cookingCategory ?? ''}
-                    onChange={e => setCookingCategory(e.target.value ? (e.target.value as IngredientCategory) : undefined)}
-                    className="h-10 px-2 rounded-xl text-sm outline-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                  >
-                    <option value="">— не задано —</option>
-                    {(Object.keys(CATEGORY_LABELS) as IngredientCategory[]).map(c => (
-                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                    ))}
-                  </select>
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Холодные потери, %</label>

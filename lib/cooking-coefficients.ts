@@ -58,9 +58,33 @@ const VALID_CATEGORIES: IngredientCategory[] = [
   'grain','meat','poultry','fish','vegetable','fruit','dairy','oil','liquid','other',
 ]
 
+// Маппинг русских названий категорий (legacy mock-data, IngredientFormModal) → enum.
+const RU_CATEGORY_ALIAS: Record<string, IngredientCategory> = {
+  'крупы и мука': 'grain',
+  'крупы': 'grain',
+  'паста': 'grain',
+  'бобовые': 'grain',
+  'мясо': 'meat',
+  'птица': 'poultry',
+  'рыба': 'fish',
+  'рыба / морепродукты': 'fish',
+  'морепродукты': 'fish',
+  'овощи': 'vegetable',
+  'фрукты': 'fruit',
+  'фрукты / ягоды': 'fruit',
+  'ягоды': 'fruit',
+  'яйца и молочное': 'dairy',
+  'молочка': 'dairy',
+  'масла': 'oil',
+  'масло / жиры': 'oil',
+  'жидкости': 'liquid',
+  'прочее': 'other',
+}
+
 export function asCategory(value: string | undefined): IngredientCategory | undefined {
   if (!value) return undefined
-  return (VALID_CATEGORIES as string[]).includes(value) ? (value as IngredientCategory) : undefined
+  if ((VALID_CATEGORIES as string[]).includes(value)) return value as IngredientCategory
+  return RU_CATEGORY_ALIAS[value.trim().toLowerCase()]
 }
 
 /**

@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { MenuItem, NutriTotal, SelectedModifiers, SelectedVariants, TrackerItem, ModifierGroup, CompositionRow, IngredientRef, Modifier } from '@/types'
-import { asCategory, getColdLossPercent, getYieldCoef } from './cooking-coefficients'
+import { asCategory, getYieldCoef } from './cooking-coefficients'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -218,10 +218,9 @@ export function resolveIngredientPer100(
  *
  * Математика:
  *  - brutto = effective grams (с учётом weightPerUnit для шт)
- *  - netto  = brutto × (1 − coldLoss%)
- *  - yieldFactor = коэффициент выхода по способу обработки
- *  - finalGrams = netto × yieldFactor (масса, которая попадёт в готовое блюдо)
- *  - Калории «не теряются» при тепловой обработке (вода нейтральна), поэтому считаются от netto.
+ *  - yieldFactor = коэффициент выхода по способу обработки (тепловой)
+ *  - finalGrams = brutto × yieldFactor (масса, которая попадёт в готовое блюдо)
+ *  - Калории считаются от brutto (КБЖУ сырья по ГОСТ).
  *  - Исключение: масло. Для категории oil + жарка → в блюдо попадает только oilAbsorption доля
  *    и массы, и калорий (остальное остаётся на сковороде).
  */
@@ -252,19 +251,17 @@ export function resolveCompositionRowContribution(
     }
   }
 
-  const coldLoss = getColdLossPercent(row.coldLossOverride, ref.coldLossPercent, category)
-  const netto = brutto * (1 - coldLoss / 100)
   const yieldFactor = processing === 'raw'
     ? 1
     : getYieldCoef(processing, row.yieldOverride, ref.yieldCoefficients, category)
 
-  const ratio = netto / 100
+  const ratio = brutto / 100
   return {
     calories: per100.caloriesPer100 * ratio,
     protein:  per100.proteinPer100  * ratio,
     fat:      per100.fatPer100      * ratio,
     carbs:    per100.carbsPer100    * ratio,
-    finalGrams: netto * yieldFactor,
+    finalGrams: brutto * yieldFactor,
   }
 }
 

@@ -5,6 +5,7 @@ import { IngredientLibrary, IngredientRef, CompositionRow, IngredientCategory } 
 import { resolveIngredientPer100 } from '@/lib/utils'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 import IngredientPickerModal from './IngredientPickerModal'
+import BarcodeScannerOverlay from './BarcodeScannerOverlay'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -17,16 +18,18 @@ interface Props {
   allRefs: IngredientRef[]
   /** ID of the ingredient being edited (prevents self-reference in composite) */
   selfId?: string
+  /** Initial name to seed the form (for "+ Create new" flow with pre-filled name) */
+  initialName?: string
   onSave: (ing: IngredientRef) => void
   onClose: () => void
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function IngredientFormModal({ editing, libraries, allRefs, selfId, onSave, onClose }: Props) {
+export default function IngredientFormModal({ editing, libraries, allRefs, selfId, initialName, onSave, onClose }: Props) {
   // ── Form state ──
   const [mode, setMode] = useState<'mono' | 'composite'>(editing?.type ?? 'mono')
-  const [name, setName] = useState(editing?.name ?? '')
+  const [name, setName] = useState(editing?.name ?? initialName ?? '')
   const [category, setCategory] = useState<IngredientCategory>(asCategory(editing?.category) ?? 'other')
   const [unit, setUnit] = useState<'г' | 'мл' | 'шт'>(editing?.unit ?? 'г')
   const [weightPerUnit, setWeightPerUnit] = useState<number>(editing?.weightPerUnit ?? 0)
@@ -42,6 +45,50 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
   const [instructions, setInstructions] = useState(editing?.instructions ?? '')
   const [compositionText, setCompositionText] = useState(editing?.compositionText ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Barcode / metadata (mono mode)
+  const [barcode, setBarcode] = useState(editing?.barcode ?? '')
+  const [manufacturer, setManufacturer] = useState(editing?.manufacturer ?? '')
+  const [packageSize, setPackageSize] = useState(editing?.packageSize ?? '')
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanStatus, setScanStatus] = useState('')
+  const [scanError, setScanError] = useState('')
+
+  async function lookupBarcode(code: string) {
+    setScanStatus(`Ищем продукт (${code})…`)
+    setScanError('')
+    try {
+      const res = await fetch(`/api/ingredients/lookup-barcode?code=${encodeURIComponent(code)}`)
+      const data = await res.json()
+      if (res.status === 503 || data.source === 'transient') {
+        setBarcode(code)
+        setScanError(data.error ?? 'AI временно недоступен, попробуйте ещё раз')
+        return
+      }
+      if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache' || data.source === 'local') && (data.prefill || data.ref)) {
+        const p = data.ref ?? data.prefill
+        setName(p.name ?? '')
+        setCalories(p.caloriesPer100 ?? 0)
+        setProtein(p.proteinPer100 ?? 0)
+        setFat(p.fatPer100 ?? 0)
+        setCarbs(p.carbsPer100 ?? 0)
+        setBarcode(p.barcode ?? code)
+        setManufacturer(p.manufacturer ?? '')
+        setPackageSize(p.packageSize ?? '')
+        setCompositionText(p.compositionText ?? '')
+        setCategory(asCategory(p.category) ?? 'other')
+        const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
+        setScanStatus(hasFullNutri ? 'Данные найдены, проверьте перед сохранением' : '⚠️ Название нашли, КБЖУ — впишите с упаковки')
+        return
+      }
+      setBarcode(code)
+      setScanError(`Продукт ${code} не найден — заполните данные вручную, штрих-код сохранится`)
+    } catch {
+      setScanError('Ошибка при поиске продукта')
+    } finally {
+      setTimeout(() => setScanStatus(''), 3000)
+    }
+  }
 
   // ── Live-computed КБЖУ for composite mode ──
   const computedNutri = useCallback((): { cal: number; pro: number; fat: number; car: number; weight: number } => {
@@ -118,7 +165,9 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       category,
       isSystem: false as const,
       type: mode,
-      ...(editing?.barcode ? { barcode: editing.barcode } : {}),
+      ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
+      ...(manufacturer.trim() ? { manufacturer: manufacturer.trim() } : {}),
+      ...(packageSize.trim() ? { packageSize: packageSize.trim() } : {}),
       ...(editing?.pricePerKg !== undefined && editing.pricePerKg > 0 ? { pricePerKg: editing.pricePerKg } : {}),
       ...(editing?.coldLossPercent !== undefined ? { coldLossPercent: editing.coldLossPercent } : {}),
       ...(editing?.yieldCoefficients && Object.keys(editing.yieldCoefficients).length > 0 ? { yieldCoefficients: editing.yieldCoefficients } : {}),
@@ -227,13 +276,38 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Название *</label>
-                <input
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder={mode === 'composite' ? 'Соус тартар' : 'Молоко классическое'}
-                  className="h-11 px-3 rounded-xl text-sm outline-none"
-                  style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder={mode === 'composite' ? 'Соус тартар' : 'Молоко классическое'}
+                    className="flex-1 h-11 px-3 rounded-xl text-sm outline-none"
+                    style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+                  />
+                  {mode === 'mono' && (
+                    <button
+                      type="button"
+                      onClick={() => setScannerOpen(true)}
+                      title="Сканировать штрих-код"
+                      aria-label="Сканировать штрих-код"
+                      className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M2 7V4a1 1 0 011-1h3M16 3h3a1 1 0 011 1v3M22 17v3a1 1 0 01-1 1h-3M8 21H5a1 1 0 01-1-1v-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                        <rect x="6" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+                        <rect x="10" y="8" width="1" height="8" rx="0.5" fill="currentColor"/>
+                        <rect x="13" y="8" width="3" height="8" rx="0.5" fill="currentColor"/>
+                        <rect x="18" y="8" width="1" height="8" rx="0.5" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {(scanError || scanStatus) && (
+                  <p className="text-xs mt-1" style={{ color: scanError ? '#EF4444' : '#7C3AED' }}>
+                    {scanError || scanStatus}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-[1fr_88px] gap-3">
@@ -502,6 +576,17 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
           allRefs={allRefs}
           onSelect={ref => addComponent(ref)}
           onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {/* Barcode scanner (mono mode) */}
+      {scannerOpen && (
+        <BarcodeScannerOverlay
+          onDetect={(code) => {
+            setScannerOpen(false)
+            void lookupBarcode(code)
+          }}
+          onClose={() => setScannerOpen(false)}
         />
       )}
     </>

@@ -181,7 +181,6 @@ export default function BarcodeScannerOverlay({ onDetect, onClose }: Props) {
           ) : (
             <div className="w-full flex flex-col gap-3 py-3">
               <input
-                autoFocus
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={manualCode}

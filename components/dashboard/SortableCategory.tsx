@@ -104,7 +104,6 @@ export default function SortableCategory({
           {/* Название */}
           {editing ? (
             <input
-              autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
               onBlur={handleRename}

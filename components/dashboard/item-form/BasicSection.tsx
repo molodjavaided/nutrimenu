@@ -13,7 +13,6 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
         {s.addingCategory ? (
           <div className="flex gap-2">
             <FormInput
-              autoFocus
               value={s.newCategoryName}
               onChange={e => s.setNewCategoryName(e.target.value)}
               onKeyDown={e => {

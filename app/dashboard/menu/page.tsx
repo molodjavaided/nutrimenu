@@ -185,7 +185,6 @@ export default function MenuPage() {
         {addingCat ? (
           <div className="flex items-center gap-2">
             <input
-              autoFocus
               value={newCatName}
               onChange={e => setNewCatName(e.target.value)}
               onKeyDown={e => {

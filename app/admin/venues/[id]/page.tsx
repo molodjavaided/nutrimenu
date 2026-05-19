@@ -162,7 +162,6 @@ export default function AdminVenueMenuPage() {
               value={deleteConfirm}
               onChange={e => setDeleteConfirm(e.target.value)}
               placeholder={venue.name}
-              autoFocus
               className="w-full mb-5 px-3 py-2 rounded-xl text-sm outline-none"
               style={{ background: '#EAE7F8', color: '#2C2950', border: '1px solid rgba(176,166,223,0.4)' }}
             />

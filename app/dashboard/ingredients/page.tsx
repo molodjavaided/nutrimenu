@@ -356,7 +356,6 @@ export default function IngredientsPage() {
               <div className="flex flex-col sm:flex-row gap-2 items-start">
                 <div className="flex flex-col gap-1 flex-1 w-full">
                   <input
-                    autoFocus
                     value={barcodeInput}
                     onChange={e => { setBarcodeInput(e.target.value); setBarcodeStatus('idle') }}
                     onKeyDown={e => e.key === 'Enter' && handleBarcodeLookup()}

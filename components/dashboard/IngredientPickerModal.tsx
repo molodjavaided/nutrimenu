@@ -175,28 +175,23 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center"
       style={{ background: 'rgba(44,41,80,0.4)', backdropFilter: 'blur(2px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="relative flex flex-col w-full sm:max-w-[560px] overflow-hidden h-[95dvh] sm:h-auto sm:max-h-[92dvh] rounded-t-[20px] sm:rounded-2xl"
+        className="relative flex flex-col w-full sm:max-w-[560px] overflow-hidden h-[100dvh] sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl"
         style={{
-          background: 'rgba(255,255,255,0.92)',
+          background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
-          border: '0.5px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 -8px 48px rgba(139,92,246,0.18)',
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        {/* Handle bar (mobile) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-8 h-1 rounded-full" style={{ background: 'rgba(176,166,223,0.5)' }} />
-        </div>
-
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-3 sm:pt-5 pb-4"
-          style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
+        <div className="flex items-center justify-between px-5 pt-4 pb-4"
+          style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
           <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
             {creating ? 'Новый ингредиент' : 'Выбрать ингредиент'}
           </p>
@@ -215,7 +210,6 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
               <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Название *</p>
               <div className="flex gap-2">
                 <input
-                  autoFocus
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCreate()}

@@ -162,26 +162,21 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-[60] flex items-stretch sm:items-center justify-center"
         style={{ background: 'rgba(44,41,80,0.45)', backdropFilter: 'blur(3px)' }}
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
         {/* Sheet */}
         <div
-          className="w-full sm:max-w-lg rounded-t-[20px] sm:rounded-2xl flex flex-col overflow-hidden h-[95dvh] sm:h-auto sm:max-h-[92dvh]"
+          className="w-full sm:max-w-lg sm:rounded-2xl flex flex-col overflow-hidden h-[100dvh] sm:h-auto sm:max-h-[92dvh]"
           style={{
-            background: 'rgba(255,255,255,0.92)',
+            background: 'rgba(255,255,255,0.95)',
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
-            border: '0.5px solid rgba(255,255,255,0.7)',
-            boxShadow: '0 -8px 48px rgba(139,92,246,0.18)',
+            paddingTop: 'env(safe-area-inset-top)',
+            paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
-          {/* ── Handle bar (mobile) ── */}
-          <div className="flex justify-center pt-3 pb-1 sm:hidden">
-            <div className="w-8 h-1 rounded-full" style={{ background: 'rgba(176,166,223,0.5)' }} />
-          </div>
-
           {/* ── Header ── */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3"
             style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
@@ -233,7 +228,6 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
               <div className="flex flex-col gap-1">
                 <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Название *</label>
                 <input
-                  autoFocus
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder={mode === 'composite' ? 'Соус тартар' : 'Молоко классическое'}

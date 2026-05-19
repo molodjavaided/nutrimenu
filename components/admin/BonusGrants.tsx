@@ -71,7 +71,6 @@ function GrantRow({ label, plan, planKey, bonus, onApply, pending }: RowProps) {
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') commit() }}
-            autoFocus
             className="w-20 px-2 py-1 rounded-lg text-sm outline-none text-right"
             style={{ background: 'rgba(255,255,255,0.85)', color: '#2C2950', border: '0.5px solid rgba(176,166,223,0.4)' }}
           />

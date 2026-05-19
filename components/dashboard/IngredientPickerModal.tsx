@@ -48,8 +48,8 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
   const [scanError, setScanError] = useState('')
   const [scanStatus, setScanStatus] = useState('')
 
-  useEffect(() => { searchRef.current?.focus() }, [])
-  useEffect(() => { setSearch(''); searchRef.current?.focus() }, [activeLibId])
+  // Не автофокусим поиск — клавиатура на мобильном перекрывает контент
+  useEffect(() => { setSearch('') }, [activeLibId])
 
   const activeLib = libraries.find(l => l.id === activeLibId)
   const ingredients = activeLib?.ingredients ?? []
@@ -175,32 +175,36 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center"
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center"
       style={{ background: 'rgba(44,41,80,0.4)', backdropFilter: 'blur(2px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="relative flex flex-col rounded-2xl overflow-hidden"
+        className="relative flex flex-col w-full sm:max-w-[560px] overflow-hidden h-[95dvh] sm:h-auto sm:max-h-[92dvh] rounded-t-[20px] sm:rounded-2xl"
         style={{
-          width: 560,
-          maxHeight: '85vh',
-          background: 'rgba(255,255,255,0.85)',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
           border: '0.5px solid rgba(255,255,255,0.6)',
-          boxShadow: '0 24px 64px rgba(139,92,246,0.18), 0 1px 0 rgba(255,255,255,0.9) inset',
+          boxShadow: '0 -8px 48px rgba(139,92,246,0.18)',
         }}
       >
+        {/* Handle bar (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-8 h-1 rounded-full" style={{ background: 'rgba(176,166,223,0.5)' }} />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4"
+        <div className="flex items-center justify-between px-5 pt-3 sm:pt-5 pb-4"
           style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
             {creating ? 'Новый ингредиент' : 'Выбрать ингредиент'}
           </p>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+            className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-sm"
             style={{ background: 'rgba(139,92,246,0.08)', color: '#7C3AED' }}
+            aria-label="Закрыть"
           >✕</button>
         </div>
 

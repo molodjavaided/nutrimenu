@@ -13,7 +13,7 @@ import { compositionReducer, initialCompositionState, type ManualNutri } from '.
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
 export interface ApiVariantGroup { id: string; label?: string; required?: boolean; replacesIngredientRefId?: string; options?: ApiVariantOption[] }
-export interface ApiModifier { id: string; ingredientRefId?: string; label?: string; price?: number }
+export interface ApiModifier { id: string; ingredientRefId?: string; label?: string; price?: number; weight?: number }
 export interface ApiModifierGroup { id: string; label?: string; allowCustomGrams?: boolean; modifiers?: ApiModifier[] }
 
 export interface IngredientItem {
@@ -43,6 +43,7 @@ export interface AddonItem {
   ingredientRefId: string
   label: string
   price?: number
+  weight?: number  // граммы на одну порцию добавки (по умолчанию 100)
 }
 
 export interface AddonGroup {
@@ -385,6 +386,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
             ingredientRefId: m.ingredientRefId ?? '',
             label: m.label ?? '',
             price: m.price,
+            weight: m.weight,
           })),
         }))
         setAddonGroups(loadedAddonGroups)
@@ -710,15 +712,17 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         .filter(a => a.ingredientRefId)
         .map(a => {
           const ref = ingredientRefs.find(r => r.id === a.ingredientRefId)
+          const weight = a.weight && a.weight > 0 ? a.weight : 100
+          const ratio = weight / 100
           return {
             id: a.id,
             label: a.label || ref?.name || '',
             ingredientRefId: a.ingredientRefId,
-            calories: ref?.caloriesPer100 ?? 0,
-            protein: ref?.proteinPer100 ?? 0,
-            fat: ref?.fatPer100 ?? 0,
-            carbs: ref?.carbsPer100 ?? 0,
-            weight: 100,
+            calories: Math.round((ref?.caloriesPer100 ?? 0) * ratio),
+            protein: Math.round((ref?.proteinPer100 ?? 0) * ratio * 10) / 10,
+            fat: Math.round((ref?.fatPer100 ?? 0) * ratio * 10) / 10,
+            carbs: Math.round((ref?.carbsPer100 ?? 0) * ratio * 10) / 10,
+            weight,
             weightUnit: 'г' as const,
             price: a.price || undefined,
           }

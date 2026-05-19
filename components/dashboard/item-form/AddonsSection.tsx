@@ -49,45 +49,69 @@ export default function AddonsSection({ s }: { s: ItemFormState }) {
 
           {group.addons.map(addon => {
             const ref = s.ingredientRefs.find(r => r.id === addon.ingredientRefId)
+            const weight = addon.weight && addon.weight > 0 ? addon.weight : 100
+            const ratio = weight / 100
+            const cal = ref ? Math.round(ref.caloriesPer100 * ratio) : 0
+            const updateAddonField = (field: 'price' | 'weight', value: number | undefined) =>
+              s.setAddonGroups(prev => prev.map(g =>
+                g.id === group.id
+                  ? { ...g, addons: g.addons.map(a => a.id === addon.id ? { ...a, [field]: value } : a) }
+                  : g,
+              ))
             return (
-              <div key={addon.id} className="flex items-center gap-2 mb-2">
-                <button
-                  onClick={() => s.setAddonPickerTarget({ groupId: group.id, addonId: addon.id })}
-                  className="flex-1 h-10 px-3 rounded-xl text-sm text-left truncate"
-                  style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
-                >
-                  {ref ? ref.name : '— Выбрать ингредиент'}
-                </button>
-                {ref && (
-                  <span className="text-xs shrink-0" style={{ color: '#534AB7' }}>
-                    {ref.caloriesPer100} ккал/100г
-                  </span>
-                )}
-                <div className="flex items-center gap-1 shrink-0">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={addon.price ?? ''}
-                    onChange={e => s.setAddonGroups(prev => prev.map(g =>
-                      g.id === group.id
-                        ? { ...g, addons: g.addons.map(a => a.id === addon.id ? { ...a, price: e.target.value ? Number(e.target.value) : undefined } : a) }
-                        : g
-                    ))}
-                    placeholder="0"
-                    className="w-14 h-10 px-2 rounded-xl text-sm outline-none text-center"
-                    style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
-                  />
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>₽</span>
+              <div key={addon.id} className="flex flex-col gap-2 mb-2 p-2 rounded-xl" style={{ background: 'rgba(176,166,223,0.08)' }}>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => s.setAddonPickerTarget({ groupId: group.id, addonId: addon.id })}
+                    className="flex-1 h-10 px-3 rounded-xl text-sm text-left truncate"
+                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+                  >
+                    {ref ? ref.name : '— Выбрать ингредиент'}
+                  </button>
+                  <button
+                    onClick={() => s.removeAddon(group.id, addon.id)}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
+                    style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
+                    aria-label="Удалить добавку"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  onClick={() => s.removeAddon(group.id, addon.id)}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-                  style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2 text-xs">
+                  <label className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Граммовка</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={addon.weight ?? ''}
+                      onChange={e => updateAddonField('weight', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="100"
+                      className="w-16 h-9 px-2 rounded-lg outline-none text-center"
+                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                    />
+                    <span style={{ color: 'var(--color-text-muted)' }}>г</span>
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Цена</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={addon.price ?? ''}
+                      onChange={e => updateAddonField('price', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="0"
+                      className="w-16 h-9 px-2 rounded-lg outline-none text-center"
+                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                    />
+                    <span style={{ color: 'var(--color-text-muted)' }}>₽</span>
+                  </label>
+                  {ref && (
+                    <span className="shrink-0 ml-auto" style={{ color: '#534AB7' }}>
+                      +{cal} ккал
+                    </span>
+                  )}
+                </div>
               </div>
             )
           })}

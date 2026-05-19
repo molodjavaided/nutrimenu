@@ -168,10 +168,8 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       >
         {/* Sheet */}
         <div
-          className="w-full sm:max-w-lg sm:rounded-2xl flex flex-col overflow-hidden"
+          className="w-full sm:max-w-lg rounded-t-[20px] sm:rounded-2xl flex flex-col overflow-hidden h-[95dvh] sm:h-auto sm:max-h-[92dvh]"
           style={{
-            maxHeight: '92dvh',
-            borderRadius: '20px 20px 0 0',
             background: 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',

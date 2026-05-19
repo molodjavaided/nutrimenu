@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { IngredientLibrary, IngredientRef, CompositionRow, IngredientCategory, YieldCoefficients } from '@/types'
+import { IngredientLibrary, IngredientRef, CompositionRow, IngredientCategory } from '@/types'
 import { resolveIngredientPer100 } from '@/lib/utils'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 import IngredientPickerModal from './IngredientPickerModal'
@@ -42,32 +42,6 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
   const [instructions, setInstructions] = useState(editing?.instructions ?? '')
   const [compositionText, setCompositionText] = useState(editing?.compositionText ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
-
-  // ТТК (опционально)
-  const [pricePerKg, setPricePerKg] = useState<number | undefined>(editing?.pricePerKg)
-  const [coldLossPercent, setColdLossPercent] = useState<number | undefined>(editing?.coldLossPercent)
-  const [yieldCoefficients, setYieldCoefficients] = useState<YieldCoefficients | undefined>(editing?.yieldCoefficients)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
-
-  async function fillWithAI() {
-    if (!name.trim()) { setAiError('Сначала введите название'); return }
-    setAiLoading(true); setAiError(null)
-    try {
-      const res = await fetch(`/api/ingredients/lookup-meta?name=${encodeURIComponent(name.trim())}`)
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data?.ok) {
-        setAiError(data?.reason === 'not-found' ? 'Не нашёл данных по этому названию' : 'AI не ответил — попробуйте позже')
-        return
-      }
-      const meta = data.meta as { category: IngredientCategory; coldLossPercent?: number; yieldCoefficients?: YieldCoefficients }
-      setCategory(meta.category)
-      if (meta.coldLossPercent !== undefined) setColdLossPercent(meta.coldLossPercent)
-      if (meta.yieldCoefficients) setYieldCoefficients(meta.yieldCoefficients)
-    } finally {
-      setAiLoading(false)
-    }
-  }
 
   // ── Live-computed КБЖУ for composite mode ──
   const computedNutri = useCallback((): { cal: number; pro: number; fat: number; car: number; weight: number } => {
@@ -145,9 +119,9 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
       isSystem: false as const,
       type: mode,
       ...(editing?.barcode ? { barcode: editing.barcode } : {}),
-      ...(pricePerKg !== undefined && pricePerKg > 0 ? { pricePerKg } : {}),
-      ...(coldLossPercent !== undefined ? { coldLossPercent } : {}),
-      ...(yieldCoefficients && Object.keys(yieldCoefficients).length > 0 ? { yieldCoefficients } : {}),
+      ...(editing?.pricePerKg !== undefined && editing.pricePerKg > 0 ? { pricePerKg: editing.pricePerKg } : {}),
+      ...(editing?.coldLossPercent !== undefined ? { coldLossPercent: editing.coldLossPercent } : {}),
+      ...(editing?.yieldCoefficients && Object.keys(editing.yieldCoefficients).length > 0 ? { yieldCoefficients: editing.yieldCoefficients } : {}),
     }
 
     const trimmedComposition = compositionText.trim() || undefined
@@ -498,62 +472,6 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
               </>
             )}
 
-            {/* ── ТТК (опционально) ─────────────────────────────────────── */}
-            <div
-              className="rounded-2xl px-4 py-3 space-y-3"
-              style={{ background: 'rgba(176,166,223,0.08)', border: '0.5px dashed rgba(176,166,223,0.3)' }}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-                  ТТК (опционально)
-                </p>
-                <button
-                  type="button"
-                  onClick={fillWithAI}
-                  disabled={aiLoading || !name.trim()}
-                  className="text-xs px-2.5 py-1 rounded-full"
-                  style={{ background: aiLoading || !name.trim() ? '#EAE7F8' : '#B0A6DF', color: 'var(--color-text-primary)' }}
-                >
-                  {aiLoading ? '⏳ Думаю…' : '🪄 Заполнить AI'}
-                </button>
-              </div>
-              {aiError && <p className="text-xs" style={{ color: '#E24B4A' }}>{aiError}</p>}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Цена за кг, ₽</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={pricePerKg ?? ''}
-                    onChange={e => setPricePerKg(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="500"
-                    className="h-10 px-3 rounded-xl text-sm outline-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Холодные потери, %</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={coldLossPercent ?? ''}
-                    onChange={e => setColdLossPercent(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="0"
-                    className="h-10 px-3 rounded-xl text-sm outline-none"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
-                  />
-                </div>
-                {yieldCoefficients && Object.keys(yieldCoefficients).length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Коэффициенты выхода</label>
-                    <div className="text-xs px-2 py-2 rounded-xl" style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-secondary)' }}>
-                      {Object.entries(yieldCoefficients).map(([k, v]) => `${k}: ×${v}`).join(' · ')}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* ── Footer ── */}

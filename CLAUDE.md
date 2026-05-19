@@ -25,18 +25,34 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 NutriMenu helps food businesses comply with nutrition disclosure requirements and give guests transparency about what they're eating. Owners manage their menu through a dashboard; guests scan a QR code and see a branded, filterable menu with full КБЖУ (calories/protein/fat/carbs) data.
 
-### Current goals
+### Current goals (порядок приоритетов)
 
-- Build out the MVP feature set: menu management, ingredient library, nutrition calculation
-- Ensure the public menu renders correctly and fast on mobile
-- Keep the codebase clean for future backend/auth migration (currently localStorage-only)
+1. **Полировка продукта** — текущая фаза. Чтобы первым пользователям было удобно и мы получили их доверие. UX, баги, мобилка, мелкие фичи которые повышают доверие.
+2. **Первые платящие клиенты** — закрыть всё, что блокирует регистрацию → оплату → удержание.
+3. **Перфоманс и масштаб** — 10 заведений × 100 блюд: запросы, пагинация, кеш.
+4. **Расширение фич (крупные)** — только после 1-3. Мелкие фичи можно добавлять на любой фазе если они в линии с (1).
+
+Актуальная очередь задач — `project_next_tasks.md` (auto-memory).
 
 ### What AI agents should handle
 
-- Feature implementation across dashboard and public menu
-- Refactoring and code quality improvements
-- Debugging nutrition calculation logic
-- Component and type changes
+- Feature implementation across dashboard, admin, public menu, Telegram bot
+- Refactoring и улучшение качества кода
+- Дебаг логики нутриентов и AI-импорта (TTK, штрихкод)
+- Изменения схемы БД и Prisma миграции
+
+### Полномочия агента (по умолчанию разрешено)
+
+- ✅ Пушить в `main` без PR (после `tsc` + визуальный прогон через `/qa`)
+- ✅ Создавать и применять Prisma миграции (`migrate deploy` на Neon)
+- ✅ Менять данные в БД напрямую (SQL-апдейты прод-данных)
+- ✅ Удалять файлы и папки
+
+Эти действия делаются без отдельного подтверждения. **Исключение:** массовое удаление пользовательских данных, drop таблиц, force-push — всегда спрашивать.
+
+### Технические инварианты
+
+- **Не добавлять новые AI-провайдеры.** Текущий зоопарк (Gemini + Perplexity Sonar + Claude резерв) — достаточен. OpenAI/Anthropic-новые/Mistral и т.п. — только по явному запросу.
 
 ### What I DON'T want
 
@@ -51,13 +67,19 @@ NutriMenu helps food businesses comply with nutrition disclosure requirements an
 
 ### Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **Styling:** Tailwind CSS v4 + inline style objects for brand colors
-- **UI:** shadcn/ui components, lucide-react icons
+- **Framework:** Next.js 16 (App Router) + TypeScript
+- **DB:** Postgres (Neon) + Prisma — основной источник правды
+- **Auth:** JWT в httpOnly cookie (`lib/auth.ts`), роли `admin | owner`, impersonation (TTL 2ч)
+- **Server state:** TanStack Query v5 (новый код). Часть `/dashboard/*` ещё на useEffect — мигрируется по мере правок.
+- **Styling:** Tailwind CSS v4 + inline style objects для бренд-цветов (`#2C2950`, `#B0A6DF`, `#EAE7F8`, `#FEFEF2`)
+- **UI:** shadcn/ui, lucide-react
 - **Forms:** react-hook-form + zod
 - **DnD:** @dnd-kit/core, @dnd-kit/sortable
-- **Persistence:** localStorage only (no backend/database yet)
-- **Language:** TypeScript
+- **Files:** Vercel Blob (фото блюд, файлы заведения)
+- **AI:** Gemini (TTK импорт, штрихкод lookup, ingredient meta), Perplexity Sonar (fallback), Claude (резерв через `lib/claude-ttk.ts`)
+- **Notifications:** Telegram-бот (брифинг новых заведений, двусторонняя переписка владелец↔админ)
+- **Rate limiting:** Upstash Redis (`lib/ratelimit.ts`)
+- **Email:** Resend (заглушка — нет домена)
 
 ---
 
@@ -75,34 +97,59 @@ No test framework is configured.
 
 ## Architecture
 
-**NutriMenu** is a Next.js 16 (App Router) SaaS app for restaurant/café owners to build nutrition-aware digital menus accessible to guests via QR code.
+**NutriMenu / Plate** — Next.js 16 SaaS для ресторанов: владелец ведёт меню с КБЖУ в дашборде, гость видит публичное меню через QR.
 
-### Two main sections
+### Основные разделы
 
-**Dashboard** (`/dashboard/*`) — owner-facing management UI:
+**Owner Dashboard** (`/dashboard/*`)
 
-- `/dashboard` — overview stats
-- `/dashboard/menu` — category & item management with drag-and-drop reordering (`@dnd-kit/core`, `@dnd-kit/sortable`)
-- `/dashboard/item/new` and `/dashboard/item/[id]` — item create/edit via `ItemForm`
-- `/dashboard/ingredients` — ingredient reference library
+- `/dashboard` — обзор, онбординг-чеклист, QR
+- `/dashboard/menu` — категории и блюда (drag-and-drop через @dnd-kit)
+- `/dashboard/item/new` и `/dashboard/item/[id]` — создание/правка через `ItemForm` (разбит на `useItemFormState` + 4 секции, см. [[item-form-refactor]])
+- `/dashboard/ingredients` — справочник ингредиентов (mono + composite)
+- `/dashboard/settings` — настройки заведения
 
-**Public menu** (`/menu/[slug]`) — guest-facing read-only view:
+**Admin Panel** (`/admin/*`)
 
-- Thin async Server Component (`app/menu/[slug]/page.tsx`) passes `slug` to `MenuClientWrapper` (Client Component)
-- `MenuClientWrapper` loads data from `localStorage` (or falls back to `mockCategories`/`mockVenue` from `lib/mock-data.ts`) and renders `MenuView`
-- `MenuView` renders `CategoryTabs`, `DishCard`, `DishSheet` (item detail bottom sheet), and `NutriTracker`
+- `/admin/venues` — список заведений, статусы (PENDING/APPROVED/REJECTED), фильтры, impersonation
+- `/admin/venues/[id]` — деталка: смена плана, продление триала, бонусные лимиты, файлы заведения
+- `/admin/feedback` — переписка владелец↔админ (drawer с тредом + reply)
+- `/admin` — глобальные тулы: AI-обогащение ингредиентов, кеш штрихкодов
+
+**Auth** (`/auth/*`, `app/(auth)/`)
+
+- Регистрация (ставит `plan: 'TEST'` + триал 14д), логин, забыл/сброс пароля
+- JWT в httpOnly cookie, валидация через `verifySessionToken` в `lib/auth.ts`
+- Layout-уровень: `app/admin/layout.tsx` — server-guard для админки
+
+**Public Menu** (`/menu/[slug]`)
+
+- Async Server Component → fetch из БД → передаёт в `MenuClientWrapper`
+- `MenuView` рендерит `CategoryTabs`, `DishCard`, `DishSheet`, `NutriTracker`
+- Состояния: `active` / `paused` (триал истёк, `awaiting_plan`) / `not-found`
+
+**Telegram bot**
+
+- `POST /api/telegram/webhook` — приём апдейтов, проверка `X-Telegram-Bot-Api-Secret-Token`
+- `lib/telegram-briefing.ts` — state machine брифинга нового заведения (5 вопросов)
+- Двусторонние сообщения мирорятся в `FeedbackReply`
 
 ### Data persistence
 
-All data lives in `localStorage` (no backend/database). `lib/store.ts` provides typed read/write helpers for three keys:
+**Postgres (Neon) + Prisma** — единственный источник правды для продакшена.
 
-- `nutrimenu_venue` — single `Venue` object
-- `nutrimenu_categories` — `Category[]` where each category embeds its `MenuItem[]` items
-- `nutrimenu_ingredients` — `IngredientRef[]` (ingredient reference dictionary)
+- Schema: `prisma/schema.prisma`. Миграции: `prisma/migrations/*` + `npx prisma migrate deploy`.
+- Доступ: `lib/db.ts` (singleton PrismaClient).
+- `lib/store.ts` (localStorage) — **legacy для публичного меню/демо**. Используется только в `app/demo/*` и как fallback в `mockCategories`. **Не использовать в новом коде.**
 
-All store functions guard against SSR with `typeof window === 'undefined'` checks.
+### Тарифы и состояния пользователя (`lib/plans.ts`)
 
-- **Critical:** Always check for `window` before accessing storage. Do not suggest migration to SQL/NoSQL unless explicitly asked.
+- `TEST` — 14д триал, лимиты Старта без AI
+- `START` — бесплатно, до 20 блюд (или 50 — уточнить в plans.ts)
+- `STANDARD` — 990 ₽/мес, AI-импорт, экспорт
+- `CUSTOM` — Infinity, кастомизация
+- Состояния: `trial` / `awaiting_plan` (после триала, меню скрыто) / `grace` / `paid` / `paused`
+- Бонусные лимиты (bonusItems / bonusAiImports / bonusTtkExports) сохраняются при смене плана
 
 ### Nutrition data model (`types/index.ts`)
 
@@ -223,7 +270,7 @@ allowed-tools: [Read, Glob, Grep, WebSearch, WebFetch]
 
 | Skill               | Description                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `backend-developer` | Guide for adding API routes and migrating from localStorage to a real database. Covers Next.js Route Handlers, zod validation, migration path, Postgres/Prisma recommendations, security rules |
+| `backend-developer` | Guide for API routes, Prisma migrations, zod validation, security rules. Стек уже: Postgres (Neon) + Prisma + JWT.                                                                            |
 
 ### Workflow (slash commands — invoke as `/command-name`)
 
@@ -255,7 +302,7 @@ allowed-tools: [Read, Glob, Grep, WebSearch, WebFetch]
 7. **Silence is Golden.** Use `--silent` or `-q` flags for all CLI commands (npm, git) to keep the context window clean.
 8. **Task Persistence.** В конце сессии или перед `/clear` обнови **auto-memory**: запиши в соответствующий `project_*.md` (или создай новый) текущий статус, что сделано последним шагом, следующий шаг, блокеры. Не используй `.claude/memory.md` или `.claude/CURRENT.md` — они удалены.
 9. **Architecture decisions → Plan agent.** Для нетривиальных изменений (новая схема данных, миграция, рефакторинг 3+ файлов) — вызывай Agent с `subagent_type: Plan` до того, как редактировать.
-10. **Pre-commit review.** Перед коммитом нетривиального диффа — `/review` или `code-review` агентом. Тривиальные правки (один файл, очевидное поведение) — можно сразу.
+10. **Pre-commit quality bar.** Перед коммитом нетривиальной фичи — обязательный визуальный прогон через `/qa` (золотой путь + 1-2 edge case). TypeScript-чек (`tsc`) идёт автоматически в pre-push hook. Тривиальные правки (один файл, очевидное поведение) — без `/qa`, только tsc.
 
 ---
 
@@ -270,7 +317,8 @@ allowed-tools: [Read, Glob, Grep, WebSearch, WebFetch]
 | `~/.claude/projects/<hash>/memory/`             | **Auto-memory** — живая память проекта (MEMORY.md + project_*.md). Подгружается сама.  |
 | `app/`                                          | Next.js App Router pages and layouts                                                   |
 | `components/`                                   | React components (ui/ = shadcn, rest = project)                                        |
-| `lib/`                                          | Utilities: store.ts, utils.ts, mock-data.ts                                            |
+| `lib/`                                          | Server/shared utils: `db.ts` (Prisma), `auth.ts` (JWT), `plans.ts`, `telegram.ts`, AI-клиенты (`gemini-*.ts`, `claude-ttk.ts`), `store.ts` (legacy localStorage) |
+| `prisma/`                                       | Schema + миграции. Применять через `npx prisma migrate deploy`.                        |
 | `types/`                                        | TypeScript types (index.ts = all domain types)                                         |
 | `.tmp/`                                         | Intermediate files — never commit, always regenerated                                  |
 | `.env`                                          | API keys — never commit                                                                |

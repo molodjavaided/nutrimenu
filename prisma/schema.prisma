@@ -36,8 +36,11 @@ model User {
   emailVerified       Boolean              @default(false)
   ttkImportCount      Int                  @default(0)
   ttkImportMonth      Int?
+  aiEnrichCount       Int                  @default(0)
+  aiEnrichMonth       Int?
   bonusItems          Int                  @default(0)
   bonusAiImports      Int                  @default(0)
+  bonusAiEnriches     Int                  @default(0)
   bonusTtkExports     Int                  @default(0)
   telegramChatId      String?              @unique
   telegramUsername    String?

@@ -35,6 +35,10 @@ export default function IngredientsPage() {
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // AI enrich quota
+  const [enrichInfo, setEnrichInfo] = useState<{ canEnrich: boolean; used: number; limit: number | null; remaining: number | null; plan?: string } | null>(null)
+  const [enrichProgress, setEnrichProgress] = useState<{ done: number; total: number; errors: number } | null>(null)
+
   useEffect(() => {
     fetch('/api/ingredients')
       .then(r => r.ok ? r.json() : [])
@@ -43,6 +47,9 @@ export default function IngredientsPage() {
         setLibraries([...systemLibraries, personalLib])
         setActiveLibId(MY_LIBRARY_ID)
       })
+    fetch('/api/ingredients/enrich-limit')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setEnrichInfo(data) })
   }, [])
 
   // Clear selection when switching libraries
@@ -114,6 +121,50 @@ export default function IngredientsPage() {
     } else {
       setSelectedIds(prev => new Set([...prev, ...visibleIds]))
     }
+  }
+
+  async function handleBulkEnrich() {
+    if (!enrichInfo?.canEnrich || enrichProgress) return
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+
+    setEnrichProgress({ done: 0, total: ids.length, errors: 0 })
+    let done = 0
+    let errors = 0
+    let lastInfo = enrichInfo
+
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/ingredients/${id}/enrich`, { method: 'POST' })
+        const data = await res.json().catch(() => null)
+        if (!res.ok || !data?.ok) {
+          errors++
+          // Если упёрлись в квоту/тариф — стопаем цикл, дальше нет смысла
+          if (data?.code === 'quota_exceeded' || data?.code === 'plan_required') {
+            toast.error(data.error ?? 'Лимит AI-обогащения исчерпан')
+            break
+          }
+        } else if (data.ingredient) {
+          // Обновляем локальный список
+          updateLocalLib(ingredients.map(i => i.id === id ? { ...i, ...data.ingredient } as IngredientRef : i))
+          if (typeof data.remaining === 'number') {
+            lastInfo = { ...lastInfo, used: data.used ?? lastInfo.used, remaining: data.remaining, canEnrich: data.remaining > 0, limit: lastInfo.limit }
+          }
+        }
+      } catch {
+        errors++
+      }
+      done++
+      setEnrichProgress({ done, total: ids.length, errors })
+    }
+
+    setEnrichInfo(lastInfo)
+    setEnrichProgress(null)
+    setSelectedIds(new Set())
+    const success = done - errors
+    if (success > 0 && errors === 0) toast.success(`Обогащено: ${success}`)
+    else if (success > 0) toast.success(`Обогащено: ${success}, ошибок: ${errors}`)
+    else if (errors > 0) toast.error(`Не удалось обогатить (${errors})`)
   }
 
   async function handleBulkDeleteRequest() {
@@ -618,12 +669,37 @@ export default function IngredientsPage() {
               onClick={() => { setSelectedIds(new Set()); setConfirmBulkDelete(false) }}
               className="px-3 py-2 rounded-xl text-sm transition-colors"
               style={{ background: 'rgba(176,166,223,0.18)', color: 'rgba(255,255,255,0.6)' }}
+              disabled={!!enrichProgress}
             >
               Отмена
             </button>
 
             <button
+              onClick={handleBulkEnrich}
+              disabled={!enrichInfo?.canEnrich || !!enrichProgress}
+              title={
+                enrichProgress
+                  ? `Обогащение… ${enrichProgress.done}/${enrichProgress.total}`
+                  : enrichInfo?.canEnrich
+                    ? `AI заполнит категорию, потери и КБЖУ. Осталось в этом месяце: ${enrichInfo.remaining ?? '∞'}`
+                    : 'AI-обогащение доступно с тарифа Старт'
+              }
+              className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-all"
+              style={{
+                background: enrichInfo?.canEnrich && !enrichProgress ? 'rgba(176,166,223,0.4)' : 'rgba(176,166,223,0.15)',
+                color: enrichInfo?.canEnrich && !enrichProgress ? '#fff' : 'rgba(255,255,255,0.45)',
+                cursor: enrichInfo?.canEnrich && !enrichProgress ? 'pointer' : 'not-allowed',
+              }}
+            >
+              🪄
+              {enrichProgress
+                ? `${enrichProgress.done}/${enrichProgress.total}`
+                : `Дополнить AI`}
+            </button>
+
+            <button
               onClick={handleBulkDeleteRequest}
+              disabled={!!enrichProgress}
               className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
               style={{
                 background: confirmBulkDelete ? '#E24B4A' : 'rgba(176,166,223,0.25)',

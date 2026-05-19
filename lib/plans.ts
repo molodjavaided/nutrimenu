@@ -6,6 +6,7 @@ export const PLANS = {
     name: 'Тест',
     maxItems: 50,
     aiImportPerMonth: 0,
+    aiEnrichPerMonth: 0,
     ttkExportPerMonth: null as null | number,
   },
   START: {
@@ -13,6 +14,7 @@ export const PLANS = {
     name: 'Старт',
     maxItems: 50,
     aiImportPerMonth: 5,
+    aiEnrichPerMonth: 50,
     ttkExportPerMonth: null as null | number,
   },
   STANDARD: {
@@ -20,6 +22,7 @@ export const PLANS = {
     name: 'Стандарт',
     maxItems: 200,
     aiImportPerMonth: 15,
+    aiEnrichPerMonth: 200,
     ttkExportPerMonth: Infinity,
   },
   CUSTOM: {
@@ -27,6 +30,7 @@ export const PLANS = {
     name: 'Индивидуальная',
     maxItems: Infinity,
     aiImportPerMonth: Infinity,
+    aiEnrichPerMonth: Infinity,
     ttkExportPerMonth: Infinity,
   },
 } as const
@@ -95,15 +99,18 @@ export interface EffectiveLimits {
   state: UserState
   maxItems: number
   aiImportPerMonth: number
+  aiEnrichPerMonth: number
   ttkExportPerMonth: number | null
   canAddItems: boolean
   canImportAi: boolean
+  canEnrichAi: boolean
   menuPublic: boolean // показывать ли публичное меню гостям
 }
 
 export interface BonusInput {
   bonusItems?: number
   bonusAiImports?: number
+  bonusAiEnriches?: number
   bonusTtkExports?: number
 }
 
@@ -130,6 +137,7 @@ export function getEffectiveLimits(
   const planDef = PLANS[user.plan]
   const bItems = user.bonusItems ?? 0
   const bAi = user.bonusAiImports ?? 0
+  const bEnrich = user.bonusAiEnriches ?? 0
   const bTtk = user.bonusTtkExports ?? 0
 
   if (state === 'paid') {
@@ -137,21 +145,25 @@ export function getEffectiveLimits(
       state,
       maxItems: addBonus(planDef.maxItems, bItems),
       aiImportPerMonth: addBonus(planDef.aiImportPerMonth, bAi),
+      aiEnrichPerMonth: addBonus(planDef.aiEnrichPerMonth, bEnrich),
       ttkExportPerMonth: planDef.ttkExportPerMonth == null ? (bTtk > 0 ? bTtk : null) : addBonus(planDef.ttkExportPerMonth, bTtk),
       canAddItems: true,
       canImportAi: true,
+      canEnrichAi: addBonus(planDef.aiEnrichPerMonth, bEnrich) > 0,
       menuPublic: true,
     }
   }
   if (state === 'trial') {
-    // Тариф TEST: ограничения как Старт без AI
+    // Тариф TEST: ограничения как Старт без AI (импорт И enrich недоступны без бонуса)
     return {
       state,
       maxItems: addBonus(PLANS.TEST.maxItems, bItems),
       aiImportPerMonth: bAi, // план = 0, бонус действует
+      aiEnrichPerMonth: bEnrich,
       ttkExportPerMonth: bTtk > 0 ? bTtk : null,
       canAddItems: true,
       canImportAi: bAi > 0,
+      canEnrichAi: bEnrich > 0,
       menuPublic: true,
     }
   }
@@ -162,9 +174,11 @@ export function getEffectiveLimits(
       state,
       maxItems: addBonus(PLANS.TEST.maxItems, bItems),
       aiImportPerMonth: 0,
+      aiEnrichPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: false,
       canImportAi: false,
+      canEnrichAi: false,
       menuPublic: false,
     }
   }
@@ -173,9 +187,11 @@ export function getEffectiveLimits(
       state,
       maxItems: addBonus(planDef.maxItems, bItems),
       aiImportPerMonth: 0,
+      aiEnrichPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: true,
       canImportAi: false,
+      canEnrichAi: false,
       menuPublic: false,
     }
   }
@@ -184,9 +200,11 @@ export function getEffectiveLimits(
     state,
     maxItems: 0,
     aiImportPerMonth: 0,
+    aiEnrichPerMonth: 0,
     ttkExportPerMonth: null,
     canAddItems: false,
     canImportAi: false,
+    canEnrichAi: false,
     menuPublic: false,
   }
 }

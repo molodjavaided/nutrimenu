@@ -16,6 +16,11 @@ export interface IngredientMeta {
   category: IngredientCategory
   yieldCoefficients?: YieldCoefficients
   coldLossPercent?: number
+  /** КБЖУ на 100 г/мл сырого продукта. Опциональны — модель может не знать. */
+  caloriesPer100?: number
+  proteinPer100?: number
+  fatPer100?: number
+  carbsPer100?: number
   confidence: 'low' | 'medium' | 'high'
 }
 
@@ -28,7 +33,7 @@ const VALID_CATEGORIES: IngredientCategory[] = [
   'grain','meat','poultry','fish','vegetable','fruit','dairy','oil','liquid','other',
 ]
 
-const PROMPT = (name: string) => `Определи кулинарные характеристики ингредиента «${name}» для русской/советской кухни (ГОСТ Р 53104-2008).
+const PROMPT = (name: string) => `Определи характеристики ингредиента «${name}» для русской/советской кухни (ГОСТ Р 53104-2008).
 
 Верни строго JSON одной строкой:
 {
@@ -41,6 +46,10 @@ const PROMPT = (name: string) => `Определи кулинарные хара
     "bake": число,
     "steam": число
   },
+  "caloriesPer100": число (ккал на 100 г сырого продукта),
+  "proteinPer100": число (г белка на 100 г),
+  "fatPer100": число (г жира на 100 г),
+  "carbsPer100": число (г углеводов на 100 г),
   "confidence": "high|medium|low"
 }
 
@@ -51,6 +60,7 @@ const PROMPT = (name: string) => `Определи кулинарные хара
 - Овощи — варьируется (0.7–0.95).
 - Масло — отдельная категория "oil", для жарки коэффициент ~0.1–0.2 (доля впитывания).
 - Если в названии явно «вареный/готовый/отварной» — это уже готовый продукт, верни yieldCoefficients: {} и coldLossPercent: 0.
+- КБЖУ — реальные значения USDA / СанПин для сырого 100 г. Калории должны сходиться: ккал ≈ 4·белок + 9·жир + 4·углеводы. Если не уверен — verни их null.
 - Без markdown, без объяснений, только JSON.`
 
 function stripJson(text: string): string | null {
@@ -98,7 +108,13 @@ function parseMeta(raw: Record<string, unknown>): IngredientMeta | null {
 
   const confidence = raw.confidence === 'high' || raw.confidence === 'low' ? raw.confidence : 'medium'
 
-  return { category, yieldCoefficients, coldLossPercent, confidence }
+  // КБЖУ — опционально, модель может не знать конкретный продукт.
+  const caloriesPer100 = coerceNum(raw.caloriesPer100, 0, 1000)
+  const proteinPer100 = coerceNum(raw.proteinPer100, 0, 100)
+  const fatPer100 = coerceNum(raw.fatPer100, 0, 100)
+  const carbsPer100 = coerceNum(raw.carbsPer100, 0, 100)
+
+  return { category, yieldCoefficients, coldLossPercent, caloriesPer100, proteinPer100, fatPer100, carbsPer100, confidence }
 }
 
 async function callModel(model: string, name: string): Promise<{ status: 'ok'; meta: IngredientMeta } | { status: 'transient'; reason: string } | { status: 'not_found' }> {

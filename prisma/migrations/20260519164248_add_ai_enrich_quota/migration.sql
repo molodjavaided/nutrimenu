@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "aiEnrichCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "aiEnrichMonth" INTEGER,
+ADD COLUMN     "bonusAiEnriches" INTEGER NOT NULL DEFAULT 0;

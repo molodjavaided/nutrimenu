@@ -9,6 +9,7 @@ import type { Category, IngredientLibrary, IngredientRef, ProcessingType, SizeOp
 import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
+import { buildMenuItem } from './buildMenuItem'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -615,154 +616,16 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       }
     }
 
-    const sizesToSave: SizeOption[] = sizes.map(size => {
-      const composition = ingredients.flatMap(ingredient => {
-        const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === size.id)
-        const amount = amountCell?.amount || 0
-        const isReplaced = replacedIngredientRefIds.has(ingredient.ingredientRefId)
-        if (amount === 0 && !isReplaced) return []
-        return [{
-          ingredientId: ingredient.ingredientRefId,
-          amount,
-          unit: ingredient.unit,
-          ...(mode === 'ttk' && ingredient.processing && ingredient.processing !== 'raw'
-            ? { processing: ingredient.processing }
-            : {}),
-          ...(mode === 'ttk' && ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
-            ? { yieldOverride: ingredient.yieldOverride }
-            : {}),
-        }]
-      })
-
-      const nutri = calculateNutriForSize(size.id)
-      const totalWeight = composition.reduce((sum, comp) => {
-        const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
-        const grams = (comp.unit === 'шт' && ref?.weightPerUnit)
-          ? comp.amount * ref.weightPerUnit
-          : comp.amount
-        return sum + grams
-      }, 0)
-
-      return {
-        id: size.id,
-        name: size.name || (sizes.length === 1 ? `${totalWeight}${size.unit}` : ''),
-        weight: totalWeight,
-        weightUnit: size.unit,
-        price: size.price,
-        calories: nutri.calories,
-        protein: nutri.protein,
-        fat: nutri.fat,
-        carbs: nutri.carbs,
-        composition,
-        ingredientAmounts: {},
-      }
-    })
-
-    const variantGroupsToSave = variantGroups.map(group => {
-      const replacedIng = group.replacesIngredientRefId
-        ? ingredients.find(i => i.ingredientRefId === group.replacesIngredientRefId)
-        : null
-      const firstSizeReplacedAmount = replacedIng && sizes.length > 0
-        ? (amounts.find(a => a.ingredientId === replacedIng.id && a.sizeId === sizes[0].id)?.amount ?? 0)
-        : 0
-      const firstSizeUnit = sizes[0]?.unit ?? 'г'
-
-      return {
-        id: group.id,
-        label: group.label,
-        required: group.required,
-        replacesIngredientRefId: group.replacesIngredientRefId,
-        options: group.options.map(opt => {
-          if (group.replacesIngredientRefId && firstSizeReplacedAmount > 0 && opt.ingredientRefId) {
-            const ref = ingredientRefs.find(r => r.id === opt.ingredientRefId)
-            if (ref) {
-              const ratio = firstSizeReplacedAmount / 100
-              return {
-                id: opt.id,
-                ingredientRefId: opt.ingredientRefId,
-                label: opt.label,
-                weight: firstSizeReplacedAmount,
-                weightUnit: firstSizeUnit,
-                calories: Math.round(ref.caloriesPer100 * ratio),
-                protein: Math.round(ref.proteinPer100 * ratio * 10) / 10,
-                fat: Math.round(ref.fatPer100 * ratio * 10) / 10,
-                carbs: Math.round(ref.carbsPer100 * ratio * 10) / 10,
-                price: opt.price || undefined,
-              }
-            }
-          }
-          return {
-            id: opt.id,
-            ingredientRefId: opt.ingredientRefId || '',
-            label: opt.label,
-            weight: opt.weight,
-            weightUnit: opt.weightUnit,
-            calories: opt.calories,
-            protein: opt.protein,
-            fat: opt.fat,
-            carbs: opt.carbs,
-            price: opt.price || undefined,
-          }
-        }),
-      }
-    })
-
-    const modifierGroupsToSave = addonGroups.map(group => {
-      const modifiers = group.addons
-        .filter(a => a.ingredientRefId)
-        .map(a => {
-          const ref = ingredientRefs.find(r => r.id === a.ingredientRefId)
-          const weight = a.weight && a.weight > 0 ? a.weight : 100
-          const ratio = weight / 100
-          return {
-            id: a.id,
-            label: a.label || ref?.name || '',
-            ingredientRefId: a.ingredientRefId,
-            calories: Math.round((ref?.caloriesPer100 ?? 0) * ratio),
-            protein: Math.round((ref?.proteinPer100 ?? 0) * ratio * 10) / 10,
-            fat: Math.round((ref?.fatPer100 ?? 0) * ratio * 10) / 10,
-            carbs: Math.round((ref?.carbsPer100 ?? 0) * ratio * 10) / 10,
-            weight,
-            weightUnit: 'г' as const,
-            price: a.price || undefined,
-          }
-        })
-      return {
-        id: group.id,
-        label: group.label,
-        multi: true,
-        required: false,
-        type: 'addon' as const,
-        allowCustomGrams: group.allowCustomGrams,
-        modifiers,
-      }
-    }).filter(g => g.modifiers.length > 0)
-
-    const newItem = {
-      id: itemId ?? crypto.randomUUID(),
-      name,
-      price: price ? parseFloat(price) : undefined,
-      description: description || undefined,
-      photo: photo || undefined,
-      photoPosition: photo ? photoPosition : undefined,
-      weight: sizesToSave[0].weight,
-      weightUnit: sizesToSave[0].weightUnit,
-      calories: sizesToSave[0].calories,
-      protein: sizesToSave[0].protein,
-      fat: sizesToSave[0].fat,
-      carbs: sizesToSave[0].carbs,
-      composition: sizesToSave[0].composition,
-      sizes: sizesToSave,
-      variantGroups: variantGroupsToSave.length > 0 ? variantGroupsToSave : undefined,
-      modifierGroups: modifierGroupsToSave.length > 0 ? modifierGroupsToSave : undefined,
-      allergens: allergens.length > 0 ? allergens : undefined,
-      creationMode: mode,
-      finalWeight: mode === 'ttk' ? finalWeight : undefined,
-      servingSize: mode === 'ttk' ? servingSize : undefined,
-      categoryId,
-      venueId: '1',
-      isAvailable,
-    }
+    const newItem = buildMenuItem(
+      {
+        mode, name, description, photo, photoPosition, price, categoryId, isAvailable, allergens,
+        quickWeight, quickWeightUnit, quickCalories, quickProtein, quickFat, quickCarbs,
+        finalWeight, servingSize,
+        ingredients, amounts, sizes, variantGroups, addonGroups, ingredientRefs,
+        calculateNutriForSize,
+      },
+      { id: itemId ?? crypto.randomUUID() },
+    )
 
     if (isEdit) {
       await fetch(`/api/items/${itemId}`, {

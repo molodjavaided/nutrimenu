@@ -42,6 +42,9 @@ model User {
   bonusAiImports      Int                  @default(0)
   bonusAiEnriches     Int                  @default(0)
   bonusTtkExports     Int                  @default(0)
+  onboardingStep      Int                  @default(0)
+  onboardingCompletedAt DateTime?
+  onboardingDismissedAt DateTime?
   telegramChatId      String?              @unique
   telegramUsername    String?
   createdAt           DateTime             @default(now())

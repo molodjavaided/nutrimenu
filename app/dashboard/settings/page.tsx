@@ -184,6 +184,30 @@ export default function SettingsPage() {
 
       <MenuExport />
 
+      {/* Onboarding restart */}
+      <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(176,166,223,0.3)' }}>
+        <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Обучение</h2>
+        <p className="text-xs mb-4" style={{ color: '#7a748f' }}>
+          Если кто-то другой будет работать с этим аккаунтом — он сможет пройти короткое обучение.
+          Туториал проведёт по основным шагам: настройка заведения, категории, первое блюдо, QR.
+        </p>
+        <button
+          type="button"
+          onClick={async () => {
+            const res = await fetch('/api/user/onboarding', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'restart' }),
+            })
+            if (res.ok) router.push('/dashboard')
+          }}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] flex items-center gap-2"
+          style={{ background: 'rgba(139,92,246,0.1)', color: '#7C3AED' }}
+        >
+          🎓 Пройти обучение заново
+        </button>
+      </div>
+
       {/* Danger zone */}
       <div className="mt-8 pt-6" style={{ borderTop: '0.5px solid rgba(220,38,38,0.2)' }}>
         <h2 className="text-sm font-semibold mb-1" style={{ color: '#DC2626' }}>Опасная зона</h2>

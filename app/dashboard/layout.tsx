@@ -3,6 +3,7 @@ import { DashboardNav } from '@/components/dashboard/DashboardNav'
 import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
 import TrialBanner from '@/components/dashboard/TrialBanner'
 import { MessagesPanelHost } from '@/components/feedback/MessagesHost'
+import OnboardingHost from '@/components/dashboard/OnboardingHost'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <MessagesPanelHost />
+      <OnboardingHost />
     </div>
   )
 }

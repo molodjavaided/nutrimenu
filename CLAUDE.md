@@ -1,7 +1,6 @@
 # CLAUDE.md
 
 > This is a living document — update it as you add skills, learn from errors, and evolve the system.
-> Identical copies live in: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`. When you update one — update all three.
 
 ---
 
@@ -264,9 +263,7 @@ allowed-tools: [Read, Glob, Grep, WebSearch, WebFetch]
 
 | Path                                            | Purpose                                                                                |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `CLAUDE.md`                                     | **Source of truth** для инструкций агенту. AGENTS.md / GEMINI.md — копии (см. ниже).   |
-| `AGENTS.md`                                     | Копия CLAUDE.md для Cursor/Windsurf. При правке CLAUDE.md — синкать обе.               |
-| `GEMINI.md`                                     | Копия CLAUDE.md для Gemini. То же правило.                                             |
+| `CLAUDE.md`                                     | **Единственный источник правды** для инструкций агенту.                                |
 | `docs/`                                         | Завершённые артефакты: `PITCH.md`, `PITCH_RAW.md`, `BACKLOG.md`. Не контекст для агента. |
 | `.claude/skills/<name>/`                        | SOPs — bundled skills (SKILL.md + scripts/)                                            |
 | `.claude/agents/`                               | Sub-agent definitions                                                                  |

@@ -102,6 +102,7 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
         ...(s.mode === 'ttk' && ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
           ? { yieldOverride: ingredient.yieldOverride }
           : {}),
+        ...(ingredient.locked ? { removable: false } : {}),
       }]
     })
 

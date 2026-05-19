@@ -293,6 +293,19 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
             onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
           />
         )}
+        <button
+          type="button"
+          onClick={() => s.toggleIngredientLocked(ingredient.id)}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
+          style={{
+            background: ingredient.locked ? '#FEF3C7' : 'rgba(176,166,223,0.15)',
+            color: ingredient.locked ? '#92400E' : 'var(--color-text-muted)',
+            border: ingredient.locked ? '0.5px solid #FDE68A' : '0.5px solid transparent',
+          }}
+          title={ingredient.locked ? 'Гость не сможет убрать этот ингредиент' : 'Гость сможет убрать этот ингредиент'}
+        >
+          {ingredient.locked ? '🔒 нельзя убрать' : '🔓 можно убрать'}
+        </button>
       </div>
       {suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

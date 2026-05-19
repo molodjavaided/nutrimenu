@@ -105,6 +105,7 @@ export interface CompositionRow {
   coldLossOverride?: number          // % холодных потерь (перебивает дефолт по ингредиенту)
   yieldOverride?: number             // коэффициент выхода (перебивает дефолт по ингредиенту)
   oilAbsorption?: number             // 0..1 — доля впитанного масла (для категории oil)
+  removable?: boolean                // false = гость не может убрать (тесто, основа). По умолчанию (undefined) — можно убрать.
 }
 
 // Один объём/размер блюда

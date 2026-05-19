@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Image from 'next/image'
+import { toast } from 'sonner'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants, VariantGroup } from '@/types'
-import { buildVariantLabel, resolveNutriFromComposition } from '@/lib/utils'
+import { buildVariantLabel, resolveIngredientPer100, resolveNutriFromComposition } from '@/lib/utils'
 import { getAllergenById } from '@/lib/allergens'
 import { initLibraries } from '@/lib/store'
 import { systemLibraries } from '@/lib/mock-data'
@@ -39,6 +40,29 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
   const [descriptionOpen, setDescriptionOpen] = useState(false)
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
   const [sizePickerOpen, setSizePickerOpen] = useState(false)
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set())
+  const lastToastId = useRef<string | number | null>(null)
+
+  // Тост-очередь: новое сообщение отменяет предыдущее, чтобы избежать визуального шума
+  function showToast(message: string) {
+    if (lastToastId.current !== null) toast.dismiss(lastToastId.current)
+    lastToastId.current = toast(message, { duration: 1500 })
+  }
+
+  function toggleIngredient(row: { ingredientId: string; removable?: boolean }) {
+    if (row.removable === false) {
+      showToast('Этот ингредиент нельзя убрать')
+      return
+    }
+    const isNowExcluded = !excludedIds.has(row.ingredientId)
+    setExcludedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(row.ingredientId)) next.delete(row.ingredientId)
+      else next.add(row.ingredientId)
+      return next
+    })
+    showToast(isNowExcluded ? 'Ингредиент не учитывается' : 'Ингредиент учитывается')
+  }
 
   const ingredientRefs = useMemo<IngredientRef[]>(() => {
     const libs = initLibraries(systemLibraries)
@@ -158,15 +182,30 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
       }
     }
 
+    // Вычитаем вклад ингредиентов, которые гость убрал
+    if (excludedIds.size > 0 && activeSize?.composition) {
+      for (const row of activeSize.composition) {
+        if (!excludedIds.has(row.ingredientId)) continue
+        const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+        if (!ref || !row.amount) continue
+        const n = resolveIngredientPer100(ref, ingredientRefs)
+        const ratio = row.amount / 100
+        total.calories -= Math.round(n.caloriesPer100 * ratio)
+        total.protein -= Math.round(n.proteinPer100 * ratio * 10) / 10
+        total.fat -= Math.round(n.fatPer100 * ratio * 10) / 10
+        total.carbs -= Math.round(n.carbsPer100 * ratio * 10) / 10
+      }
+    }
+
     return {
-      calories: total.calories * quantity,
-      protein: Math.round(total.protein * quantity * 10) / 10,
-      fat: Math.round(total.fat * quantity * 10) / 10,
-      carbs: Math.round(total.carbs * quantity * 10) / 10,
+      calories: Math.max(0, total.calories) * quantity,
+      protein: Math.max(0, Math.round(total.protein * quantity * 10) / 10),
+      fat: Math.max(0, Math.round(total.fat * quantity * 10) / 10),
+      carbs: Math.max(0, Math.round(total.carbs * quantity * 10) / 10),
       weight: activeSize?.weight ?? item.weight,
       weightUnit: (activeSize?.weightUnit ?? item.weightUnit) as 'г' | 'мл',
     }
-  }, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId])
+  }, [item, variants, modifiers, gramAmounts, quantity, ingredientRefs, selectedSizeId, excludedIds])
 
   const priceExtra = useMemo(() => {
     let extra = 0
@@ -414,11 +453,25 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
             {compRows.map((row, i) => {
               const ref = ingredientRefs.find(r => r.id === row.ingredientId)
               if (!ref) return null
+              const isExcluded = excludedIds.has(row.ingredientId)
+              const isLocked = row.removable === false
               return (
-                <span key={i} className="text-[11px] px-2 py-1 rounded-full"
-                  style={{ background: GLASS_DARK, backdropFilter: 'blur(12px)', color: 'rgba(255,255,255,0.9)' }}>
-                  {ref.name}{row.amount > 0 ? ` ${row.amount}${row.unit}` : ''}
-                </span>
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleIngredient(row)}
+                  className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
+                  style={{
+                    background: GLASS_DARK,
+                    backdropFilter: 'blur(12px)',
+                    color: isExcluded ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.9)',
+                    textDecoration: isExcluded ? 'line-through' : 'none',
+                    opacity: isLocked ? 0.85 : 1,
+                  }}
+                  title={isLocked ? 'Нельзя убрать' : (isExcluded ? 'Вернуть' : 'Убрать из состава')}
+                >
+                  {isLocked && '🔒 '}{ref.name}{row.amount > 0 ? ` ${row.amount}${row.unit}` : ''}
+                </button>
               )
             })}
             <span className="text-[11px] px-2 py-1 rounded-full font-medium"

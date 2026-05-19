@@ -24,6 +24,7 @@ export interface IngredientItem {
   unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
   processing?: ProcessingType  // ТТК: способ обработки
   yieldOverride?: number  // ТТК: ручной коэффициент выхода (если перебивает ГОСТ/ref)
+  locked?: boolean         // true = гость не может убрать ингредиент (тесто, основа)
 }
 
 export interface Size {
@@ -277,7 +278,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
 
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number }> }>
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
@@ -294,6 +295,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
               unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
               processing: comp.processing,
               yieldOverride: comp.yieldOverride,
+              locked: comp.removable === false,
             }
           })
           setIngredients(loadedIngredients)
@@ -339,7 +341,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         }
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number }>
+        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean }>
         const ingredientIdMap = new Map<string, string>()
 
         const loadedIngredients = compositionData.map(comp => {
@@ -353,6 +355,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
             unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
             processing: comp.processing,
             yieldOverride: comp.yieldOverride,
+            locked: comp.removable === false,
           }
         })
         setIngredients(loadedIngredients)
@@ -701,6 +704,13 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     })
   }, [ingredients])
 
+  const toggleIngredientLocked = useCallback((ingredientId: string) => {
+    dispatch({
+      type: 'SET_INGREDIENTS',
+      ingredients: ingredients.map(i => i.id === ingredientId ? { ...i, locked: !i.locked } : i),
+    })
+  }, [ingredients])
+
   const addSize = useCallback(() => dispatch({ type: 'ADD_SIZE' }), [])
   const updateSizeName = useCallback((sizeId: string, name: string) =>
     dispatch({ type: 'UPDATE_SIZE_NAME', sizeId, name }), [])
@@ -750,7 +760,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     sizes, setSizes,
     amounts, setAmounts,
     manualNutri, setManualNutri,
-    addIngredient, removeIngredient, updateIngredientProcessing, updateIngredientYieldOverride, addCompanionIngredient,
+    addIngredient, removeIngredient, updateIngredientProcessing, updateIngredientYieldOverride, toggleIngredientLocked, addCompanionIngredient,
     addSize, updateSizeName, updateSizeUnit, updateSizePrice, applySizePreset, removeSize,
     updateAmount, updateManualNutri,
     calculateNutriForSize, getAmountFromComposition,

@@ -6,6 +6,7 @@ import { resolveIngredientPer100 } from '@/lib/utils'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
 import IngredientPickerModal from './IngredientPickerModal'
 import BarcodeScannerOverlay from './BarcodeScannerOverlay'
+import MobileSheet from '@/components/ui/MobileSheet'
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -20,13 +21,15 @@ interface Props {
   selfId?: string
   /** Initial name to seed the form (for "+ Create new" flow with pre-filled name) */
   initialName?: string
+  /** z-index. Для nested-сценария (picker → form) передавайте выше picker'а. По умолчанию 60. */
+  zIndex?: number
   onSave: (ing: IngredientRef) => void
   onClose: () => void
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function IngredientFormModal({ editing, libraries, allRefs, selfId, initialName, onSave, onClose }: Props) {
+export default function IngredientFormModal({ editing, libraries, allRefs, selfId, initialName, zIndex = 60, onSave, onClose }: Props) {
   // ── Form state ──
   const [mode, setMode] = useState<'mono' | 'composite'>(editing?.type ?? 'mono')
   const [name, setName] = useState(editing?.name ?? initialName ?? '')
@@ -207,42 +210,41 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  const footer = (
+    <div className="flex gap-2 px-5 py-4">
+      <button
+        onClick={onClose}
+        className="flex-1 py-2.5 rounded-xl text-sm"
+        style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
+      >
+        Отмена
+      </button>
+      <button
+        onClick={handleSave}
+        disabled={!name.trim() || (mode === 'composite' && composition.length === 0)}
+        className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+        style={{
+          background: name.trim() && (mode !== 'composite' || composition.length > 0)
+            ? '#B0A6DF' : '#C8C3F0',
+          color: 'var(--color-text-primary)',
+        }}
+      >
+        {editing ? 'Сохранить' : 'Добавить'}
+      </button>
+    </div>
+  )
+
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[60] flex items-stretch sm:items-center justify-center"
-        style={{ background: 'rgba(44,41,80,0.45)', backdropFilter: 'blur(3px)' }}
-        onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      <MobileSheet
+        open
+        onClose={onClose}
+        title={editing ? 'Редактировать' : 'Новый ингредиент'}
+        zIndex={zIndex}
+        desktopWidth="lg"
+        footer={footer}
+        bodyClassName="px-5 py-4 space-y-4"
       >
-        {/* Sheet */}
-        <div
-          className="w-full sm:max-w-lg sm:rounded-2xl flex flex-col overflow-hidden h-[100dvh] sm:h-auto sm:max-h-[92dvh]"
-          style={{
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            paddingTop: 'env(safe-area-inset-top)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
-        >
-          {/* ── Header ── */}
-          <div className="flex items-center justify-between px-5 pt-4 pb-3"
-            style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
-            <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
-              {editing ? 'Редактировать' : 'Новый ингредиент'}
-            </p>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-              style={{ background: 'rgba(176,166,223,0.2)', color: 'var(--color-text-secondary)' }}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* ── Scrollable body ── */}
-          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
             {/* ── Segmented control ── */}
             <div
@@ -538,35 +540,7 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
               </>
             )}
 
-          </div>
-
-          {/* ── Footer ── */}
-          <div
-            className="flex gap-2 px-5 py-4"
-            style={{ borderTop: '0.5px solid rgba(176,166,223,0.2)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-          >
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
-            >
-              Отмена
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!name.trim() || (mode === 'composite' && composition.length === 0)}
-              className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-              style={{
-                background: name.trim() && (mode !== 'composite' || composition.length > 0)
-                  ? '#B0A6DF' : '#C8C3F0',
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              {editing ? 'Сохранить' : 'Добавить'}
-            </button>
-          </div>
-        </div>
-      </div>
+      </MobileSheet>
 
       {/* Ingredient picker for composition */}
       {pickerOpen && (

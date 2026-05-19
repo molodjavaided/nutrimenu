@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { IngredientLibrary, IngredientRef } from '@/types'
 import { resolveIngredientPer100 } from '@/lib/utils'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
+import MobileSheet from '@/components/ui/MobileSheet'
 
 // Загружаем динамически — избегаем циклической зависимости IngredientFormModal ↔ IngredientPickerModal
 const IngredientFormModal = dynamic(() => import('./IngredientFormModal'), { ssr: false })
@@ -66,36 +67,31 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
     }
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center"
-      style={{ background: 'rgba(44,41,80,0.4)', backdropFilter: 'blur(2px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="relative flex flex-col w-full sm:max-w-[560px] overflow-hidden h-[100dvh] sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl"
-        style={{
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
+  const footer = (
+    <div className="px-5 py-3 flex items-center justify-between">
+      <button
+        onClick={() => setCreating(true)}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
+        style={{ color: '#7C3AED', background: 'rgba(139,92,246,0.08)' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-4"
-          style={{ borderBottom: '0.5px solid rgba(176,166,223,0.2)' }}>
-          <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
-            Выбрать ингредиент
-          </p>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-sm"
-            style={{ background: 'rgba(139,92,246,0.08)', color: '#7C3AED' }}
-            aria-label="Закрыть"
-          >✕</button>
-        </div>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        Новый ингредиент
+      </button>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 rounded-xl text-sm font-medium"
+        style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
+      >
+        Готово
+      </button>
+    </div>
+  )
 
+  return (
+    <>
+      <MobileSheet open onClose={onClose} title="Выбрать ингредиент" zIndex={70} desktopWidth="xl" footer={footer}>
         {/* Library tabs */}
             <div className="flex gap-1 px-4 pt-3 pb-2 flex-wrap"
               style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
@@ -195,29 +191,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                 </div>
               ))}
             </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 flex items-center justify-between"
-          style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
-          <button
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm"
-            style={{ color: '#7C3AED', background: 'rgba(139,92,246,0.08)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            Новый ингредиент
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
-          >
-            Готово
-          </button>
-        </div>
-      </div>
+      </MobileSheet>
 
       {/* Создание нового ингредиента — делегируем в IngredientFormModal (поддерживает mono + composite + штрихкод-сканер + AI lookup) */}
       {creating && (
@@ -225,10 +199,11 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
           libraries={libraries}
           allRefs={allRefs ?? []}
           initialName={search}
+          zIndex={80}
           onSave={handleCreateFromForm}
           onClose={() => setCreating(false)}
         />
       )}
-    </div>
+    </>
   )
 }

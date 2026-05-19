@@ -93,6 +93,7 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
       const isReplaced = replacedIngredientRefIds.has(ingredient.ingredientRefId)
       if (amount === 0 && !isReplaced) return []
       return [{
+        id: ingredient.id,
         ingredientId: ingredient.ingredientRefId,
         amount,
         unit: ingredient.unit,
@@ -103,6 +104,9 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
           ? { yieldOverride: ingredient.yieldOverride }
           : {}),
         ...(ingredient.locked ? { removable: false } : {}),
+        ...(ingredient.parentIngredientId ? { parentRowId: ingredient.parentIngredientId } : {}),
+        ...(ingredient.companionKind ? { companionKind: ingredient.companionKind } : {}),
+        ...(ingredient.companionRatio !== undefined ? { companionRatio: ingredient.companionRatio } : {}),
       }]
     })
 

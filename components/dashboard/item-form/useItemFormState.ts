@@ -10,6 +10,8 @@ import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
 import { buildMenuItem } from './buildMenuItem'
+import { asCategory } from '@/lib/cooking-coefficients'
+import { companionAbsorptionRatio } from '@/lib/cooking-companions'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -25,6 +27,11 @@ export interface IngredientItem {
   processing?: ProcessingType  // ТТК: способ обработки
   yieldOverride?: number  // ТТК: ручной коэффициент выхода (если перебивает ГОСТ/ref)
   locked?: boolean         // true = гость не может убрать ингредиент (тесто, основа)
+  // Вложенные компаньоны
+  parentIngredientId?: string         // form-state id родителя (если эта строка — дочерний companion)
+  companionKind?: 'oil' | 'water'
+  companionRatio?: number              // ratio × parent.brutto на момент добавления
+  manualChildAmount?: boolean          // true = пользователь редактировал ребёнка вручную, авто-пересчёт выключен (v2)
 }
 
 export interface Size {
@@ -278,14 +285,20 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
 
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean }> }>
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water'; companionRatio?: number }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
 
         if (compositionData.length > 0) {
+          // rowId → newId, чтобы восстановить parent-child связи между строками
+          const rowIdMap = new Map<string, string>()
+          for (const comp of compositionData) {
+            if (comp.id) rowIdMap.set(comp.id, crypto.randomUUID())
+          }
           const loadedIngredients = compositionData.map((comp) => {
-            const newId = crypto.randomUUID()
+            const newId = (comp.id && rowIdMap.get(comp.id)) || crypto.randomUUID()
+            if (comp.id) rowIdMap.set(comp.id, newId)
             const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
             ingredientIdMap.set(comp.ingredientId, newId)
             return {
@@ -296,6 +309,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
               processing: comp.processing,
               yieldOverride: comp.yieldOverride,
               locked: comp.removable === false,
+              parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
+              companionKind: comp.companionKind,
+              companionRatio: comp.companionRatio,
             }
           })
           setIngredients(loadedIngredients)
@@ -341,11 +357,16 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         }
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean }>
+        const compositionData = found.item.composition as Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water'; companionRatio?: number }>
         const ingredientIdMap = new Map<string, string>()
+        const rowIdMap = new Map<string, string>()
+        for (const comp of compositionData) {
+          if (comp.id) rowIdMap.set(comp.id, crypto.randomUUID())
+        }
 
         const loadedIngredients = compositionData.map(comp => {
-          const newId = crypto.randomUUID()
+          const newId = (comp.id && rowIdMap.get(comp.id)) || crypto.randomUUID()
+          if (comp.id) rowIdMap.set(comp.id, newId)
           const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
           ingredientIdMap.set(comp.ingredientId, newId)
           return {
@@ -356,6 +377,9 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
             processing: comp.processing,
             yieldOverride: comp.yieldOverride,
             locked: comp.removable === false,
+            parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
+            companionKind: comp.companionKind,
+            companionRatio: comp.companionRatio,
           }
         })
         setIngredients(loadedIngredients)
@@ -529,9 +553,21 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
       const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
       if (!ref) continue
 
-      const effectiveGrams = (ingredient.unit === 'шт' && ref.weightPerUnit)
+      let effectiveGrams = (ingredient.unit === 'шт' && ref.weightPerUnit)
         ? amountCell.amount * ref.weightPerUnit
         : amountCell.amount
+
+      // Если это дочерний companion — в КБЖУ блюда попадает только впитавшаяся часть
+      if (ingredient.parentIngredientId && ingredient.companionKind) {
+        const parent = ingredients.find(i => i.id === ingredient.parentIngredientId)
+        const parentRef = parent ? ingredientRefs.find(r => r.id === parent.ingredientRefId) : undefined
+        const parentCategory = asCategory(parentRef?.category)
+        if (parent?.processing) {
+          const absorption = companionAbsorptionRatio(ingredient.companionKind, parent.processing, parentCategory)
+          effectiveGrams *= absorption
+        }
+      }
+
       const ratio = effectiveGrams / 100
       totalCalories += ref.caloriesPer100 * ratio
       totalProtein += ref.proteinPer100 * ratio
@@ -676,16 +712,21 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     })
   }, [ingredients])
 
-  const addCompanionIngredient = useCallback((sourceIngredientId: string, refId: string, ratio: number) => {
+  const addCompanionIngredient = useCallback((sourceIngredientId: string, refId: string, ratio: number, kind?: 'oil' | 'water') => {
     const ref = ingredientRefs.find(r => r.id === refId)
     if (!ref) return
-    if (ingredients.some(i => i.ingredientRefId === refId)) return
+    // Запрет дубликата: тот же companion ref у того же родителя
+    if (ingredients.some(i => i.ingredientRefId === refId && i.parentIngredientId === sourceIngredientId)) return
     const newId = crypto.randomUUID()
     const newIngredient: IngredientItem = {
       id: newId,
       ingredientRefId: refId,
       name: ref.name,
       unit: ref.unit,
+      parentIngredientId: sourceIngredientId,
+      companionKind: kind,
+      companionRatio: ratio,
+      manualChildAmount: false,
     }
     dispatch({ type: 'ADD_INGREDIENT', ingredient: newIngredient })
     for (const size of sizes) {

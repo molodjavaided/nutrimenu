@@ -5,7 +5,7 @@ import { RemoveButton } from '@/components/ui/RemoveButton'
 import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFormState'
 import { expectedDishYield, resolveCompositionRowContribution, resolveCostOfDish, resolveIngredientPer100 } from '@/lib/utils'
 import { asCategory } from '@/lib/cooking-coefficients'
-import { findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
+import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
 import ProcessingChip from './ProcessingChip'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -274,17 +274,20 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
   const srcCategory = asCategory(ref?.category)
   const isTTK = s.mode === 'ttk'
-  const suggestions = isTTK && ingredient.processing && ingredient.processing !== 'raw'
+  const isChild = !!ingredient.parentIngredientId
+  // Дети не получают свою ProcessingChip и не предлагают новые companions
+  const suggestions = !isChild && isTTK && ingredient.processing && ingredient.processing !== 'raw'
     ? suggestCompanions(ingredient.processing, srcCategory)
     : []
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" style={isChild ? { paddingLeft: 16, borderLeft: '2px solid rgba(176,166,223,0.4)' } : undefined}>
       <div className="flex items-center gap-2 flex-wrap">
+        {isChild && <span style={{ color: 'var(--color-text-muted)' }}>↳</span>}
         <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
           {ingredient.name}
         </span>
         <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>({ingredient.unit})</span>
-        {isTTK && (
+        {isTTK && !isChild && (
           <ProcessingChip
             processing={ingredient.processing}
             yieldOverride={ingredient.yieldOverride}
@@ -293,7 +296,7 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
             onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
           />
         )}
-        <button
+        {!isChild && <button
           type="button"
           onClick={() => s.toggleIngredientLocked(ingredient.id)}
           className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
@@ -305,14 +308,14 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
           title={ingredient.locked ? 'Гость не сможет убрать этот ингредиент' : 'Гость сможет убрать этот ингредиент'}
         >
           {ingredient.locked ? '🔒 нельзя убрать' : '🔓 можно убрать'}
-        </button>
+        </button>}
       </div>
       {suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {suggestions.map(sg => {
             const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
             if (!companionRef) return null
-            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id)) return null
+            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
             const firstSize = s.sizes[0]
             const baseAmount = firstSize
               ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
@@ -322,7 +325,7 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
               <button
                 key={sg.kind}
                 type="button"
-                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio)}
+                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
                 className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
                 style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
                 title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
@@ -472,15 +475,26 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
         {size.name || (s.hasMultipleSizes ? `Размер ${sizeIdx + 1}` : 'Порция')} ({size.unit})
       </div>
       <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
-        {s.ingredients.map(ingredient => (
-          <MobileIngredientRow
-            key={ingredient.id}
-            s={s}
-            ingredient={ingredient}
-            sizeId={sizeId}
-            isFirstSize={sizeIdx === 0}
-          />
-        ))}
+        {s.ingredients
+          .filter(ing => !ing.parentIngredientId)
+          .map(parent => {
+            const children = s.ingredients.filter(i => i.parentIngredientId === parent.id)
+            return (
+              <div key={parent.id}>
+                <MobileIngredientRow s={s} ingredient={parent} sizeId={sizeId} isFirstSize={sizeIdx === 0} />
+                {children.map(child => (
+                  <MobileChildIngredientRow
+                    key={child.id}
+                    s={s}
+                    child={child}
+                    parent={parent}
+                    sizeId={sizeId}
+                    isFirstSize={sizeIdx === 0}
+                  />
+                ))}
+              </div>
+            )
+          })}
       </div>
       <div className="px-3 py-2 text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ background: 'rgba(234,231,248,0.5)', color: '#534AB7' }}>
         <span>Σ <b>{Math.round(t.brutto)}</b> {size.unit}</span>
@@ -489,6 +503,66 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
         <span>Б {finalNutri.protein.toFixed(1)}</span>
         <span>Ж {finalNutri.fat.toFixed(1)}</span>
         <span>У {finalNutri.carbs.toFixed(1)}</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Mobile child (companion) row — вложенный масло/вода под родителем ─────
+
+function MobileChildIngredientRow({
+  s, child, parent, sizeId, isFirstSize,
+}: {
+  s: ItemFormState
+  child: IngredientItem
+  parent: IngredientItem
+  sizeId: string
+  isFirstSize: boolean
+}) {
+  const childRef = s.ingredientRefs.find(r => r.id === child.ingredientRefId)
+  const parentRef = s.ingredientRefs.find(r => r.id === parent.ingredientRefId)
+  const parentCategory = asCategory(parentRef?.category)
+  const amount = s.amounts.find(a => a.ingredientId === child.id && a.sizeId === sizeId)?.amount || 0
+
+  const absorption = child.companionKind && parent.processing
+    ? companionAbsorptionRatio(child.companionKind, parent.processing, parentCategory)
+    : 0.15
+  const absorbed = Math.round(amount * absorption * 10) / 10
+  const absorptionLabel = child.companionKind === 'water' ? 'выкипание' : 'впитывание'
+
+  const icon = child.companionKind === 'oil' ? '🛢' : '💧'
+
+  return (
+    <div className="px-3 py-2.5 space-y-1.5" style={{ background: 'rgba(176,166,223,0.04)', borderLeft: '2px solid rgba(176,166,223,0.4)', marginLeft: 16 }}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium min-w-0 flex items-center gap-1.5" style={{ color: 'var(--color-text-primary)' }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>↳</span>
+          {icon} {childRef?.name ?? child.name}
+          <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded-full" style={{ background: '#EAE7F8', color: '#534AB7' }}>
+            {absorptionLabel} ×{absorption.toFixed(2)}
+          </span>
+        </div>
+        {isFirstSize && <RemoveButton onClick={() => s.removeIngredient(child.id)} />}
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+          расход {amount} {child.unit} {amount > 0 && <>(в блюдо ушло {absorbed} {child.unit})</>}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.1}
+            min={0}
+            value={amount || ''}
+            onChange={e => s.updateAmount(child.id, sizeId, Number(e.target.value))}
+            placeholder="0"
+            className="w-20 h-10 px-2 rounded-lg text-sm outline-none text-center"
+            style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+          />
+          <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{child.unit === 'шт' ? 'г' : child.unit}</span>
+        </div>
       </div>
     </div>
   )
@@ -560,7 +634,8 @@ function MobileIngredientRow({
           {suggestions.map(sg => {
             const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
             if (!companionRef) return null
-            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id)) return null
+            // Блокируем только если companion уже добавлен как ребёнок ЭТОГО родителя
+            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
             const firstSize = s.sizes[0]
             const baseAmount = firstSize
               ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
@@ -570,7 +645,7 @@ function MobileIngredientRow({
               <button
                 key={sg.kind}
                 type="button"
-                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio)}
+                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
                 className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
                 style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
               >

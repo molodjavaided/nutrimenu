@@ -43,12 +43,18 @@ export function compositionReducer(state: CompositionState, action: CompositionA
       return { ...state, ingredients: action.ingredients }
     case 'ADD_INGREDIENT':
       return { ...state, ingredients: [...state.ingredients, action.ingredient] }
-    case 'REMOVE_INGREDIENT':
+    case 'REMOVE_INGREDIENT': {
+      // Каскадное удаление: убираем сам ингредиент и всех его детей (вложенные компаньоны)
+      const removeIds = new Set<string>([action.ingredientId])
+      for (const i of state.ingredients) {
+        if (i.parentIngredientId === action.ingredientId) removeIds.add(i.id)
+      }
       return {
         ...state,
-        ingredients: state.ingredients.filter(i => i.id !== action.ingredientId),
-        amounts: state.amounts.filter(a => a.ingredientId !== action.ingredientId),
+        ingredients: state.ingredients.filter(i => !removeIds.has(i.id)),
+        amounts: state.amounts.filter(a => !removeIds.has(a.ingredientId)),
       }
+    }
     case 'SET_SIZES':
       return { ...state, sizes: action.sizes }
     case 'ADD_SIZE': {

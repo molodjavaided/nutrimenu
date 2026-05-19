@@ -97,6 +97,7 @@ export interface YieldCoefficients {
 
 // Строка состава блюда
 export interface CompositionRow {
+  id?: string                        // row id, уникальный внутри блюда. Опционально для backward compat: если нет — генерируется на чтении.
   ingredientId: string
   amount: number              // основной вес (брутто, если используется ТТК-режим)
   unit: 'г' | 'мл' | 'шт' | 'кг' | 'л'
@@ -106,6 +107,10 @@ export interface CompositionRow {
   yieldOverride?: number             // коэффициент выхода (перебивает дефолт по ингредиенту)
   oilAbsorption?: number             // 0..1 — доля впитанного масла (для категории oil)
   removable?: boolean                // false = гость не может убрать (тесто, основа). По умолчанию (undefined) — можно убрать.
+  // Вложенные компаньоны (масло/вода под родительским ингредиентом)
+  parentRowId?: string               // id родительской строки в этом блюде — если строка является дочерним companion'ом
+  companionKind?: 'oil' | 'water'    // тип компаньона — для расчёта впитывания/выкипания
+  companionRatio?: number            // исходный brutto-коэффициент (ratio × parent.brutto при добавлении)
 }
 
 // Один объём/размер блюда

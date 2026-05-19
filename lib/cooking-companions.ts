@@ -77,3 +77,29 @@ export function suggestCompanions(
       return []
   }
 }
+
+/**
+ * Доля компаньона, попадающая в финальное блюдо (впитывание масла / поглощение воды крупой).
+ * Остальная часть теряется на сковороде / выкипает.
+ *
+ * Используется при расчёте КБЖУ дочернего ингредиента: childContribution = childAmount × absorptionRatio.
+ */
+export function companionAbsorptionRatio(
+  kind: CompanionKind,
+  parentProcessing: ProcessingType,
+  parentCategory: IngredientCategory | undefined,
+): number {
+  if (kind === 'oil') {
+    switch (parentProcessing) {
+      case 'fry':       return 0.15
+      case 'deep_fry':  return 0.30
+      case 'bake':      return 0.80
+      case 'stew':      return 0.80
+      default:          return 0.50
+    }
+  }
+  // water
+  if (parentProcessing === 'boil' && parentCategory === 'grain') return 1.0  // крупа впитывает всю воду
+  if (parentProcessing === 'stew') return 0.50
+  return 0.05  // boil veg/meat — почти вся вода сливается
+}

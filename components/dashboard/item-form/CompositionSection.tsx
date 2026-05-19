@@ -472,25 +472,15 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
         {size.name || (s.hasMultipleSizes ? `Размер ${sizeIdx + 1}` : 'Порция')} ({size.unit})
       </div>
       <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
-        {s.ingredients.map(ingredient => {
-          const contrib = rowContribution(s, ingredient, sizeId)
-          return (
-            <div key={ingredient.id} className="px-3 py-2.5 space-y-2" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <IngredientHeader s={s} ingredient={ingredient} />
-                </div>
-                {sizeIdx === 0 && (
-                  <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />
-                )}
-              </div>
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <ContributionText contrib={contrib} />
-                <BruttoCell s={s} ingredient={ingredient} sizeId={sizeId} />
-              </div>
-            </div>
-          )
-        })}
+        {s.ingredients.map(ingredient => (
+          <MobileIngredientRow
+            key={ingredient.id}
+            s={s}
+            ingredient={ingredient}
+            sizeId={sizeId}
+            isFirstSize={sizeIdx === 0}
+          />
+        ))}
       </div>
       <div className="px-3 py-2 text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ background: 'rgba(234,231,248,0.5)', color: '#534AB7' }}>
         <span>Σ <b>{Math.round(t.brutto)}</b> {size.unit}</span>
@@ -500,6 +490,122 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
         <span>Ж {finalNutri.fat.toFixed(1)}</span>
         <span>У {finalNutri.carbs.toFixed(1)}</span>
       </div>
+    </div>
+  )
+}
+
+// ─── Mobile ingredient row (внутри MobileSizeCard) ──────────────────────────
+
+function MobileIngredientRow({
+  s, ingredient, sizeId, isFirstSize,
+}: {
+  s: ItemFormState
+  ingredient: IngredientItem
+  sizeId: string
+  isFirstSize: boolean
+}) {
+  const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
+  const srcCategory = asCategory(ref?.category)
+  const isTTK = s.mode === 'ttk'
+  const contrib = rowContribution(s, ingredient, sizeId)
+  const amount = s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)?.amount || 0
+  const isCount = ingredient.unit === 'шт'
+  const showYield = isTTK && amount > 0 && Math.abs(contrib.brutto - contrib.finalGrams) >= 0.5
+
+  const suggestions = isTTK && ingredient.processing && ingredient.processing !== 'raw'
+    ? suggestCompanions(ingredient.processing, srcCategory)
+    : []
+
+  return (
+    <div className="px-3 py-3 space-y-2.5">
+      {/* Row 1: name + remove */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm font-medium min-w-0" style={{ color: 'var(--color-text-primary)' }}>
+          {ingredient.name}
+          <span className="text-xs ml-1" style={{ color: 'var(--color-text-muted)' }}>({ingredient.unit})</span>
+        </div>
+        {isFirstSize && <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />}
+      </div>
+
+      {/* Row 2: processing + lock toggle */}
+      {isFirstSize && (
+        <div className="flex items-start gap-2 flex-wrap">
+          {isTTK && (
+            <ProcessingChip
+              processing={ingredient.processing}
+              yieldOverride={ingredient.yieldOverride}
+              ingredientRef={ref}
+              onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
+              onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => s.toggleIngredientLocked(ingredient.id)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors shrink-0"
+            style={{
+              background: ingredient.locked ? '#FEF3C7' : 'rgba(176,166,223,0.15)',
+              color: ingredient.locked ? '#92400E' : 'var(--color-text-muted)',
+              border: ingredient.locked ? '0.5px solid #FDE68A' : '0.5px solid transparent',
+            }}
+          >
+            {ingredient.locked ? '🔒 нельзя убрать' : '🔓 можно убрать'}
+          </button>
+        </div>
+      )}
+
+      {/* Companions (mobile) */}
+      {isFirstSize && suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {suggestions.map(sg => {
+            const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
+            if (!companionRef) return null
+            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id)) return null
+            const firstSize = s.sizes[0]
+            const baseAmount = firstSize
+              ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
+              : 0
+            const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
+            return (
+              <button
+                key={sg.kind}
+                type="button"
+                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio)}
+                className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
+                style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
+              >
+                🪄 {sg.label}{preview ? ` ~${preview}${companionRef.unit}` : ''}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Row 3: КБЖУ totals · weight input */}
+      <div className="flex items-center justify-between gap-2">
+        <ContributionText contrib={contrib} />
+        <div className="flex items-center gap-1 shrink-0">
+          <input
+            type="number"
+            inputMode={isCount ? 'numeric' : 'decimal'}
+            step={isCount ? 1 : 0.1}
+            min={0}
+            value={amount || ''}
+            onChange={e => s.updateAmount(ingredient.id, sizeId, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+            placeholder={isCount ? 'шт' : '0'}
+            className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
+            style={{ fontSize: 16, background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+          />
+          <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{sizeWeightUnit(s, ingredient)}</span>
+        </div>
+      </div>
+
+      {/* Row 4: выход (без стрелочки) */}
+      {showYield && (
+        <div className="text-[11px] text-right" style={{ color: '#534AB7' }}>
+          выход {Math.round(contrib.finalGrams)} {ingredient.unit === 'шт' ? 'г' : ingredient.unit}
+        </div>
+      )}
     </div>
   )
 }

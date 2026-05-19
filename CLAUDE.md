@@ -15,7 +15,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ### 🚨 IMPORTANT: Task Resume
 
-Every time you start, check `.claude/memory.md` to see the status of the last task. If a task is "In Progress", prioritize completing it before asking for new instructions.
+Активная память проекта живёт в **auto-memory** (`~/.claude/projects/<project-hash>/memory/`). Индекс `MEMORY.md` подгружается автоматически — открой первым делом `project_next_tasks.md` и продолжай с верхней незакрытой задачи.
+
 **Project:** NutriMenu
 **Owner:** Yuri
 **What we do:** SaaS app for restaurant and café owners to build nutrition-aware digital menus accessible to guests via QR code.
@@ -253,26 +254,26 @@ allowed-tools: [Read, Glob, Grep, WebSearch, WebFetch]
 5. **Self-annealing.** When something breaks: fix it, test it, update SKILL.md learnings so the same error won't happen again.
 6. **Context Hygiene.** I will use `/clear` frequently to save tokens. Before I do, you must ensure any new architectural decisions or "learned" patterns are documented in the relevant Skill or `CLAUDE.md`.
 7. **Silence is Golden.** Use `--silent` or `-q` flags for all CLI commands (npm, git) to keep the context window clean.
-8. **Task Persistence.** Before any `/clear` or at the end of a work session, update `.claude/memory.md` with:
-   - Current task status (Pending/In Progress/Done).
-   - What exactly was done in the last step.
-   - What the immediate NEXT step is.
-   - Any blockers or bugs found.
+8. **Task Persistence.** В конце сессии или перед `/clear` обнови **auto-memory**: запиши в соответствующий `project_*.md` (или создай новый) текущий статус, что сделано последним шагом, следующий шаг, блокеры. Не используй `.claude/memory.md` или `.claude/CURRENT.md` — они удалены.
+9. **Architecture decisions → Plan agent.** Для нетривиальных изменений (новая схема данных, миграция, рефакторинг 3+ файлов) — вызывай Agent с `subagent_type: Plan` до того, как редактировать.
+10. **Pre-commit review.** Перед коммитом нетривиального диффа — `/review` или `code-review` агентом. Тривиальные правки (один файл, очевидное поведение) — можно сразу.
 
 ---
 
 ## File Organization
 
-| Path                     | Purpose                                                           |
-| ------------------------ | ----------------------------------------------------------------- |
-| `CLAUDE.md`              | Project instructions for Claude Code (identical to AGENTS.md)     |
-| `AGENTS.md`              | Project instructions for Cursor/Windsurf (identical to CLAUDE.md) |
-| `GEMINI.md`              | Project instructions for Gemini (identical to CLAUDE.md)          |
-| `.claude/skills/<name>/` | SOPs — bundled skills (SKILL.md + scripts/)                       |
-| `.claude/agents/`        | Sub-agent definitions                                             |
-| `app/`                   | Next.js App Router pages and layouts                              |
-| `components/`            | React components (ui/ = shadcn, rest = project)                   |
-| `lib/`                   | Utilities: store.ts, utils.ts, mock-data.ts                       |
-| `types/`                 | TypeScript types (index.ts = all domain types)                    |
-| `.tmp/`                  | Intermediate files — never commit, always regenerated             |
-| `.env`                   | API keys — never commit                                           |
+| Path                                            | Purpose                                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `CLAUDE.md`                                     | **Source of truth** для инструкций агенту. AGENTS.md / GEMINI.md — копии (см. ниже).   |
+| `AGENTS.md`                                     | Копия CLAUDE.md для Cursor/Windsurf. При правке CLAUDE.md — синкать обе.               |
+| `GEMINI.md`                                     | Копия CLAUDE.md для Gemini. То же правило.                                             |
+| `docs/`                                         | Завершённые артефакты: `PITCH.md`, `PITCH_RAW.md`, `BACKLOG.md`. Не контекст для агента. |
+| `.claude/skills/<name>/`                        | SOPs — bundled skills (SKILL.md + scripts/)                                            |
+| `.claude/agents/`                               | Sub-agent definitions                                                                  |
+| `~/.claude/projects/<hash>/memory/`             | **Auto-memory** — живая память проекта (MEMORY.md + project_*.md). Подгружается сама.  |
+| `app/`                                          | Next.js App Router pages and layouts                                                   |
+| `components/`                                   | React components (ui/ = shadcn, rest = project)                                        |
+| `lib/`                                          | Utilities: store.ts, utils.ts, mock-data.ts                                            |
+| `types/`                                        | TypeScript types (index.ts = all domain types)                                         |
+| `.tmp/`                                         | Intermediate files — never commit, always regenerated                                  |
+| `.env`                                          | API keys — never commit                                                                |

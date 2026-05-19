@@ -91,7 +91,7 @@ npm run build    # production build
 npm run lint     # ESLint (Next.js config, v9 flat config in eslint.config.mjs)
 ```
 
-No test framework is configured.
+Tests: **Vitest** (`npm test` = `vitest run`, `npm run test:watch` = `vitest`). Тесты в `test/*.test.ts`. Запускать конкретный файл: `npx vitest run test/foo.test.ts`.
 
 ---
 

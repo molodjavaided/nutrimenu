@@ -11,11 +11,29 @@ interface Props {
   item: MenuItem
   categoryId: string
   onDelete: () => void
+  onDuplicate: () => void
 }
 
-export default function SortableItem({ item, categoryId, onDelete }: Props) {
+export default function SortableItem({ item, categoryId, onDelete, onDuplicate }: Props) {
   const [available, setAvailable] = useState(item.isAvailable)
   const [toggling, setToggling] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
+
+  async function handleDuplicate() {
+    if (duplicating) return
+    setDuplicating(true)
+    try {
+      const res = await fetch(`/api/items/${item.id}/duplicate`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        alert(err?.error ?? 'Не удалось дублировать')
+        return
+      }
+      onDuplicate()
+    } finally {
+      setDuplicating(false)
+    }
+  }
 
   async function toggleAvailable() {
     if (toggling) return
@@ -103,7 +121,7 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
         <button
           onClick={toggleAvailable}
           disabled={toggling}
-          className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity"
+          className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-opacity"
           style={{ color: available ? '#22C55E' : 'var(--color-text-muted)' }}
           title={available ? 'Скрыть от гостей' : 'Показать гостям'}
         >
@@ -121,11 +139,26 @@ export default function SortableItem({ item, categoryId, onDelete }: Props) {
           )}
         </button>
 
+        <button
+          onClick={handleDuplicate}
+          disabled={duplicating}
+          className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center transition-opacity"
+          style={{ color: 'var(--color-text-secondary)', opacity: duplicating ? 0.5 : 1 }}
+          title="Дублировать"
+          aria-label="Дублировать"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="3.5" y="3.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M2.5 9.5V3a1 1 0 011-1H10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+        </button>
+
         <Link
           href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
+          className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center"
           style={{ color: 'var(--color-text-secondary)' }}
           title="Редактировать"
+          aria-label="Редактировать"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>

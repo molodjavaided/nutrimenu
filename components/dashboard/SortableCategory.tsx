@@ -25,6 +25,7 @@ interface Props {
   onRename: (id: string, name: string) => void
   onDelete: (id: string) => void
   onDeleteItem: (categoryId: string, itemId: string) => void
+  onDuplicateItem: () => void
   onReorderItems: (categoryId: string, activeId: string, overId: string) => void
 }
 
@@ -33,6 +34,7 @@ export default function SortableCategory({
   onRename,
   onDelete,
   onDeleteItem,
+  onDuplicateItem,
   onReorderItems,
 }: Props) {
   const [editing, setEditing] = useState(false)
@@ -171,6 +173,7 @@ export default function SortableCategory({
                     item={item}
                     categoryId={category.id}
                     onDelete={() => onDeleteItem(category.id, item.id)}
+                    onDuplicate={onDuplicateItem}
                   />
                 ))}
               </SortableContext>

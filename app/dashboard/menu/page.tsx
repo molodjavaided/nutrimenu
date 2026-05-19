@@ -172,6 +172,7 @@ export default function MenuPage() {
                 onRename={handleRenameCategory}
                 onDelete={handleDeleteCategory}
                 onDeleteItem={handleDeleteItem}
+                onDuplicateItem={loadCategories}
                 onReorderItems={handleReorderItems}
               />
             ))}

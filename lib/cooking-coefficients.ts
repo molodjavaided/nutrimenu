@@ -67,6 +67,7 @@ const RU_CATEGORY_ALIAS: Record<string, IngredientCategory> = {
   'паста': 'grain',
   'бобовые': 'grain',
   'бакалея': 'grain',
+  'хлеб и выпечка': 'grain',
   'растительные протеины': 'grain',
   'мясо': 'meat',
   'мясо и рыба': 'meat',

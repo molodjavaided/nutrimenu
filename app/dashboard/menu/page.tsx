@@ -21,6 +21,7 @@ import {
 import { Category } from '@/types'
 import SortableCategory from '@/components/dashboard/SortableCategory'
 import ImportModal from '@/components/dashboard/ImportModal'
+import { GlassCard, GlassButton, GlassInput, GlassDashedButton } from '@/components/ui-kit'
 
 const PRESET_CATEGORIES = ['Завтраки', 'Обеды', 'Десерты', 'Напитки', 'Закуски', 'Салаты']
 
@@ -143,18 +144,19 @@ export default function MenuPage() {
 
   return (
     <div className="p-4 sm:p-8">
-
       {/* Onboarding tutorial banner — глава 2 */}
       {onboardingActive && (
-        <div
-          className="mb-5 rounded-2xl p-4 sm:p-5"
-          style={{
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(176,166,223,0.12))',
-            border: '0.5px solid rgba(139,92,246,0.3)',
-          }}
-        >
+        <GlassCard tone="tinted" padding="md" className="mb-5">
           <div className="flex items-start gap-3">
-            <div className="text-2xl shrink-0">📂</div>
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(139,92,246,0.10)', color: '#5B21B6' }}
+              aria-hidden
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2 5a1 1 0 0 1 1-1h3.5l1.5 1.5H15a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+              </svg>
+            </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
                 Шаг 2 из 4 — Категории
@@ -165,7 +167,7 @@ export default function MenuPage() {
               </p>
             </div>
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {/* Заголовок */}
@@ -177,30 +179,29 @@ export default function MenuPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
+          <GlassButton
+            variant="secondary"
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{
-              background: 'rgba(176,166,223,0.2)',
-              border: '0.5px solid rgba(176,166,223,0.5)',
-              color: 'var(--color-text-primary)',
-            }}
+            leftIcon={
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+                <path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 12h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            }
           >
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-              <path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 12h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
             <span className="hidden sm:inline">Импорт</span>
-          </button>
-          <Link
-            href="/dashboard/item/new"
-            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
-            style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <span className="hidden sm:inline">Добавить блюдо</span>
-            <span className="sm:hidden">Добавить</span>
+          </GlassButton>
+          <Link href="/dashboard/item/new">
+            <GlassButton
+              variant="brand"
+              leftIcon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              }
+            >
+              <span className="hidden sm:inline">Добавить блюдо</span>
+              <span className="sm:hidden">Добавить</span>
+            </GlassButton>
           </Link>
         </div>
       </div>
@@ -217,18 +218,17 @@ export default function MenuPage() {
 
       {/* Empty state с пресетами — когда категорий ещё нет */}
       {!hasCategories && (
-        <div
-          className="rounded-2xl p-5 sm:p-7 mb-4"
-          style={{
-            background: 'rgba(255,255,255,0.65)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '0.5px solid rgba(176,166,223,0.4)',
-            boxShadow: '0 8px 24px rgba(139,92,246,0.08)',
-          }}
-        >
+        <GlassCard tone="glass" padding="lg" className="mb-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="text-3xl">📂</div>
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(139,92,246,0.10)', color: '#7C3AED' }}
+              aria-hidden
+            >
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M2.5 6a1.2 1.2 0 0 1 1.2-1.2h4l1.8 1.8h8.8a1.2 1.2 0 0 1 1.2 1.2v9a1.2 1.2 0 0 1-1.2 1.2H3.7A1.2 1.2 0 0 1 2.5 17V6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+              </svg>
+            </div>
             <div>
               <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
                 Создайте первую категорию
@@ -245,11 +245,11 @@ export default function MenuPage() {
               <button
                 key={name}
                 onClick={() => handlePresetClick(name)}
-                className="px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.97]"
+                className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.97]"
                 style={{
-                  background: 'rgba(139,92,246,0.08)',
+                  background: 'rgba(139,92,246,0.10)',
                   color: '#7C3AED',
-                  border: '0.5px solid rgba(139,92,246,0.25)',
+                  border: '0.5px solid rgba(139,92,246,0.28)',
                 }}
               >
                 + {name}
@@ -259,32 +259,23 @@ export default function MenuPage() {
 
           {/* Ручной ввод */}
           <div className="flex items-center gap-2">
-            <input
+            <GlassInput
+              inputSize="md"
               value={newCatName}
               onChange={e => setNewCatName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAddCategory() }}
               placeholder="Свой вариант..."
-              className="flex-1 h-10 px-3 rounded-xl text-sm outline-none"
-              style={{
-                background: '#EAE7F8',
-                border: '0.5px solid rgba(176,166,223,0.5)',
-                color: 'var(--color-text-primary)',
-              }}
+              className="flex-1"
             />
-            <button
+            <GlassButton
+              variant="brand"
               onClick={handleAddCategory}
               disabled={!newCatName.trim()}
-              className="px-4 h-10 rounded-xl text-sm font-medium transition-all active:scale-[0.97]"
-              style={{
-                background: newCatName.trim() ? '#B0A6DF' : 'rgba(176,166,223,0.3)',
-                color: 'var(--color-text-primary)',
-                cursor: newCatName.trim() ? 'pointer' : 'not-allowed',
-              }}
             >
               Добавить
-            </button>
+            </GlassButton>
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {/* Список категорий с drag-and-drop */}
@@ -315,57 +306,42 @@ export default function MenuPage() {
 
       {/* Добавить категорию (только если уже есть хотя бы одна — для пустого случая используется empty state выше) */}
       {hasCategories && (
-      <div className="mt-4">
-        {addingCat ? (
-          <div className="flex items-center gap-2">
-            <input
-              value={newCatName}
-              onChange={e => setNewCatName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleAddCategory()
-                if (e.key === 'Escape') setAddingCat(false)
-              }}
-              placeholder="Название категории..."
-              className="flex-1 h-10 px-3 rounded-xl text-sm outline-none"
-              style={{
-                background: '#EAE7F8',
-                border: '0.5px solid rgba(176,166,223,0.5)',
-                color: 'var(--color-text-primary)',
-              }}
-            />
-            <button
-              onClick={handleAddCategory}
-              className="px-4 h-10 rounded-xl text-sm font-medium"
-              style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
+        <div className="mt-4">
+          {addingCat ? (
+            <div className="flex items-center gap-2">
+              <GlassInput
+                inputSize="md"
+                autoFocus
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddCategory()
+                  if (e.key === 'Escape') setAddingCat(false)
+                }}
+                placeholder="Название категории..."
+                className="flex-1"
+              />
+              <GlassButton variant="brand" onClick={handleAddCategory}>
+                Добавить
+              </GlassButton>
+              <GlassButton variant="secondary" onClick={() => setAddingCat(false)}>
+                Отмена
+              </GlassButton>
+            </div>
+          ) : (
+            <GlassDashedButton
+              fullWidth
+              onClick={() => setAddingCat(true)}
+              leftIcon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
+              }
             >
-              Добавить
-            </button>
-            <button
-              onClick={() => setAddingCat(false)}
-              className="px-4 h-10 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
-            >
-              Отмена
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setAddingCat(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all"
-            style={{
-              background: 'transparent',
-              border: '0.5px dashed rgba(176,166,223,0.6)',
-              color: 'var(--color-text-secondary)',
-              width: '100%',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
-            Добавить категорию
-          </button>
-        )}
-      </div>
+              Добавить категорию
+            </GlassDashedButton>
+          )}
+        </div>
       )}
     </div>
   )

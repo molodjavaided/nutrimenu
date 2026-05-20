@@ -5,12 +5,13 @@ import { toast } from 'sonner'
 import { IngredientLibrary, IngredientRef, IngredientCategory } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { CATEGORY_LABELS, asCategory } from '@/lib/cooking-coefficients'
-
-const MY_LIBRARY_ID = 'my-library'
 import { SearchInput } from '@/components/ui/SearchInput'
 import IngredientFormModal from '@/components/dashboard/IngredientFormModal'
 import BarcodeScannerOverlay from '@/components/dashboard/BarcodeScannerOverlay'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
+import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
+
+const MY_LIBRARY_ID = 'my-library'
 
 type BarcodeStatus = 'idle' | 'loading' | 'not_found' | 'error'
 
@@ -27,15 +28,12 @@ export default function IngredientsPage() {
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeStatus, setBarcodeStatus] = useState<BarcodeStatus>('idle')
   const [scannerOpen, setScannerOpen] = useState(false)
-  // Pre-filled data from barcode scan — opens the mono form modal
   const [barcodePreFill, setBarcodePreFill] = useState<Omit<IngredientRef, 'id'> | null>(null)
 
-  // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // AI enrich quota
   const [enrichInfo, setEnrichInfo] = useState<{ canEnrich: boolean; used: number; limit: number | null; remaining: number | null; plan?: string } | null>(null)
   const [enrichProgress, setEnrichProgress] = useState<{ done: number; total: number; errors: number } | null>(null)
 
@@ -52,7 +50,6 @@ export default function IngredientsPage() {
       .then(data => { if (data) setEnrichInfo(data) })
   }, [])
 
-  // Clear selection when switching libraries
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setSelectedIds(new Set())
@@ -67,9 +64,7 @@ export default function IngredientsPage() {
   const allRefs = libraries.flatMap(l => l.ingredients)
 
   function updateLocalLib(updated: IngredientRef[]) {
-    setLibraries(libs => libs.map(l =>
-      l.id === activeLibId ? { ...l, ingredients: updated } : l
-    ))
+    setLibraries(libs => libs.map(l => l.id === activeLibId ? { ...l, ingredients: updated } : l))
   }
 
   async function handleSave(ing: IngredientRef) {
@@ -139,13 +134,11 @@ export default function IngredientsPage() {
         const data = await res.json().catch(() => null)
         if (!res.ok || !data?.ok) {
           errors++
-          // Если упёрлись в квоту/тариф — стопаем цикл, дальше нет смысла
           if (data?.code === 'quota_exceeded' || data?.code === 'plan_required') {
             toast.error(data.error ?? 'Лимит AI-обогащения исчерпан')
             break
           }
         } else if (data.ingredient) {
-          // Обновляем локальный список
           updateLocalLib(ingredients.map(i => i.id === id ? { ...i, ...data.ingredient } as IngredientRef : i))
           if (typeof data.remaining === 'number') {
             lastInfo = { ...lastInfo, used: data.used ?? lastInfo.used, remaining: data.remaining, canEnrich: data.remaining > 0, limit: lastInfo.limit }
@@ -169,7 +162,6 @@ export default function IngredientsPage() {
 
   async function handleBulkDeleteRequest() {
     if (confirmBulkDelete) {
-      // Second click — actually delete
       const toDelete = [...selectedIds]
       await Promise.all(toDelete.map(id => fetch(`/api/ingredients/${id}`, { method: 'DELETE' })))
       updateLocalLib(ingredients.filter(i => !selectedIds.has(i.id)))
@@ -177,7 +169,6 @@ export default function IngredientsPage() {
       setConfirmBulkDelete(false)
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
     } else {
-      // First click — arm confirmation, auto-reset after 4s
       setConfirmBulkDelete(true)
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
       confirmTimerRef.current = setTimeout(() => setConfirmBulkDelete(false), 4000)
@@ -192,7 +183,6 @@ export default function IngredientsPage() {
       const res = await fetch(`/api/ingredients/lookup-barcode?code=${encodeURIComponent(code)}`)
       const data = await res.json()
 
-      // Level 1: local DB — open the existing ingredient for editing
       if (res.ok && data.source === 'local' && data.ref) {
         setBarcodeStatus('idle')
         setBarcodeMode(false)
@@ -202,14 +192,12 @@ export default function IngredientsPage() {
         return
       }
 
-      // Transient AI failure — don't poison cache, prompt to retry
       if (res.status === 503 || data.source === 'transient') {
         setBarcodeStatus('error')
         toast.error(data.error ?? 'AI временно недоступен, попробуйте ещё раз')
         return
       }
 
-      // Level 2/3: Gemini grounded search (or cache hit) — prefill new-ingredient modal
       if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache') && data.prefill) {
         const p = data.prefill
         const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null
@@ -244,7 +232,6 @@ export default function IngredientsPage() {
         return
       }
 
-      // Level 3: not found — open empty modal with barcode pinned
       if (res.status === 404 || data.source === 'manual') {
         setBarcodePreFill({
           name: '',
@@ -287,12 +274,10 @@ export default function IngredientsPage() {
   const allFilteredSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.has(id))
   const someFilteredSelected = allFilteredIds.some(id => selectedIds.has(id))
 
-  // Build pre-filled IngredientRef from barcode data for the modal
   const barcodeAsRef: IngredientRef | undefined = barcodePreFill
     ? { ...barcodePreFill, id: '__barcode__' }
     : undefined
 
-  // Desktop grid columns — add checkbox column for non-system
   const desktopCols = isSystem
     ? '1fr 80px 80px 60px 60px 70px'
     : '28px 1fr 80px 80px 60px 60px 70px 72px'
@@ -302,42 +287,48 @@ export default function IngredientsPage() {
 
       {/* ── Library sidebar ── */}
       <div
-        className="md:w-56 md:shrink-0 md:flex-col md:gap-1 md:pt-8 md:pb-6 md:pr-2 md:border-r md:flex
+        className="md:w-56 md:shrink-0 md:flex-col md:gap-1 md:pt-8 md:pb-6 md:pr-2 md:border-r md:border-b-0 md:flex
                    flex overflow-x-auto gap-2 px-4 pt-4 pb-3 border-b shrink-0"
-        style={{ borderColor: 'rgba(176,166,223,0.25)' }}
+        style={{ borderColor: 'rgba(139,92,246,0.18)' }}
       >
         <p className="hidden md:block text-xs font-medium uppercase tracking-wider px-3 mb-2" style={{ color: 'var(--color-text-muted)' }}>
           Библиотеки
         </p>
 
-        {libraries.map(lib => (
-          <button
-            key={lib.id}
-            onClick={() => { setActiveLibId(lib.id); setSearch('') }}
-            className="flex items-center gap-2 px-3 py-2 md:py-2.5 rounded-xl text-sm text-left shrink-0 md:w-full transition-colors"
-            style={{
-              background: activeLibId === lib.id ? '#EAE7F8' : 'transparent',
-              color: activeLibId === lib.id ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-              fontWeight: activeLibId === lib.id ? 500 : 400,
-              border: activeLibId === lib.id ? 'none' : '0.5px solid rgba(176,166,223,0.3)',
-            }}
-          >
-            {lib.isSystem ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
-                <rect x="2.5" y="6" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-                <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
-                <path d="M2 10.5h10M2 7.5h10M2 4.5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-            )}
-            <span className="truncate">{lib.name}</span>
-            <span className="ml-auto text-xs shrink-0 hidden md:inline" style={{ color: 'var(--color-text-muted)' }}>
-              {lib.ingredients.length}
-            </span>
-          </button>
-        ))}
+        {libraries.map(lib => {
+          const active = activeLibId === lib.id
+          return (
+            <button
+              key={lib.id}
+              onClick={() => { setActiveLibId(lib.id); setSearch('') }}
+              className="flex items-center gap-2 px-3 py-2 md:py-2.5 rounded-xl text-sm text-left shrink-0 md:w-full transition-all active:scale-[0.98]"
+              style={{
+                background: active ? 'rgba(176,166,223,0.25)' : 'rgba(255,255,255,0.45)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                fontWeight: active ? 500 : 400,
+                border: `0.5px solid ${active ? 'rgba(139,92,246,0.35)' : 'rgba(139,92,246,0.12)'}`,
+                boxShadow: active ? '0 2px 8px rgba(139,92,246,0.10)' : 'none',
+              }}
+            >
+              {lib.isSystem ? (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
+                  <rect x="2.5" y="6" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
+                  <path d="M2 10.5h10M2 7.5h10M2 4.5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                </svg>
+              )}
+              <span className="truncate">{lib.name}</span>
+              <span className="ml-auto text-xs shrink-0 hidden md:inline" style={{ color: 'var(--color-text-muted)' }}>
+                {lib.ingredients.length}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Main content ── */}
@@ -351,12 +342,7 @@ export default function IngredientsPage() {
                 <h1 className="text-xl sm:text-2xl font-medium" style={{ color: 'var(--color-text-primary)' }}>
                   {activeLib?.name ?? ''}
                 </h1>
-                {isSystem && (
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: '#EAE7F8', color: '#B0A6DF' }}>
-                    Системная
-                  </span>
-                )}
+                {isSystem && <NutriPill tone="neutral" size="sm">Системная</NutriPill>}
               </div>
               <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
                 {ingredients.length} ингредиентов
@@ -366,38 +352,42 @@ export default function IngredientsPage() {
 
             {!isSystem && (
               <div className="flex items-center gap-2 shrink-0">
-                <button
+                <GlassButton
+                  variant={barcodeMode ? 'primary' : 'secondary'}
                   onClick={() => { setBarcodeMode(m => !m); setBarcodeInput(''); setBarcodeStatus('idle') }}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium"
-                  style={{
-                    background: barcodeMode ? 'var(--color-text-primary)' : '#EAE7F8',
-                    color: barcodeMode ? '#EAE7F8' : 'var(--color-text-primary)',
-                  }}
+                  style={barcodeMode ? { background: 'var(--color-text-primary)', borderColor: 'rgba(44,41,80,0.6)' } : undefined}
+                  leftIcon={
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                      <path d="M1 3v10M3 3v10M5 3v10M7 3v6M9 3v10M11 3v10M13 3v6M7 11v2M10 9h3v4h-3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                    </svg>
+                  }
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M1 3v10M3 3v10M5 3v10M7 3v6M9 3v10M11 3v10M13 3v6M7 11v2M10 9h3v4h-3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
                   <span className="hidden sm:inline">По штрихкоду</span>
-                </button>
-                <button
+                </GlassButton>
+                <GlassButton
+                  variant="brand"
                   onClick={() => { setBarcodePreFill(null); setModalTarget(null); setBarcodeMode(false) }}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ background: '#B0A6DF', color: 'var(--color-text-primary)' }}
+                  leftIcon={
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  }
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
                   <span className="hidden sm:inline">Добавить ингредиент</span>
                   <span className="sm:hidden">Добавить</span>
-                </button>
+                </GlassButton>
               </div>
             )}
           </div>
 
           {/* Barcode section */}
           {!isSystem && barcodeMode && (
-            <div className="rounded-2xl p-4 sm:p-5 mb-6"
-              style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.5)' }}>
+            <GlassCard
+              tone="solid"
+              padding="md"
+              className="mb-6"
+              style={{ background: 'rgba(234,231,248,0.85)', borderColor: 'rgba(139,92,246,0.30)' }}
+            >
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>
                 Поиск по штрихкоду
               </p>
@@ -406,65 +396,65 @@ export default function IngredientsPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-2 items-start">
                 <div className="flex flex-col gap-1 flex-1 w-full">
-                  <input
+                  <GlassInput
                     value={barcodeInput}
                     onChange={e => { setBarcodeInput(e.target.value); setBarcodeStatus('idle') }}
                     onKeyDown={e => e.key === 'Enter' && handleBarcodeLookup()}
                     placeholder="4630146040576"
-                    className="h-11 px-3 rounded-xl text-sm outline-none font-mono w-full"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+                    className="font-mono"
+                    invalid={barcodeStatus === 'not_found' || barcodeStatus === 'error'}
                   />
                   {barcodeStatus === 'not_found' && (
-                    <p className="text-xs" style={{ color: '#E24B4A' }}>
+                    <p className="text-xs" style={{ color: '#DC2626' }}>
                       Товар не найден. Попробуйте другой штрихкод или добавьте вручную.
                     </p>
                   )}
                   {barcodeStatus === 'error' && (
-                    <p className="text-xs" style={{ color: '#E24B4A' }}>
+                    <p className="text-xs" style={{ color: '#DC2626' }}>
                       Ошибка сети. Проверьте подключение.
                     </p>
                   )}
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <button
+                  <GlassButton
+                    variant="secondary"
                     onClick={() => setScannerOpen(true)}
-                    className="h-11 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-                    style={{ background: '#FEFEF2', color: 'var(--color-text-primary)', border: '0.5px solid rgba(176,166,223,0.5)' }}
                     title="Сканировать камерой"
+                    leftIcon={
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+                        <rect x="1.5" y="4" width="13" height="9.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                        <circle cx="8" cy="8.75" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+                        <path d="M5.5 4l1-1.5h3l1 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+                      </svg>
+                    }
                   >
-                    📷
                     <span className="hidden sm:inline">Камера</span>
-                  </button>
-                  <button
+                  </GlassButton>
+                  <GlassButton
+                    variant="brand"
                     onClick={() => handleBarcodeLookup()}
                     disabled={!barcodeInput.trim() || barcodeStatus === 'loading'}
-                    className="flex-1 sm:flex-none h-11 px-5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-                    style={{
-                      background: barcodeInput.trim() ? '#B0A6DF' : '#C8C3F0',
-                      color: 'var(--color-text-primary)',
-                      opacity: barcodeStatus === 'loading' ? 0.7 : 1,
-                    }}
-                  >
-                    {barcodeStatus === 'loading' ? (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin">
-                          <circle cx="7" cy="7" r="5.5" stroke="#B0A6DF" strokeWidth="1.5"/>
-                          <path d="M7 1.5A5.5 5.5 0 0 1 12.5 7" stroke="#2C2950" strokeWidth="1.5" strokeLinecap="round"/>
+                    className="flex-1 sm:flex-none"
+                    leftIcon={
+                      barcodeStatus === 'loading' ? (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="animate-spin" aria-hidden>
+                          <circle cx="7" cy="7" r="5.5" stroke="rgba(44,41,80,0.25)" strokeWidth="1.5" />
+                          <path d="M7 1.5A5.5 5.5 0 0 1 12.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
-                        Поиск...
-                      </>
-                    ) : 'Найти'}
-                  </button>
-                  <button
+                      ) : undefined
+                    }
+                  >
+                    {barcodeStatus === 'loading' ? 'Поиск...' : 'Найти'}
+                  </GlassButton>
+                  <GlassButton
+                    variant="ghost"
                     onClick={() => { setBarcodeMode(false); setBarcodeInput(''); setBarcodeStatus('idle') }}
-                    className="h-11 px-3 rounded-xl text-sm"
-                    style={{ background: '#FEFEF2', color: 'var(--color-text-secondary)' }}
                   >
                     Отмена
-                  </button>
+                  </GlassButton>
                 </div>
               </div>
-            </div>
+            </GlassCard>
           )}
 
           {/* Search */}
@@ -478,11 +468,13 @@ export default function IngredientsPage() {
 
           {/* Empty state */}
           {ingredients.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: '#EAE7F8' }}>
+            <GlassCard tone="solid" padding="lg" className="text-center py-16">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: 'rgba(176,166,223,0.20)' }}
+              >
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                  <path d="M14 4v20M4 14h20" stroke="#B0A6DF" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M14 4v20M4 14h20" stroke="#B0A6DF" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </div>
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>
@@ -494,7 +486,7 @@ export default function IngredientsPage() {
                   : 'Добавьте первый ингредиент чтобы начать'
                 }
               </p>
-            </div>
+            </GlassCard>
           )}
 
           {/* Grouped list */}
@@ -506,12 +498,15 @@ export default function IngredientsPage() {
 
               {/* Desktop table */}
               <div className="hidden sm:block">
-                <div className="grid gap-3 px-4 py-2 text-xs rounded-xl mb-1"
+                <div
+                  className="grid gap-3 px-4 py-2 text-xs rounded-xl mb-1"
                   style={{
                     color: 'var(--color-text-muted)',
                     gridTemplateColumns: desktopCols,
-                    background: '#EAE7F8',
-                  }}>
+                    background: 'rgba(176,166,223,0.18)',
+                    border: '0.5px solid rgba(139,92,246,0.12)',
+                  }}
+                >
                   {!isSystem && (
                     <GlassCheckbox
                       checked={items.every(i => selectedIds.has(i.id))}
@@ -531,11 +526,11 @@ export default function IngredientsPage() {
                 {items.map(ing => (
                   <div
                     key={ing.id}
-                    className="grid gap-3 px-4 py-2.5 rounded-xl items-center"
+                    className="grid gap-3 px-4 py-2.5 rounded-xl items-center transition-colors"
                     style={{
                       gridTemplateColumns: desktopCols,
-                      borderBottom: '0.5px solid rgba(176,166,223,0.15)',
-                      background: selectedIds.has(ing.id) ? 'rgba(176,166,223,0.1)' : 'transparent',
+                      borderBottom: '0.5px solid rgba(139,92,246,0.10)',
+                      background: selectedIds.has(ing.id) ? 'rgba(139,92,246,0.08)' : 'transparent',
                     }}
                   >
                     {!isSystem && (
@@ -549,7 +544,7 @@ export default function IngredientsPage() {
                       <span className="truncate">{ing.name}</span>
                     </span>
                     <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>100 {ing.unit}</span>
-                    <span className="text-sm" style={{ color: '#534AB7' }}>{ing.caloriesPer100}</span>
+                    <span className="text-sm" style={{ color: '#7C5200' }}>{ing.caloriesPer100}</span>
                     <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{ing.proteinPer100}г</span>
                     <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{ing.fatPer100}г</span>
                     <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{ing.carbsPer100}г</span>
@@ -558,7 +553,7 @@ export default function IngredientsPage() {
                         <IngredientActions
                           ing={ing}
                           confirmDeleteId={confirmDeleteId}
-                          onEdit={ing => setModalTarget(ing)}
+                          onEdit={i => setModalTarget(i)}
                           onConfirmDelete={setConfirmDeleteId}
                           onDelete={handleDelete}
                         />
@@ -571,13 +566,16 @@ export default function IngredientsPage() {
               {/* Mobile cards */}
               <div className="sm:hidden flex flex-col gap-2">
                 {items.map(ing => (
-                  <div key={ing.id} className="rounded-xl p-3"
-                    style={{
-                      background: selectedIds.has(ing.id) ? 'rgba(176,166,223,0.2)' : '#EAE7F8',
-                      border: selectedIds.has(ing.id)
-                        ? '0.5px solid rgba(176,166,223,0.6)'
-                        : '0.5px solid rgba(176,166,223,0.2)',
-                    }}>
+                  <GlassCard
+                    key={ing.id}
+                    tone="solid"
+                    padding="sm"
+                    style={
+                      selectedIds.has(ing.id)
+                        ? { background: 'rgba(139,92,246,0.10)', borderColor: 'rgba(139,92,246,0.35)' }
+                        : undefined
+                    }
+                  >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
                         {!isSystem && (
@@ -596,26 +594,26 @@ export default function IngredientsPage() {
                           <IngredientActions
                             ing={ing}
                             confirmDeleteId={confirmDeleteId}
-                            onEdit={ing => setModalTarget(ing)}
+                            onEdit={i => setModalTarget(i)}
                             onConfirmDelete={setConfirmDeleteId}
                             onDelete={handleDelete}
                           />
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-3 flex-wrap">
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>100 {ing.unit}</span>
-                      <span className="text-xs font-medium" style={{ color: '#534AB7' }}>{ing.caloriesPer100} ккал</span>
-                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Б {ing.proteinPer100}г</span>
-                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Ж {ing.fatPer100}г</span>
-                      <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>У {ing.carbsPer100}г</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      <NutriPill tone="neutral" size="xs">100 {ing.unit}</NutriPill>
+                      <NutriPill tone="calorie" size="xs" value={ing.caloriesPer100} unit=" ккал" />
+                      <NutriPill tone="protein" size="xs" label="Б" value={ing.proteinPer100} unit="г" />
+                      <NutriPill tone="fat" size="xs" label="Ж" value={ing.fatPer100} unit="г" />
+                      <NutriPill tone="carbs" size="xs" label="У" value={ing.carbsPer100} unit="г" />
                       {ing.type === 'composite' && (
-                        <span className="text-xs font-medium" style={{ color: '#B0A6DF' }}>
-                          · {(ing.composition?.length ?? 0)} компонентов
-                        </span>
+                        <NutriPill tone="brand" size="xs">
+                          {ing.composition?.length ?? 0} комп.
+                        </NutriPill>
                       )}
                     </div>
-                  </div>
+                  </GlassCard>
                 ))}
               </div>
             </div>
@@ -624,7 +622,7 @@ export default function IngredientsPage() {
 
       </div>
 
-      {/* ── Bulk selection bar (fixed floating island) ── */}
+      {/* ── Bulk selection bar (fixed floating dark island) ── */}
       {!isSystem && selectedIds.size > 0 && (
         <>
           <style>{`
@@ -646,7 +644,7 @@ export default function IngredientsPage() {
               gap: '12px',
               padding: '10px 16px',
               borderRadius: '16px',
-              background: 'rgba(28, 25, 56, 0.75)',
+              background: 'rgba(28, 25, 56, 0.78)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
               border: '0.5px solid rgba(176,166,223,0.25)',
@@ -655,7 +653,6 @@ export default function IngredientsPage() {
               animation: 'bulk-bar-in 0.22s cubic-bezier(0.34,1.56,0.64,1) both',
             }}
           >
-            {/* Select-all toggle */}
             <GlassCheckbox
               checked={allFilteredSelected}
               indeterminate={someFilteredSelected && !allFilteredSelected}
@@ -667,9 +664,9 @@ export default function IngredientsPage() {
 
             <button
               onClick={() => { setSelectedIds(new Set()); setConfirmBulkDelete(false) }}
-              className="px-3 py-2 rounded-xl text-sm transition-colors"
-              style={{ background: 'rgba(176,166,223,0.18)', color: 'rgba(255,255,255,0.6)' }}
               disabled={!!enrichProgress}
+              className="px-3 h-9 rounded-xl text-sm transition-all active:scale-[0.97]"
+              style={{ background: 'rgba(176,166,223,0.18)', color: 'rgba(255,255,255,0.7)' }}
             >
               Отмена
             </button>
@@ -684,7 +681,7 @@ export default function IngredientsPage() {
                     ? `AI заполнит категорию, потери и КБЖУ. Осталось в этом месяце: ${enrichInfo.remaining ?? '∞'}`
                     : 'AI-обогащение доступно с тарифа Старт'
               }
-              className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-all"
+              className="px-3 h-9 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-all active:scale-[0.97]"
               style={{
                 background: enrichInfo?.canEnrich && !enrichProgress ? 'rgba(176,166,223,0.4)' : 'rgba(176,166,223,0.15)',
                 color: enrichInfo?.canEnrich && !enrichProgress ? '#fff' : 'rgba(255,255,255,0.45)',
@@ -700,15 +697,16 @@ export default function IngredientsPage() {
             <button
               onClick={handleBulkDeleteRequest}
               disabled={!!enrichProgress}
-              className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"
+              className="px-4 h-9 rounded-xl text-sm font-medium flex items-center gap-2 transition-all active:scale-[0.97]"
               style={{
-                background: confirmBulkDelete ? '#E24B4A' : 'rgba(176,166,223,0.25)',
+                background: confirmBulkDelete ? '#DC2626' : 'rgba(176,166,223,0.25)',
                 color: confirmBulkDelete ? '#fff' : 'rgba(255,255,255,0.9)',
+                boxShadow: confirmBulkDelete ? '0 4px 12px rgba(220,38,38,0.4)' : 'none',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4M8.5 6v4M3 3.5l.7 8h6.6l.7-8"
-                  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {confirmBulkDelete ? `Подтвердить удаление ${selectedIds.size} записей` : `Удалить ${selectedIds.size}`}
             </button>
@@ -745,19 +743,15 @@ export default function IngredientsPage() {
   )
 }
 
-// ── Composite icon ────────────────────────────────────────────────────────────
-
 function CompositeIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="shrink-0" style={{ color: '#B0A6DF' }}>
-      <rect x="1" y="9" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-      <rect x="1" y="5.5" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-      <rect x="1" y="1.5" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+      <rect x="1" y="9" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="1" y="5.5" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="1" y="1.5" width="12" height="3.5" rx="1" stroke="currentColor" strokeWidth="1.2" />
     </svg>
   )
 }
-
-// ── Actions ───────────────────────────────────────────────────────────────────
 
 function IngredientActions({
   ing,
@@ -776,15 +770,15 @@ function IngredientActions({
     <>
       <button
         onClick={() => onDelete(ing.id)}
-        className="px-2 h-7 rounded-lg text-xs font-medium"
-        style={{ background: '#E24B4A', color: '#fff' }}
+        className="px-2 h-8 rounded-lg text-xs font-medium transition-all active:scale-[0.96]"
+        style={{ background: '#DC2626', color: '#fff', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
       >
         Удалить
       </button>
       <button
         onClick={() => onConfirmDelete(null)}
-        className="px-2 h-7 rounded-lg text-xs"
-        style={{ background: 'rgba(176,166,223,0.3)', color: 'var(--color-text-secondary)' }}
+        className="px-2 h-8 rounded-lg text-xs transition-all active:scale-[0.96]"
+        style={{ background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-secondary)' }}
       >
         ✕
       </button>
@@ -793,21 +787,23 @@ function IngredientActions({
     <>
       <button
         onClick={() => onEdit(ing)}
-        className="w-7 h-7 rounded-lg flex items-center justify-center"
-        style={{ color: 'var(--color-text-secondary)', background: 'rgba(176,166,223,0.3)' }}
+        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90"
+        style={{ color: 'var(--color-text-secondary)', background: 'rgba(139,92,246,0.10)' }}
+        aria-label="Редактировать"
       >
         <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-          <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+          <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
         </svg>
       </button>
       <button
         onClick={() => onConfirmDelete(ing.id)}
-        className="w-7 h-7 rounded-lg flex items-center justify-center"
-        style={{ color: 'var(--color-text-secondary)', background: 'rgba(176,166,223,0.3)' }}
+        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90"
+        style={{ color: 'var(--color-text-secondary)', background: 'rgba(139,92,246,0.10)' }}
+        aria-label="Удалить"
       >
         <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
           <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4M8.5 6v4M3 3.5l.7 8h6.6l.7-8"
-            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
     </>

@@ -2,6 +2,7 @@
 
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
+import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
 import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFormState'
 import { resolveCompositionRowContribution, resolveIngredientPer100 } from '@/lib/utils'
 import { asCategory } from '@/lib/cooking-coefficients'
@@ -46,8 +47,7 @@ function rowContribution(s: ItemFormState, ingredient: IngredientItem, sizeId: s
   }
 }
 
-function sizeWeightUnit(s: ItemFormState, ingredient: IngredientItem): string {
-  // Что показать справа от инпута. Для штучных — 'шт', иначе — единица ингредиента (г/мл).
+function sizeWeightUnit(_s: ItemFormState, ingredient: IngredientItem): string {
   return ingredient.unit
 }
 
@@ -108,9 +108,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
   )
 }
 
-
-
-// ─── Size portion selector (unchanged behavior) ─────────────────────────────
+// ─── Size portion selector ─────────────────────────────────────────────────
 
 function SizePortionSection({ s }: { s: ItemFormState }) {
   return (
@@ -177,10 +175,10 @@ function SizePortionSection({ s }: { s: ItemFormState }) {
                   key={p.label}
                   type="button"
                   onClick={() => s.applySizePreset(p.preset)}
-                  className="text-xs px-2.5 py-1 rounded-full transition-all active:scale-95"
-                  style={{ color: '#534AB7', background: '#EAE7F8' }}
+                  className="transition-all active:scale-95"
+                  aria-label={`Применить шаблон ${p.label}`}
                 >
-                  {p.label}
+                  <NutriPill tone="brand" size="sm">{p.label}</NutriPill>
                 </button>
               ))}
             </div>
@@ -190,26 +188,25 @@ function SizePortionSection({ s }: { s: ItemFormState }) {
                   <FormInput
                     value={size.name}
                     onChange={e => s.updateSizeName(size.id, e.target.value)}
-                    placeholder={idx === 0 ? "Маленькая" : idx === 1 ? "Средняя" : "Большая"}
-                    className="w-32 h-11 px-2 rounded-lg"
+                    placeholder={idx === 0 ? 'Маленькая' : idx === 1 ? 'Средняя' : 'Большая'}
+                    className="w-32"
                   />
                   <FormSelect
                     value={size.unit}
                     onChange={e => s.updateSizeUnit(size.id, e.target.value as 'г' | 'мл')}
-                    className="w-20 h-11 px-2 rounded-lg"
+                    className="w-20"
                   >
                     <option value="г">г</option>
                     <option value="мл">мл</option>
                   </FormSelect>
                   <div className="flex items-center gap-1">
-                    <input
+                    <GlassInput
                       type="number"
                       inputMode="decimal"
                       value={size.price ?? ''}
                       onChange={e => s.updateSizePrice(size.id, e.target.value === '' ? undefined : Number(e.target.value))}
                       placeholder="Цена"
-                      className="w-24 h-11 px-2 rounded-lg text-sm outline-none"
-                      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                      className="w-24"
                     />
                     <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>₽</span>
                   </div>
@@ -219,14 +216,19 @@ function SizePortionSection({ s }: { s: ItemFormState }) {
                 </div>
               ))}
               {s.sizes.length < MAX_SIZES && (
-                <button
-                  type="button"
+                <GlassButton
+                  variant="secondary"
+                  size="sm"
                   onClick={s.addSize}
-                  className="text-sm px-3 py-1.5 rounded-lg self-start"
-                  style={{ color: '#B0A6DF', background: '#EAE7F8' }}
+                  className="self-start"
+                  leftIcon={
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden>
+                      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  }
                 >
-                  + Добавить размер ({s.sizes.length}/{MAX_SIZES})
-                </button>
+                  Добавить размер ({s.sizes.length}/{MAX_SIZES})
+                </GlassButton>
               )}
             </div>
           </div>
@@ -238,37 +240,79 @@ function SizePortionSection({ s }: { s: ItemFormState }) {
 
 // ─── Shared UI bits ─────────────────────────────────────────────────────────
 
+const PlusIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 function EmptyComposition({ onAdd }: { onAdd: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      className="w-full h-10 px-3 rounded-xl text-sm flex items-center gap-2"
-      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-secondary)' }}
-    >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
+    <GlassButton variant="secondary" onClick={onAdd} fullWidth leftIcon={PlusIcon}>
       Выбрать из справочника
-    </button>
+    </GlassButton>
   )
 }
 
 function AddIngredientButton({ onClick }: { onClick: () => void }) {
   return (
+    <GlassButton variant="secondary" onClick={onClick} fullWidth leftIcon={PlusIcon}>
+      Добавить ингредиент
+    </GlassButton>
+  )
+}
+
+// ─── Lock toggle (без эмодзи, SVG-замок) ───────────────────────────────────
+
+function LockToggle({ locked, onClick }: { locked: boolean; onClick: () => void }) {
+  return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full h-10 px-3 rounded-xl text-sm flex items-center gap-2"
-      style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-secondary)' }}
+      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] transition-all active:scale-[0.97]"
+      style={locked
+        ? { background: 'rgba(242,217,101,0.30)', color: '#7C5200', border: '0.5px solid rgba(242,217,101,0.55)' }
+        : { background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-muted)', border: '0.5px solid rgba(139,92,246,0.20)' }
+      }
+      title={locked ? 'Гость не сможет убрать этот ингредиент' : 'Гость сможет убрать этот ингредиент'}
+      aria-pressed={locked}
     >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-        <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+        <rect x="2.5" y="5.5" width="7" height="5" rx="1" stroke="currentColor" strokeWidth="1.1" />
+        {locked
+          ? <path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+          : <path d="M4 5.5V4a2 2 0 0 1 3.5-1.3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+        }
       </svg>
-      Добавить ингредиент
+      {locked ? 'нельзя убрать' : 'можно убрать'}
     </button>
   )
 }
+
+// ─── Companion suggestion chip ─────────────────────────────────────────────
+
+function CompanionChip({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full transition-all active:scale-95"
+      style={{
+        background: 'rgba(139,92,246,0.10)',
+        color: '#7C3AED',
+        border: '0.5px dashed rgba(139,92,246,0.40)',
+      }}
+    >
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden>
+        <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+      {label}
+    </button>
+  )
+}
+
+// ─── Ingredient header (desktop row) ───────────────────────────────────────
 
 function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: IngredientItem }) {
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
@@ -280,7 +324,10 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
     ? suggestCompanions(ingredient.processing, srcCategory)
     : []
   return (
-    <div className="space-y-1" style={isChild ? { paddingLeft: 16, borderLeft: '2px solid rgba(176,166,223,0.4)' } : undefined}>
+    <div
+      className="space-y-1"
+      style={isChild ? { paddingLeft: 16, borderLeft: '2px solid rgba(139,92,246,0.30)' } : undefined}
+    >
       <div className="flex items-center gap-2 flex-wrap">
         {isChild && <span style={{ color: 'var(--color-text-muted)' }}>↳</span>}
         <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
@@ -296,19 +343,9 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
             onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
           />
         )}
-        {!isChild && <button
-          type="button"
-          onClick={() => s.toggleIngredientLocked(ingredient.id)}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] transition-colors"
-          style={{
-            background: ingredient.locked ? '#FEF3C7' : 'rgba(176,166,223,0.15)',
-            color: ingredient.locked ? '#92400E' : 'var(--color-text-muted)',
-            border: ingredient.locked ? '0.5px solid #FDE68A' : '0.5px solid transparent',
-          }}
-          title={ingredient.locked ? 'Гость не сможет убрать этот ингредиент' : 'Гость сможет убрать этот ингредиент'}
-        >
-          {ingredient.locked ? '🔒 нельзя убрать' : '🔓 можно убрать'}
-        </button>}
+        {!isChild && (
+          <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />
+        )}
       </div>
       {suggestions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -322,16 +359,12 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
               : 0
             const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
             return (
-              <button
+              <CompanionChip
                 key={sg.kind}
-                type="button"
+                label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
                 onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
-                className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
-                style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
                 title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
-              >
-                🪄 {sg.label}{preview ? ` ~${preview}${companionRef.unit}` : ''}
-              </button>
+              />
             )
           })}
         </div>
@@ -340,15 +373,7 @@ function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: Ing
   )
 }
 
-function BruttoCell({
-  s,
-  ingredient,
-  sizeId,
-}: {
-  s: ItemFormState
-  ingredient: IngredientItem
-  sizeId: string
-}) {
+function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: IngredientItem; sizeId: string }) {
   const isCount = ingredient.unit === 'шт'
   const amount = s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)?.amount || 0
   const contrib = rowContribution(s, ingredient, sizeId)
@@ -356,7 +381,7 @@ function BruttoCell({
   return (
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-1">
-        <input
+        <GlassInput
           type="number"
           inputMode={isCount ? 'numeric' : 'decimal'}
           step={isCount ? 1 : 0.1}
@@ -364,8 +389,7 @@ function BruttoCell({
           value={amount || ''}
           onChange={e => s.updateAmount(ingredient.id, sizeId, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
           placeholder={isCount ? 'шт' : '0'}
-          className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
-          style={{ background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+          className="w-20 text-center"
         />
         <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{sizeWeightUnit(s, ingredient)}</span>
       </div>
@@ -381,16 +405,18 @@ function BruttoCell({
 function ContributionText({ contrib }: { contrib: RowContribution }) {
   if (!contrib.calories && !contrib.protein && !contrib.fat && !contrib.carbs) return null
   return (
-    <span className="text-[11px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
-      {Math.round(contrib.calories)} ккал · Б {contrib.protein.toFixed(1)} · Ж {contrib.fat.toFixed(1)} · У {contrib.carbs.toFixed(1)}
-    </span>
+    <div className="flex gap-1 flex-wrap justify-end">
+      <NutriPill tone="calorie" size="xs" value={Math.round(contrib.calories)} unit=" ккал" />
+      <NutriPill tone="protein" size="xs" label="Б" value={contrib.protein.toFixed(1)} />
+      <NutriPill tone="fat" size="xs" label="Ж" value={contrib.fat.toFixed(1)} />
+      <NutriPill tone="carbs" size="xs" label="У" value={contrib.carbs.toFixed(1)} />
+    </div>
   )
 }
 
 // ─── Desktop unified table ──────────────────────────────────────────────────
 
 function UnifiedTable({ s }: { s: ItemFormState }) {
-  const isTTK = s.mode === 'ttk'
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -415,7 +441,7 @@ function UnifiedTable({ s }: { s: ItemFormState }) {
             const firstSize = s.sizes[0]
             const firstContrib = firstSize ? rowContribution(s, ingredient, firstSize.id) : null
             return (
-              <tr key={ingredient.id} style={{ borderTop: '0.5px solid rgba(176,166,223,0.2)' }}>
+              <tr key={ingredient.id} style={{ borderTop: '0.5px solid rgba(139,92,246,0.12)' }}>
                 <td className="py-2 px-3 align-top">
                   <IngredientHeader s={s} ingredient={ingredient} />
                 </td>
@@ -446,11 +472,14 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
   if (!size) return null
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(176,166,223,0.3)' }}>
-      <div className="px-3 py-2 text-xs font-medium" style={{ background: '#EAE7F8', color: '#534AB7' }}>
+    <GlassCard tone="solid" padding="none" className="overflow-hidden">
+      <div
+        className="px-3 py-2 text-xs font-medium"
+        style={{ background: 'rgba(176,166,223,0.18)', color: '#534AB7', borderBottom: '0.5px solid rgba(139,92,246,0.12)' }}
+      >
         {size.name || (s.hasMultipleSizes ? `Размер ${sizeIdx + 1}` : 'Порция')} ({size.unit})
       </div>
-      <div className="divide-y" style={{ borderColor: 'rgba(176,166,223,0.15)' }}>
+      <div className="divide-y" style={{ borderColor: 'rgba(139,92,246,0.10)' }}>
         {s.ingredients
           .filter(ing => !ing.parentIngredientId)
           .map(parent => {
@@ -472,11 +501,11 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
             )
           })}
       </div>
-    </div>
+    </GlassCard>
   )
 }
 
-// ─── Mobile child (companion) row — вложенный масло/вода под родителем ─────
+// ─── Mobile child (companion) row ──────────────────────────────────────────
 
 function MobileChildIngredientRow({
   s, child, parent, sizeId, isFirstSize,
@@ -498,17 +527,22 @@ function MobileChildIngredientRow({
   const absorbed = Math.round(amount * absorption * 10) / 10
   const absorptionLabel = child.companionKind === 'water' ? 'выкипание' : 'впитывание'
 
-  const icon = child.companionKind === 'oil' ? '🛢' : '💧'
-
   return (
-    <div className="px-3 py-2.5 space-y-1.5" style={{ background: 'rgba(176,166,223,0.04)', borderLeft: '2px solid rgba(176,166,223,0.4)', marginLeft: 16 }}>
+    <div
+      className="px-3 py-2.5 space-y-1.5"
+      style={{
+        background: 'rgba(139,92,246,0.03)',
+        borderLeft: '2px solid rgba(139,92,246,0.30)',
+        marginLeft: 16,
+      }}
+    >
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-medium min-w-0 flex items-center gap-1.5" style={{ color: 'var(--color-text-primary)' }}>
+        <div className="text-xs font-medium min-w-0 flex items-center gap-1.5 flex-wrap" style={{ color: 'var(--color-text-primary)' }}>
           <span style={{ color: 'var(--color-text-muted)' }}>↳</span>
-          {icon} {childRef?.name ?? child.name}
-          <span className="text-[10px] ml-1 px-1.5 py-0.5 rounded-full" style={{ background: '#EAE7F8', color: '#534AB7' }}>
+          <span>{childRef?.name ?? child.name}</span>
+          <NutriPill tone="brand" size="xs">
             {absorptionLabel} ×{absorption.toFixed(2)}
-          </span>
+          </NutriPill>
         </div>
         {isFirstSize && <RemoveButton onClick={() => s.removeIngredient(child.id)} />}
       </div>
@@ -518,7 +552,7 @@ function MobileChildIngredientRow({
           расход {amount} {child.unit} {amount > 0 && <>(в блюдо ушло {absorbed} {child.unit})</>}
         </span>
         <div className="flex items-center gap-1 shrink-0">
-          <input
+          <GlassInput
             type="number"
             inputMode="decimal"
             step={0.1}
@@ -526,8 +560,7 @@ function MobileChildIngredientRow({
             value={amount || ''}
             onChange={e => s.updateAmount(child.id, sizeId, Number(e.target.value))}
             placeholder="0"
-            className="w-20 h-10 px-2 rounded-lg text-sm outline-none text-center"
-            style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+            className="w-20 text-center"
           />
           <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{child.unit === 'шт' ? 'г' : child.unit}</span>
         </div>
@@ -536,7 +569,7 @@ function MobileChildIngredientRow({
   )
 }
 
-// ─── Mobile ingredient row (внутри MobileSizeCard) ──────────────────────────
+// ─── Mobile parent ingredient row ──────────────────────────────────────────
 
 function MobileIngredientRow({
   s, ingredient, sizeId, isFirstSize,
@@ -581,18 +614,7 @@ function MobileIngredientRow({
               onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
             />
           )}
-          <button
-            type="button"
-            onClick={() => s.toggleIngredientLocked(ingredient.id)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors shrink-0"
-            style={{
-              background: ingredient.locked ? '#FEF3C7' : 'rgba(176,166,223,0.15)',
-              color: ingredient.locked ? '#92400E' : 'var(--color-text-muted)',
-              border: ingredient.locked ? '0.5px solid #FDE68A' : '0.5px solid transparent',
-            }}
-          >
-            {ingredient.locked ? '🔒 нельзя убрать' : '🔓 можно убрать'}
-          </button>
+          <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />
         </div>
       )}
 
@@ -602,7 +624,6 @@ function MobileIngredientRow({
           {suggestions.map(sg => {
             const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
             if (!companionRef) return null
-            // Блокируем только если companion уже добавлен как ребёнок ЭТОГО родителя
             if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
             const firstSize = s.sizes[0]
             const baseAmount = firstSize
@@ -610,15 +631,12 @@ function MobileIngredientRow({
               : 0
             const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
             return (
-              <button
+              <CompanionChip
                 key={sg.kind}
-                type="button"
+                label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
                 onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
-                className="text-[11px] px-2 py-1 rounded-full transition-all active:scale-95"
-                style={{ background: '#EAE7F8', color: '#534AB7', border: '0.5px dashed rgba(83,74,183,0.4)' }}
-              >
-                🪄 {sg.label}{preview ? ` ~${preview}${companionRef.unit}` : ''}
-              </button>
+                title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
+              />
             )
           })}
         </div>
@@ -628,7 +646,7 @@ function MobileIngredientRow({
       <div className="flex items-center justify-between gap-2">
         <ContributionText contrib={contrib} />
         <div className="flex items-center gap-1 shrink-0">
-          <input
+          <GlassInput
             type="number"
             inputMode={isCount ? 'numeric' : 'decimal'}
             step={isCount ? 1 : 0.1}
@@ -636,14 +654,13 @@ function MobileIngredientRow({
             value={amount || ''}
             onChange={e => s.updateAmount(ingredient.id, sizeId, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
             placeholder={isCount ? 'шт' : '0'}
-            className="w-20 h-11 px-2 rounded-lg text-sm outline-none text-center"
-            style={{ fontSize: 16, background: '#EAE7F8', border: '0.5px solid rgba(176,166,223,0.4)', color: 'var(--color-text-primary)' }}
+            className="w-20 text-center"
           />
           <span className="text-xs w-4" style={{ color: 'var(--color-text-muted)' }}>{sizeWeightUnit(s, ingredient)}</span>
         </div>
       </div>
 
-      {/* Row 4: выход (без стрелочки) */}
+      {/* Row 4: выход */}
       {showYield && (
         <div className="text-[11px] text-right" style={{ color: '#534AB7' }}>
           выход {Math.round(contrib.finalGrams)} {ingredient.unit === 'шт' ? 'г' : ingredient.unit}
@@ -657,16 +674,22 @@ function MobileIngredientRow({
 
 function FinalNutriCard({ s }: { s: ItemFormState }) {
   return (
-    <div className="mb-6 p-4 rounded-xl" style={{ background: '#EAE7F8' }}>
-      <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>Итоговое КБЖУ (на порцию)</p>
+    <GlassCard tone="tinted" padding="md" className="mb-6">
+      <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-text-primary)' }}>
+        Итоговое КБЖУ (на порцию)
+      </p>
       <div className="space-y-3">
-        {s.sizes.map(size => {
+        {s.sizes.map((size, idx) => {
           const nutri = s.calculateNutriForSize(size.id)
           const isManual = s.manualNutri[size.id]?.isManual
           const t = sizeTotals(s, size.id)
           const showYield = s.mode === 'ttk' && Math.abs(t.brutto - t.yieldG) >= 0.5
           return (
-            <div key={size.id} className="border-t pt-3 first:border-t-0 first:pt-0" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
+            <div
+              key={size.id}
+              className="pt-3 first:pt-0"
+              style={idx === 0 ? undefined : { borderTop: '0.5px solid rgba(139,92,246,0.18)' }}
+            >
               <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
                 <div>
                   <span className="text-sm font-medium" style={{ color: '#534AB7' }}>
@@ -678,11 +701,7 @@ function FinalNutriCard({ s }: { s: ItemFormState }) {
                     </span>
                   )}
                 </div>
-                {isManual && (
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#F2D965', color: '#635200' }}>
-                    отредактировано
-                  </span>
-                )}
+                {isManual && <NutriPill tone="warning" size="xs">отредактировано</NutriPill>}
               </div>
               <NutriFields
                 nutri={nutri}
@@ -692,7 +711,6 @@ function FinalNutriCard({ s }: { s: ItemFormState }) {
           )
         })}
       </div>
-    </div>
+    </GlassCard>
   )
 }
-

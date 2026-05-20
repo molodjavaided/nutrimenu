@@ -1,7 +1,20 @@
 'use client'
 
 import { FormInput } from '@/components/ui/form-fields'
+import { GlassCard, GlassButton, GlassDashedButton, GlassInput, NutriPill } from '@/components/ui-kit'
 import type { ItemFormState } from './useItemFormState'
+
+const PlusIcon = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+    <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+const CloseIcon = (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+    <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+)
 
 export default function AddonsSection({ s }: { s: ItemFormState }) {
   return (
@@ -12,7 +25,7 @@ export default function AddonsSection({ s }: { s: ItemFormState }) {
       </p>
 
       {s.addonGroups.map(group => (
-        <div key={group.id} className="mb-4 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.5)', border: '0.5px solid rgba(176,166,223,0.3)' }}>
+        <GlassCard key={group.id} tone="glass" padding="md" className="mb-4">
           <div className="flex items-center gap-2 mb-3">
             <FormInput
               value={group.label}
@@ -22,12 +35,11 @@ export default function AddonsSection({ s }: { s: ItemFormState }) {
             />
             <button
               onClick={() => s.removeAddonGroup(group.id)}
-              className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
+              className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0 transition-all active:scale-90"
+              style={{ background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-muted)' }}
+              aria-label="Удалить группу добавок"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
+              {CloseIcon}
             </button>
           </div>
 
@@ -59,56 +71,58 @@ export default function AddonsSection({ s }: { s: ItemFormState }) {
                   : g,
               ))
             return (
-              <div key={addon.id} className="flex flex-col gap-2 mb-2 p-2 rounded-xl" style={{ background: 'rgba(176,166,223,0.08)' }}>
+              <div
+                key={addon.id}
+                className="flex flex-col gap-2 mb-2 p-2 rounded-xl"
+                style={{ background: 'rgba(139,92,246,0.05)', border: '0.5px solid rgba(139,92,246,0.12)' }}
+              >
                 <div className="flex items-center gap-2">
-                  <button
+                  <GlassButton
+                    variant="secondary"
                     onClick={() => s.setAddonPickerTarget({ groupId: group.id, addonId: addon.id })}
-                    className="flex-1 h-10 px-3 rounded-xl text-sm text-left truncate"
-                    style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: ref ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}
+                    fullWidth
+                    className="justify-start text-left truncate"
+                    style={ref ? undefined : { color: 'var(--color-text-muted)' }}
                   >
                     {ref ? ref.name : '— Выбрать ингредиент'}
-                  </button>
+                  </GlassButton>
                   <button
                     onClick={() => s.removeAddon(group.id, addon.id)}
-                    className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-                    style={{ background: '#EAE7F8', color: 'var(--color-text-muted)' }}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0 transition-all active:scale-90"
+                    style={{ background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-muted)' }}
                     aria-label="Удалить добавку"
                   >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
+                    {CloseIcon}
                   </button>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-2 text-xs flex-wrap">
                   <label className="flex items-center gap-1.5 flex-1 min-w-0">
                     <span style={{ color: 'var(--color-text-secondary)' }}>Граммовка</span>
-                    <input
+                    <GlassInput
                       type="number"
                       inputMode="decimal"
                       value={addon.weight ?? ''}
                       onChange={e => updateAddonField('weight', e.target.value ? Number(e.target.value) : undefined)}
                       placeholder="100"
-                      className="w-16 h-9 px-2 rounded-lg outline-none text-center"
-                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                      className="w-16 text-center"
                     />
                     <span style={{ color: 'var(--color-text-muted)' }}>г</span>
                   </label>
                   <label className="flex items-center gap-1.5">
                     <span style={{ color: 'var(--color-text-secondary)' }}>Цена</span>
-                    <input
+                    <GlassInput
                       type="number"
                       inputMode="decimal"
                       value={addon.price ?? ''}
                       onChange={e => updateAddonField('price', e.target.value ? Number(e.target.value) : undefined)}
                       placeholder="0"
-                      className="w-16 h-9 px-2 rounded-lg outline-none text-center"
-                      style={{ fontSize: 16, background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.3)', color: 'var(--color-text-primary)' }}
+                      className="w-16 text-center"
                     />
                     <span style={{ color: 'var(--color-text-muted)' }}>₽</span>
                   </label>
                   {ref && (
-                    <span className="shrink-0 ml-auto" style={{ color: '#534AB7' }}>
-                      +{cal} ккал
+                    <span className="shrink-0 ml-auto">
+                      <NutriPill tone="calorie" size="xs" value={`+${cal}`} unit=" ккал" />
                     </span>
                   )}
                 </div>
@@ -116,29 +130,15 @@ export default function AddonsSection({ s }: { s: ItemFormState }) {
             )
           })}
 
-          <button
-            onClick={() => s.addAddonToGroup(group.id)}
-            className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl w-full mt-1"
-            style={{ color: '#B0A6DF', background: 'rgba(176,166,223,0.1)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
+          <GlassDashedButton fullWidth onClick={() => s.addAddonToGroup(group.id)} leftIcon={PlusIcon} className="mt-1">
             Добавить ингредиент
-          </button>
-        </div>
+          </GlassDashedButton>
+        </GlassCard>
       ))}
 
-      <button
-        onClick={s.addAddonGroup}
-        className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm w-full justify-center"
-        style={{ border: '0.5px dashed rgba(176,166,223,0.6)', color: '#B0A6DF', background: '#EAE7F8' }}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-        </svg>
-        + Добавить группу добавок
-      </button>
+      <GlassDashedButton fullWidth onClick={s.addAddonGroup} leftIcon={PlusIcon}>
+        Добавить группу добавок
+      </GlassDashedButton>
     </div>
   )
 }

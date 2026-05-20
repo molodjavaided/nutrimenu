@@ -2,6 +2,7 @@
 
 import { ALLERGENS } from '@/lib/allergens'
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/form-fields'
+import { GlassButton, GlassDashedButton, NutriPill } from '@/components/ui-kit'
 import type { ItemFormState } from './useItemFormState'
 
 export default function BasicSection({ s }: { s: ItemFormState }) {
@@ -22,22 +23,17 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
               placeholder="Название категории"
               className="flex-1"
             />
-            <button
+            <GlassButton
               type="button"
+              variant="primary"
               onClick={s.handleCreateCategory}
-              className="px-3 h-10 rounded-xl text-sm font-medium"
-              style={{ background: 'var(--color-text-primary)', color: '#FEFEF2' }}
+              style={{ background: 'var(--color-text-primary)', borderColor: 'rgba(44,41,80,0.6)' }}
             >
               Создать
-            </button>
-            <button
-              type="button"
-              onClick={() => s.setAddingCategory(false)}
-              className="px-3 h-10 rounded-xl text-sm"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
-            >
+            </GlassButton>
+            <GlassButton type="button" variant="ghost" onClick={() => s.setAddingCategory(false)}>
               Отмена
-            </button>
+            </GlassButton>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -47,14 +43,9 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </FormSelect>
-            <button
-              type="button"
-              onClick={() => s.setAddingCategory(true)}
-              className="px-3 h-10 rounded-xl text-sm whitespace-nowrap"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
-            >
+            <GlassDashedButton onClick={() => s.setAddingCategory(true)}>
               + Новая
-            </button>
+            </GlassDashedButton>
           </div>
         )}
       </FormField>
@@ -79,7 +70,12 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
             placeholder="0"
             className="w-full pr-10"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--color-text-muted)' }}>₽</span>
+          <span
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            ₽
+          </span>
         </div>
       </FormField>
 
@@ -103,13 +99,19 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
                 onClick={() => s.setAllergens(prev =>
                   prev.includes(a.id) ? prev.filter(x => x !== a.id) : [...prev, a.id]
                 )}
-                className="px-2.5 py-1 rounded-full text-xs transition-all active:scale-95"
-                style={active
-                  ? { background: '#EF4444', color: '#fff', fontWeight: 500 }
-                  : { background: '#EAE7F8', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(176,166,223,0.4)' }
-                }
+                className="transition-all active:scale-95"
+                aria-pressed={active}
               >
-                {a.emoji} {a.label}
+                <NutriPill
+                  tone={active ? 'danger' : 'neutral'}
+                  size="sm"
+                  style={active
+                    ? { background: '#EF4444', color: '#fff', borderColor: 'rgba(239,68,68,0.6)', boxShadow: '0 2px 6px rgba(239,68,68,0.25)' }
+                    : undefined
+                  }
+                >
+                  {a.emoji} {a.label}
+                </NutriPill>
               </button>
             )
           })}
@@ -126,6 +128,8 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
           onClick={() => s.setIsAvailable(v => !v)}
           className="w-11 h-6 rounded-full transition-colors relative shrink-0"
           style={{ background: s.isAvailable ? '#8B5CF6' : '#E2E8F0' }}
+          aria-pressed={s.isAvailable}
+          aria-label={s.isAvailable ? 'Скрыть от гостей' : 'Показать гостям'}
         >
           <span
             className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
@@ -151,8 +155,9 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
               />
               <button
                 onClick={() => s.setPhoto('')}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs transition-all active:scale-90"
                 style={{ background: 'var(--color-text-muted)', color: '#fff' }}
+                aria-label="Удалить фото"
               >
                 ✕
               </button>
@@ -160,15 +165,27 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
           ) : (
             <div
               className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-              style={{ background: 'rgba(255,255,255,0.4)', border: '0.5px dashed rgba(176,166,223,0.6)' }}
+              style={{
+                background: 'rgba(255,255,255,0.55)',
+                backdropFilter: 'blur(6px)',
+                border: '0.5px dashed rgba(139,92,246,0.40)',
+              }}
             >
               🍽️
             </div>
           )}
           <div className="flex flex-col gap-2">
             <label
-              className="cursor-pointer flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-all"
-              style={{ background: '#EAE7F8', color: 'var(--color-text-primary)', opacity: s.photoUploading ? 0.6 : 1 }}
+              className="cursor-pointer inline-flex items-center justify-center gap-2 text-sm font-medium h-11 px-4 rounded-xl transition-all active:scale-[0.97]"
+              style={{
+                background: 'rgba(255,255,255,0.6)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                color: 'var(--color-text-primary)',
+                border: '0.5px solid rgba(139,92,246,0.30)',
+                boxShadow: '0 2px 8px rgba(139,92,246,0.08)',
+                opacity: s.photoUploading ? 0.6 : 1,
+              }}
             >
               {s.photoUploading ? (
                 <>
@@ -220,20 +237,23 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
           <div className="mt-3 flex items-center gap-2">
             <span className="text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>Позиция фото:</span>
             <div className="flex gap-1">
-              {(['top', 'center', 'bottom'] as const).map(pos => (
-                <button
-                  key={pos}
-                  type="button"
-                  onClick={() => s.setPhotoPosition(pos)}
-                  className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
-                  style={s.photoPosition === pos
-                    ? { background: '#2C2950', color: '#fff' }
-                    : { background: 'rgba(44,41,80,0.1)', color: 'var(--color-text-primary)' }
-                  }
-                >
-                  {pos === 'top' ? 'Верх' : pos === 'center' ? 'Центр' : 'Низ'}
-                </button>
-              ))}
+              {(['top', 'center', 'bottom'] as const).map(pos => {
+                const active = s.photoPosition === pos
+                return (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => s.setPhotoPosition(pos)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.95]"
+                    style={active
+                      ? { background: 'var(--color-text-primary)', color: '#FEFEF2', boxShadow: '0 2px 6px rgba(44,41,80,0.2)' }
+                      : { background: 'rgba(139,92,246,0.08)', color: 'var(--color-text-secondary)', border: '0.5px solid rgba(139,92,246,0.18)' }
+                    }
+                  >
+                    {pos === 'top' ? 'Верх' : pos === 'center' ? 'Центр' : 'Низ'}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}

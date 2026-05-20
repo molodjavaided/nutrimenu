@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Category } from '@/types'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
+import { GlassCard, GlassInput, NutriPill } from '@/components/ui-kit'
 import SortableItem from './SortableItem'
 
 interface Props {
@@ -52,7 +53,7 @@ export default function SortableCategory({
     isDragging,
   } = useSortable({ id: category.id })
 
-  const style = {
+  const dragStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
@@ -79,15 +80,15 @@ export default function SortableCategory({
   })
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ border: '0.5px solid rgba(176,166,223,0.3)', background: '#FEFEF2' }}
-      >
+    <div ref={setNodeRef} style={dragStyle}>
+      <GlassCard tone="solid" padding="none" className="overflow-hidden">
         {/* Заголовок категории */}
         <div
           className="flex items-center gap-3 px-4 py-3"
-          style={{ background: '#EAE7F8', borderBottom: expanded ? '0.5px solid rgba(176,166,223,0.3)' : 'none' }}
+          style={{
+            background: 'rgba(176,166,223,0.18)',
+            borderBottom: expanded ? '0.5px solid rgba(139,92,246,0.18)' : 'none',
+          }}
         >
           {/* Drag handle */}
           <button
@@ -95,45 +96,51 @@ export default function SortableCategory({
             {...listeners}
             className="cursor-grab active:cursor-grabbing shrink-0"
             style={{ color: 'var(--color-text-muted)', touchAction: 'none' }}
+            aria-label="Перетащить категорию"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M5 4h1M5 8h1M5 12h1M10 4h1M10 8h1M10 12h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M5 4h1M5 8h1M5 12h1M10 4h1M10 8h1M10 12h1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
 
           {/* Название */}
           {editing ? (
-            <input
+            <GlassInput
+              inputSize="sm"
+              autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
               onBlur={handleRename}
-              onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') { setName(category.name); setEditing(false) } }}
-              className="flex-1 bg-transparent text-sm font-medium outline-none"
-              style={{ color: 'var(--color-text-primary)', borderBottom: '1px solid #B0A6DF' }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleRename()
+                if (e.key === 'Escape') { setName(category.name); setEditing(false) }
+              }}
+              className="flex-1"
             />
           ) : (
-            <span
-              className="flex-1 text-sm font-medium cursor-pointer"
-              style={{ color: 'var(--color-text-primary)' }}
+            <button
+              type="button"
               onClick={() => setExpanded(e => !e)}
+              className="flex-1 flex items-center gap-2 text-left min-w-0"
             >
-              {category.name}
-              <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-text-muted)' }}>
-                {items.length} позиций
+              <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
+                {category.name}
               </span>
-            </span>
+              <NutriPill tone="neutral" size="xs">{items.length}</NutriPill>
+            </button>
           )}
 
           {/* Кнопки */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setEditing(true)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95"
               style={{ color: 'var(--color-text-secondary)' }}
               title="Переименовать"
+              aria-label="Переименовать категорию"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
               </svg>
             </button>
 
@@ -141,14 +148,15 @@ export default function SortableCategory({
 
             <button
               onClick={() => setExpanded(e => !e)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ color: 'var(--color-text-muted)' }}
+              aria-label={expanded ? 'Свернуть' : 'Развернуть'}
             >
               <svg
                 width="14" height="14" viewBox="0 0 14 14" fill="none"
                 style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
               >
-                <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
@@ -179,21 +187,19 @@ export default function SortableCategory({
             </DndContext>
 
             {/* Добавить блюдо в категорию */}
-            <div className="px-4 py-2.5">
-              <Link
-                href={`/dashboard/item/new?categoryId=${category.id}`}
-                className="flex items-center gap-2 text-sm transition-all"
-                style={{ color: '#B0A6DF' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                </svg>
-                Добавить блюдо
-              </Link>
-            </div>
+            <Link
+              href={`/dashboard/item/new?categoryId=${category.id}`}
+              className="flex items-center gap-2 px-4 py-3 text-sm transition-all active:scale-[0.99]"
+              style={{ color: '#7C3AED', borderTop: '0.5px solid rgba(139,92,246,0.12)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              Добавить блюдо
+            </Link>
           </div>
         )}
-      </div>
+      </GlassCard>
     </div>
   )
 }

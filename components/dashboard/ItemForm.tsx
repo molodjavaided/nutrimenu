@@ -10,6 +10,7 @@ import VariantsSection from './item-form/VariantsSection'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
+import { GlassCard, GlassButton } from '@/components/ui-kit'
 
 export default function ItemForm({ itemId, categoryId: initialCategoryId }: { itemId?: string; categoryId?: string }) {
   const router = useRouter()
@@ -43,7 +44,6 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
   const tourSeededRef = useRef(false)
   const tourAmountSetRef = useRef(false)
 
-  // 1) Прелоад эталонного состава: имя, режим, картошка как ингредиент.
   useEffect(() => {
     if (!onboardingActive || tourSeededRef.current) return
     if (!s.isReady || s.ingredientRefs.length === 0) return
@@ -57,7 +57,6 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     }
   }, [onboardingActive, s])
 
-  // 2) Когда картошка появилась в s.ingredients — ставим брутто 200 г один раз.
   const potatoIngredient = onboardingActive
     ? s.ingredients.find(i => i.ingredientRefId === POTATO_REF_ID && !i.parentIngredientId)
     : undefined
@@ -72,7 +71,6 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     tourAmountSetRef.current = true
   }, [onboardingActive, potatoIngredient, s])
 
-  // 3) Прогресс тура
   const tourStep1Done = potatoIngredient?.processing === 'fry'
   const tourStep2Done = !!(potatoIngredient && s.ingredients.some(i =>
     i.parentIngredientId === potatoIngredient.id && i.companionKind === 'oil'
@@ -86,8 +84,15 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
   return (
     <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
-      <button onClick={() => router.back()} className="mb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        ← Назад
+      <button
+        onClick={() => router.back()}
+        className="mb-4 inline-flex items-center gap-1 text-sm transition-colors active:scale-[0.98]"
+        style={{ color: 'var(--color-text-secondary)' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+          <path d="M9 3l-4 4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Назад
       </button>
 
       <h1 className="text-xl font-medium mb-6" style={{ color: 'var(--color-text-primary)' }}>
@@ -96,16 +101,23 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
       {/* Onboarding tutorial banner — глава 3, интерактивный тур */}
       {onboardingActive && (
-        <div
-          className="mb-5 rounded-2xl p-4 sm:p-5 sticky top-2 z-20"
-          style={{
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(176,166,223,0.16))',
-            border: '0.5px solid rgba(139,92,246,0.35)',
-            backdropFilter: 'blur(8px)',
-          }}
+        <GlassCard
+          tone="tinted"
+          padding="md"
+          className="mb-5 sticky top-2 z-20"
+          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
         >
           <div className="flex items-start gap-3 mb-3">
-            <div className="text-2xl shrink-0">🍳</div>
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(139,92,246,0.10)', color: '#5B21B6' }}
+              aria-hidden
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M9 3.5v5l3.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
                 Шаг 3 из 4 — Собираем «Жареный картофель»
@@ -132,8 +144,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 label: <>Жмите <b>«Добавить блюдо»</b> — увидите автоматический пересчёт КБЖУ и выхода</>,
               },
             ].map((step, i) => (
-              <li key={i} className="flex items-start gap-2"
-                style={{ color: step.done ? '#15803D' : step.hint ? '#5B21B6' : 'var(--color-text-muted)' }}>
+              <li
+                key={i}
+                className="flex items-start gap-2"
+                style={{ color: step.done ? '#15803D' : step.hint ? '#5B21B6' : 'var(--color-text-muted)' }}
+              >
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
@@ -147,28 +162,40 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
               </li>
             ))}
           </ol>
-        </div>
+        </GlassCard>
       )}
 
-      <div className={onboardingActive ? 'hidden' : 'flex gap-1 p-1 rounded-xl mb-6 w-fit'} style={onboardingActive ? undefined : { background: '#EAE7F8' }}>
-        {(['quick', 'composition', 'ttk'] as const).map(m => (
-          <button
-            key={m}
-            onClick={() => s.setMode(m)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            style={s.mode === m
-              ? { background: 'var(--color-text-primary)', color: '#FEFEF2' }
-              : { color: 'var(--color-text-secondary)' }
-            }
-            title={
-              m === 'quick' ? 'Название + КБЖУ вручную, без состава' :
-              m === 'composition' ? 'Список ингредиентов с количеством' :
-              'По сложному проценту: брутто, обработка, выход, фуд-кост (ТТК)'
-            }
-          >
-            {m === 'quick' ? 'Быстро' : m === 'composition' ? 'По составу' : 'По сложному проценту'}
-          </button>
-        ))}
+      {/* Mode-switcher (segmented control) */}
+      <div
+        className={onboardingActive ? 'hidden' : 'inline-flex gap-1 p-1 rounded-xl mb-6'}
+        style={onboardingActive ? undefined : {
+          background: 'rgba(176,166,223,0.18)',
+          border: '0.5px solid rgba(139,92,246,0.18)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }}
+      >
+        {(['quick', 'composition', 'ttk'] as const).map(m => {
+          const active = s.mode === m
+          return (
+            <button
+              key={m}
+              onClick={() => s.setMode(m)}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
+              style={active
+                ? { background: 'var(--color-text-primary)', color: '#FEFEF2', boxShadow: '0 2px 8px rgba(44,41,80,0.18)' }
+                : { color: 'var(--color-text-secondary)', background: 'transparent' }
+              }
+              title={
+                m === 'quick' ? 'Название + КБЖУ вручную, без состава' :
+                m === 'composition' ? 'Список ингредиентов с количеством' :
+                'По сложному проценту: брутто, обработка, выход, фуд-кост (ТТК)'
+              }
+            >
+              {m === 'quick' ? 'Быстро' : m === 'composition' ? 'По составу' : 'По сложному проценту'}
+            </button>
+          )
+        })}
       </div>
 
       <BasicSection s={s} />
@@ -183,43 +210,39 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
       {s.mode !== 'quick' && <AddonsSection s={s} />}
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-4 border-t" style={{ borderColor: 'rgba(176,166,223,0.3)' }}>
-        <button
+      {/* Footer: Preview / Cancel / Save */}
+      <div
+        className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-4"
+        style={{ borderTop: '0.5px solid rgba(139,92,246,0.18)' }}
+      >
+        <GlassButton
+          variant="secondary"
           onClick={() => setPreviewOpen(true)}
           disabled={!canPreview}
-          className="order-1 sm:order-none sm:mr-auto px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
-          style={{
-            background: canPreview ? '#FEFEF2' : '#EAE7F8',
-            border: '0.5px solid rgba(176,166,223,0.5)',
-            color: canPreview ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-          }}
+          className="order-1 sm:order-none sm:mr-auto"
+          leftIcon={
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="7" cy="7" r="1.6" fill="currentColor" />
+            </svg>
+          }
           aria-label="Посмотреть как у гостя"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2"/>
-            <circle cx="7" cy="7" r="1.6" fill="currentColor"/>
-          </svg>
           Посмотреть как у гостя
-        </button>
+        </GlassButton>
+
         <div className="flex items-center gap-2 sm:gap-3 order-2 sm:order-none">
-          <button
-            onClick={() => router.back()}
-            className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-xl text-sm"
-            style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
-          >
+          <GlassButton variant="ghost" onClick={() => router.back()} className="flex-1 sm:flex-none">
             Отмена
-          </button>
-          <button
+          </GlassButton>
+          <GlassButton
+            variant="brand"
             onClick={s.handleSave}
             disabled={!canSave}
-            className="flex-1 sm:flex-none px-6 py-3 sm:py-2.5 rounded-xl text-sm font-medium"
-            style={{
-              background: canSave ? '#B0A6DF' : '#EAE7F8',
-              color: canSave ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-            }}
+            className="flex-1 sm:flex-none"
           >
             {s.isEdit ? 'Сохранить' : 'Добавить блюдо'}
-          </button>
+          </GlassButton>
         </div>
       </div>
 

@@ -85,7 +85,16 @@ export default function OnboardingHost() {
       }
     >
       <div className="px-5 py-6 sm:px-7 sm:py-8 space-y-5">
-        <div className="text-5xl">🍽️</div>
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: 'rgba(139,92,246,0.10)', color: '#7C3AED' }}
+          aria-hidden
+        >
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="11" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M11 16h10M16 11v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </div>
         <div className="space-y-2">
           <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
             За 5 минут соберём ваше первое цифровое меню с КБЖУ.

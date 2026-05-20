@@ -37,8 +37,9 @@ export default function ProcessingChip({
   function pick(p: ProcessingType) {
     onChangeProcessing(p)
     onChangeYieldOverride(undefined) // сброс ручного коэффициента
-    setExpanded(false)
     setCoefEditing(false)
+    // expanded оставляем открытым: пользователь видит выбранный вариант подсвеченным
+    // и может сразу переключиться. Закрытие — повторным тапом по чипу-заголовку.
   }
 
   return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import IngredientPickerModal from './IngredientPickerModal'
 import AddonsSection from './item-form/AddonsSection'
@@ -13,10 +13,75 @@ import DishSheet from '@/components/menu/DishSheet'
 
 export default function ItemForm({ itemId, categoryId: initialCategoryId }: { itemId?: string; categoryId?: string }) {
   const router = useRouter()
-  const s = useItemFormState({ itemId, initialCategoryId })
+  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
+  const onboardingActive = onboardingStep === 3 && !itemId
+
+  const s = useItemFormState({
+    itemId,
+    initialCategoryId,
+    onSaved: async () => {
+      if (onboardingActive) {
+        await fetch('/api/user/onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'next' }),
+        })
+      }
+    },
+  })
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  const canSave = !!s.name && !!s.categoryId && (s.mode === 'quick' || s.ingredients.length > 0)
+  useEffect(() => {
+    fetch('/api/user/onboarding')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setOnboardingStep(data.step) })
+      .catch(() => {})
+  }, [])
+
+  // ─── Guided tour state (Глава 3) ───────────────────────────────────────────
+  const POTATO_REF_ID = 'fd-1_1'
+  const tourSeededRef = useRef(false)
+  const tourAmountSetRef = useRef(false)
+
+  // 1) Прелоад эталонного состава: имя, режим, картошка как ингредиент.
+  useEffect(() => {
+    if (!onboardingActive || tourSeededRef.current) return
+    if (!s.isReady || s.ingredientRefs.length === 0) return
+    const potato = s.ingredientRefs.find(r => r.id === POTATO_REF_ID)
+    if (!potato) return
+    tourSeededRef.current = true
+    s.setMode('ttk')
+    if (!s.name) s.setName('Жареный картофель')
+    if (!s.ingredients.some(i => i.ingredientRefId === POTATO_REF_ID)) {
+      s.addIngredient(POTATO_REF_ID)
+    }
+  }, [onboardingActive, s])
+
+  // 2) Когда картошка появилась в s.ingredients — ставим брутто 200 г один раз.
+  const potatoIngredient = onboardingActive
+    ? s.ingredients.find(i => i.ingredientRefId === POTATO_REF_ID && !i.parentIngredientId)
+    : undefined
+  useEffect(() => {
+    if (!onboardingActive || tourAmountSetRef.current) return
+    if (!potatoIngredient || s.sizes.length === 0) return
+    const sizeId = s.sizes[0].id
+    const existing = s.amounts.find(a => a.ingredientId === potatoIngredient.id && a.sizeId === sizeId)?.amount ?? 0
+    if (existing === 0) {
+      s.updateAmount(potatoIngredient.id, sizeId, 200)
+    }
+    tourAmountSetRef.current = true
+  }, [onboardingActive, potatoIngredient, s])
+
+  // 3) Прогресс тура
+  const tourStep1Done = potatoIngredient?.processing === 'fry'
+  const tourStep2Done = !!(potatoIngredient && s.ingredients.some(i =>
+    i.parentIngredientId === potatoIngredient.id && i.companionKind === 'oil'
+  ))
+
+  const baseCanSave = !!s.name && !!s.categoryId && (s.mode === 'quick' || s.ingredients.length > 0)
+  const canSave = onboardingActive
+    ? baseCanSave && tourStep1Done && tourStep2Done
+    : baseCanSave
   const canPreview = !!s.name
 
   return (
@@ -29,7 +94,63 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         {s.isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
       </h1>
 
-      <div className="flex gap-1 p-1 rounded-xl mb-6 w-fit" style={{ background: '#EAE7F8' }}>
+      {/* Onboarding tutorial banner — глава 3, интерактивный тур */}
+      {onboardingActive && (
+        <div
+          className="mb-5 rounded-2xl p-4 sm:p-5 sticky top-2 z-20"
+          style={{
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(176,166,223,0.16))',
+            border: '0.5px solid rgba(139,92,246,0.35)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div className="flex items-start gap-3 mb-3">
+            <div className="text-2xl shrink-0">🍳</div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
+                Шаг 3 из 4 — Собираем «Жареный картофель»
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                Я уже добавил картошку 200 г. Дальше — два клика, и NutriMenu сам посчитает выход, впитывание масла и КБЖУ.
+              </p>
+            </div>
+          </div>
+          <ol className="ml-9 space-y-1.5 text-xs">
+            {[
+              {
+                done: tourStep1Done,
+                label: <>Тапните чип <b>«+ обработка»</b> под Картофелем и выберите <b>«Жарка»</b></>,
+              },
+              {
+                done: tourStep2Done,
+                hint: !tourStep1Done,
+                label: <>Появится кнопка <b>🪄 +масло</b> — тапните, чтобы добавить масло (впитается ~15% жира)</>,
+              },
+              {
+                done: tourStep1Done && tourStep2Done,
+                hint: tourStep1Done && tourStep2Done,
+                label: <>Жмите <b>«Добавить блюдо»</b> — увидите автоматический пересчёт КБЖУ и выхода</>,
+              },
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2"
+                style={{ color: step.done ? '#15803D' : step.hint ? '#5B21B6' : 'var(--color-text-muted)' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  background: step.done ? '#15803D' : step.hint ? '#8B5CF6' : 'transparent',
+                  border: step.done || step.hint ? 'none' : '1.2px solid #C8C3F0',
+                  color: '#fff', fontSize: 10, fontWeight: 600, marginTop: 1,
+                }}>
+                  {step.done ? '✓' : i + 1}
+                </span>
+                <span className="leading-relaxed">{step.label}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <div className={onboardingActive ? 'hidden' : 'flex gap-1 p-1 rounded-xl mb-6 w-fit'} style={onboardingActive ? undefined : { background: '#EAE7F8' }}>
         {(['quick', 'composition', 'ttk'] as const).map(m => (
           <button
             key={m}

@@ -3,7 +3,7 @@
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFormState'
-import { expectedDishYield, resolveCompositionRowContribution, resolveCostOfDish, resolveIngredientPer100 } from '@/lib/utils'
+import { resolveCompositionRowContribution, resolveIngredientPer100 } from '@/lib/utils'
 import { asCategory } from '@/lib/cooking-coefficients'
 import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
 import ProcessingChip from './ProcessingChip'
@@ -104,11 +104,11 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
       </FormField>
 
       {s.sizes.length > 0 && s.ingredients.length > 0 && <FinalNutriCard s={s} />}
-
-      {isTTK && <TTKExtras s={s} />}
     </>
   )
 }
+
+
 
 // ─── Size portion selector (unchanged behavior) ─────────────────────────────
 
@@ -434,26 +434,6 @@ function UnifiedTable({ s }: { s: ItemFormState }) {
             )
           })}
         </tbody>
-        <tfoot>
-          <tr style={{ borderTop: '1px solid rgba(176,166,223,0.3)' }}>
-            <td className="py-2 px-3 text-xs font-medium" style={{ color: '#534AB7' }}>Σ итого</td>
-            {s.sizes.map(size => {
-              const t = sizeTotals(s, size.id)
-              const finalNutri = s.calculateNutriForSize(size.id)
-              const showYield = isTTK && Math.abs(t.brutto - t.yieldG) >= 0.5
-              return (
-                <td key={size.id} className="py-2 px-2 text-center text-xs" style={{ color: '#534AB7' }}>
-                  <div><b>{Math.round(t.brutto)}</b> {size.unit}{showYield ? <> · выход <b>{Math.round(t.yieldG)}</b> {size.unit}</> : null}</div>
-                  <div style={{ color: 'var(--color-text-muted)' }}>
-                    <b>{Math.round(finalNutri.calories)}</b> ккал · Б {finalNutri.protein.toFixed(1)} · Ж {finalNutri.fat.toFixed(1)} · У {finalNutri.carbs.toFixed(1)}
-                  </div>
-                </td>
-              )
-            })}
-            <td />
-            <td />
-          </tr>
-        </tfoot>
       </table>
     </div>
   )
@@ -464,10 +444,6 @@ function UnifiedTable({ s }: { s: ItemFormState }) {
 function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: string; sizeIdx: number }) {
   const size = s.sizes.find(sz => sz.id === sizeId)
   if (!size) return null
-  const isTTK = s.mode === 'ttk'
-  const t = sizeTotals(s, sizeId)
-  const finalNutri = s.calculateNutriForSize(sizeId)
-  const showYield = isTTK && Math.abs(t.brutto - t.yieldG) >= 0.5
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(176,166,223,0.3)' }}>
@@ -495,14 +471,6 @@ function MobileSizeCard({ s, sizeId, sizeIdx }: { s: ItemFormState; sizeId: stri
               </div>
             )
           })}
-      </div>
-      <div className="px-3 py-2 text-xs flex flex-wrap gap-x-3 gap-y-0.5" style={{ background: 'rgba(234,231,248,0.5)', color: '#534AB7' }}>
-        <span>Σ <b>{Math.round(t.brutto)}</b> {size.unit}</span>
-        {showYield && <span>выход <b>{Math.round(t.yieldG)}</b> {size.unit}</span>}
-        <span><b>{Math.round(finalNutri.calories)}</b> ккал</span>
-        <span>Б {finalNutri.protein.toFixed(1)}</span>
-        <span>Ж {finalNutri.fat.toFixed(1)}</span>
-        <span>У {finalNutri.carbs.toFixed(1)}</span>
       </div>
     </div>
   )
@@ -728,93 +696,3 @@ function FinalNutriCard({ s }: { s: ItemFormState }) {
   )
 }
 
-// ─── TTK Extras (final weight, serving size, cost) ──────────────────────────
-
-function TTKExtras({ s }: { s: ItemFormState }) {
-  const firstSizeId = s.sizes[0]?.id ?? 'default'
-  const composition = s.ingredients.flatMap(ing => {
-    const amount = s.amounts.find(a => a.ingredientId === ing.id && a.sizeId === firstSizeId)?.amount ?? 0
-    if (!amount) return []
-    return [{
-      ingredientId: ing.ingredientRefId,
-      amount,
-      unit: ing.unit,
-      processing: ing.processing,
-      yieldOverride: ing.yieldOverride,
-    }]
-  })
-  const expected = composition.length > 0 ? expectedDishYield(composition, s.ingredientRefs) : 0
-  const cost = composition.length > 0 ? resolveCostOfDish(composition, s.ingredientRefs) : null
-
-  const servings = s.finalWeight && s.servingSize && s.servingSize > 0
-    ? Math.floor(s.finalWeight / s.servingSize)
-    : null
-  const costPerServing = cost && servings && servings > 0
-    ? Math.round((cost.totalCost / servings) * 100) / 100
-    : null
-
-  return (
-    <div className="mt-6 p-4 rounded-2xl space-y-4" style={{ background: '#FEFEF2', border: '0.5px solid rgba(176,166,223,0.4)' }}>
-      <div className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-        <span>📋</span>
-        <span>Технологическая карта</span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <FormField label="Финальный вес блюда, г">
-          <div className="flex gap-2">
-            <FormInput
-              type="number"
-              value={s.finalWeight ?? ''}
-              onChange={e => s.setFinalWeight(e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="—"
-              className="flex-1"
-            />
-            {expected > 0 && (
-              <button
-                type="button"
-                onClick={() => s.setFinalWeight(expected)}
-                className="px-3 py-2 rounded-xl text-xs whitespace-nowrap"
-                style={{ background: '#EAE7F8', color: 'var(--color-text-secondary)' }}
-                title="Подставить ожидаемый вес по коэффициентам обработки"
-              >
-                ≈ {expected} г
-              </button>
-            )}
-          </div>
-          {expected > 0 && (
-            <div className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              Ожидаемый по коэффициентам: ≈ {expected} г
-            </div>
-          )}
-        </FormField>
-
-        <FormField label="Размер порции, г">
-          <FormInput
-            type="number"
-            value={s.servingSize ?? ''}
-            onChange={e => s.setServingSize(e.target.value ? parseFloat(e.target.value) : undefined)}
-            placeholder="—"
-          />
-          {servings ? (
-            <div className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-              ≈ {servings} порций из этого блюда
-            </div>
-          ) : null}
-        </FormField>
-      </div>
-
-      {cost && (
-        <div className="text-xs space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
-          {cost.totalCost > 0 && <div>Себестоимость блюда: <b style={{ color: 'var(--color-text-primary)' }}>{cost.totalCost.toFixed(2)} ₽</b></div>}
-          {costPerServing !== null && <div>Себестоимость порции: <b style={{ color: 'var(--color-text-primary)' }}>{costPerServing.toFixed(2)} ₽</b></div>}
-          {cost.missingPrices.length > 0 && (
-            <div style={{ color: 'var(--color-text-muted)' }}>
-              Цена не задана для: {cost.missingPrices.slice(0, 3).join(', ')}{cost.missingPrices.length > 3 ? '…' : ''}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}

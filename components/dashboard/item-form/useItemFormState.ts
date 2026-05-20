@@ -89,9 +89,10 @@ export const MAX_SIZES = 5
 export interface UseItemFormStateArgs {
   itemId?: string
   initialCategoryId?: string
+  onSaved?: () => void | Promise<void>
 }
 
-export function useItemFormState({ itemId, initialCategoryId }: UseItemFormStateArgs) {
+export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItemFormStateArgs) {
   const router = useRouter()
 
   // ── RHF: validated form fields (basic + quick + mode) ───────────────────
@@ -621,6 +622,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
         })
       }
       toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
+      if (onSaved) await onSaved()
       router.push('/dashboard/menu')
       return
     }
@@ -681,6 +683,7 @@ export function useItemFormState({ itemId, initialCategoryId }: UseItemFormState
     }
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
+    if (onSaved) await onSaved()
     router.push('/dashboard/menu')
   }, () => {
     toast.error('Проверьте обязательные поля')

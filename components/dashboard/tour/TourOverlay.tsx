@@ -135,7 +135,7 @@ export default function TourOverlay({
       {rect && (
         <div
           className="tour-breathe"
-          style={{ position: 'fixed', top: rect.top, left: rect.left, width: rect.width, height: rect.height, pointerEvents: 'none', zIndex: 10001 }}
+          style={{ position: 'fixed', top: rect.top + 3, left: rect.left + 3, width: rect.width - 6, height: rect.height - 6, pointerEvents: 'none', zIndex: 10001 }}
         />
       )}
 

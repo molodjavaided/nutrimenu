@@ -26,15 +26,21 @@ interface Props {
 
 const PAD = 8
 
-function measure(selector: string | null): Rect | null {
+function visibleEl(selector: string | null): HTMLElement | null {
   if (!selector) return null
   // querySelectorAll: mobile/desktop варианты рендерятся оба, берём видимый (ненулевой).
-  const els = document.querySelectorAll(selector)
-  for (const el of els) {
+  for (const el of document.querySelectorAll(selector)) {
     const r = el.getBoundingClientRect()
-    if (r.width > 0 || r.height > 0) return { top: r.top, left: r.left, width: r.width, height: r.height }
+    if (r.width > 0 || r.height > 0) return el as HTMLElement
   }
   return null
+}
+
+function measure(selector: string | null): Rect | null {
+  const el = visibleEl(selector)
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
 export default function TourOverlay({
@@ -63,9 +69,28 @@ export default function TourOverlay({
   // Скроллим цель в зону видимости при смене селектора.
   useEffect(() => {
     if (!targetSelector) return
-    const el = document.querySelector(targetSelector)
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    visibleEl(targetSelector)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [targetSelector])
+
+  // Поднимаем реальную цель над затемнением — без выреза фона.
+  // (soft-шаги уже поверх модального пикера, их не трогаем.)
+  useEffect(() => {
+    if (soft || !targetSelector) return
+    let el: HTMLElement | null = null
+    let prevPos = '', prevZ = ''
+    let raf = requestAnimationFrame(function find() {
+      el = visibleEl(targetSelector)
+      if (!el) { raf = requestAnimationFrame(find); return }
+      prevPos = el.style.position
+      prevZ = el.style.zIndex
+      if (getComputedStyle(el).position === 'static') el.style.position = 'relative'
+      el.style.zIndex = '10002'
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      if (el) { el.style.position = prevPos; el.style.zIndex = prevZ }
+    }
+  }, [targetSelector, soft])
 
   const dim = 'rgba(20,16,40,0.55)'
   const hole = rect
@@ -93,44 +118,31 @@ export default function TourOverlay({
       : { top: below + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
   }
 
-  // Затемняющие панели вокруг окна — ловят клики (жёсткая блокировка),
-  // само окно цели остаётся кликабельным.
-  const panel = (style: React.CSSProperties) => (
-    <div
-      style={{ position: 'fixed', background: dim, pointerEvents: 'auto', ...style }}
-      onClick={e => e.stopPropagation()}
-      onMouseDown={e => e.preventDefault()}
-    />
-  )
-
-  // Контейнер всегда pointer-events:none — клики ловят только дим-панели (жёсткий режим),
-  // окно-цель остаётся кликабельным, тултип переопределяет на auto.
+  // Простая схема слоёв (без выреза фона):
+  // дим на весь экран (10000) < свечение (10001) < поднятая цель (10002, эффект в effect) < тултип (10003).
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, pointerEvents: 'none' }} aria-live="polite">
-      {hole ? (
-        <>
-          {/* Затемняющие панели только в жёстком режиме */}
-          {!soft && <>
-            {panel({ top: 0, left: 0, right: 0, height: Math.max(0, hole.top) })}
-            {panel({ top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height })}
-            {panel({ top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height })}
-            {panel({ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 })}
-          </>}
+    <div aria-live="polite">
+      {/* Полное затемнение экрана — ловит клики вне цели (жёсткий режим) */}
+      {!soft && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: dim, zIndex: 10000, pointerEvents: 'auto' }}
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.preventDefault()}
+        />
+      )}
 
-          {/* «Дышащее» лавандовое свечение наружу — вплотную к кнопке, поверх затемнения */}
-          <div
-            className="tour-breathe"
-            style={{ position: 'fixed', top: rect!.top, left: rect!.left, width: rect!.width, height: rect!.height, pointerEvents: 'none', zIndex: 1 }}
-          />
-        </>
-      ) : (
-        !soft && panel({ inset: 0 })
+      {/* «Дышащее» лавандовое свечение вокруг цели — поверх затемнения, под самой кнопкой */}
+      {rect && (
+        <div
+          className="tour-breathe"
+          style={{ position: 'fixed', top: rect.top, left: rect.left, width: rect.width, height: rect.height, pointerEvents: 'none', zIndex: 10001 }}
+        />
       )}
 
       {/* Тултип — одна плашка, тень прижата вплотную */}
       <div
         style={{
-          position: 'fixed', ...tipStyle, zIndex: 101, pointerEvents: 'auto',
+          position: 'fixed', ...tipStyle, zIndex: 10003, pointerEvents: 'auto',
           background: '#FEFEF2', border: '0.5px solid rgba(139,92,246,0.22)', borderRadius: 16,
           boxShadow: '0 8px 24px -6px rgba(44,41,80,0.25)',
         }}

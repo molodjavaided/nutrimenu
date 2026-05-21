@@ -253,7 +253,10 @@ export default function SettingsPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'restart' }),
             })
-            if (res.ok) router.push('/dashboard')
+            if (res.ok) {
+              window.dispatchEvent(new Event('nm-onboarding-restart'))
+              router.push('/dashboard')
+            }
           }}
           leftIcon={
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>

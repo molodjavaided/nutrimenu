@@ -23,10 +23,16 @@ export default function OnboardingHost() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    fetch('/api/user/onboarding')
-      .then(r => r.ok ? r.json() : null)
-      .then(setState)
-      .catch(() => {})
+    const load = () => {
+      fetch('/api/user/onboarding')
+        .then(r => r.ok ? r.json() : null)
+        .then(setState)
+        .catch(() => {})
+    }
+    load()
+    // Рестарт обучения из настроек — перечитать состояние без перезагрузки страницы.
+    window.addEventListener('nm-onboarding-restart', load)
+    return () => window.removeEventListener('nm-onboarding-restart', load)
   }, [])
 
   if (!state) return null

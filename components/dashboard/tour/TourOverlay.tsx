@@ -73,22 +73,36 @@ export default function TourOverlay({
   }, [targetSelector])
 
   // Поднимаем реальную цель над затемнением — без выреза фона.
+  // Цель надо вытащить из всех родительских stacking-контекстов (backdrop-filter,
+  // transform, filter, opacity<1 и т.п.) — иначе zIndex цели не перебьёт overlay.
   // (soft-шаги уже поверх модального пикера, их не трогаем.)
   useEffect(() => {
     if (soft || !targetSelector) return
-    let el: HTMLElement | null = null
-    let prevPos = '', prevZ = ''
+    let restores: { node: HTMLElement; position: string; zIndex: string }[] = []
     let raf = requestAnimationFrame(function find() {
-      el = visibleEl(targetSelector)
+      const el = visibleEl(targetSelector)
       if (!el) { raf = requestAnimationFrame(find); return }
-      prevPos = el.style.position
-      prevZ = el.style.zIndex
-      if (getComputedStyle(el).position === 'static') el.style.position = 'relative'
-      el.style.zIndex = '10002'
+      const lift = (node: HTMLElement) => {
+        const cs = getComputedStyle(node)
+        restores.push({ node, position: node.style.position, zIndex: node.style.zIndex })
+        if (cs.position === 'static') node.style.position = 'relative'
+        node.style.zIndex = '10002'
+      }
+      lift(el)
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const cs = getComputedStyle(p)
+        const backdrop = cs.backdropFilter ?? (cs as unknown as Record<string, string>).webkitBackdropFilter ?? 'none'
+        const createsCtx =
+          backdrop !== 'none' || cs.filter !== 'none' || cs.transform !== 'none' || cs.perspective !== 'none'
+          || parseFloat(cs.opacity) < 1 || cs.mixBlendMode !== 'normal'
+          || (cs.position !== 'static' && cs.zIndex !== 'auto') || cs.willChange.includes('transform')
+        if (createsCtx) lift(p)
+      }
     })
     return () => {
       cancelAnimationFrame(raf)
-      if (el) { el.style.position = prevPos; el.style.zIndex = prevZ }
+      for (const r of restores) { r.node.style.position = r.position; r.node.style.zIndex = r.zIndex }
+      restores = []
     }
   }, [targetSelector, soft])
 

@@ -34,26 +34,15 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       .catch(() => {})
   }, [itemId])
 
-  // ─── Tour prefill: название + категория (тур просит только добавить ингредиенты) ──
+  // ─── Tour prefill: название готово, режим «по сложному %» выбран заранее,
+  //     категорию пользователь создаёт сам (открываем поле ввода). ──
   const prefilledRef = useRef(false)
   useEffect(() => {
     if (!tourActive || prefilledRef.current || !s.isReady) return
     prefilledRef.current = true
     if (!s.name) s.setName('Карбонара')
-    if (!s.categoryId) {
-      if (s.categories.length > 0) {
-        s.setCategoryId(s.categories[0].id)
-      } else {
-        fetch('/api/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Основное меню' }),
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(cat => { if (cat) s.setCategoryId(cat.id) })
-          .catch(() => {})
-      }
-    }
+    if (s.mode !== 'ttk') s.setMode('ttk')
+    if (!s.categoryId) s.setAddingCategory(true)
   }, [tourActive, s])
 
   const canSave = !!s.name && !!s.categoryId && (s.mode === 'quick' || s.ingredients.length > 0)

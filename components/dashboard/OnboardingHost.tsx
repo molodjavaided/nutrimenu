@@ -60,7 +60,7 @@ export default function OnboardingHost() {
     <MobileSheet
       open
       onClose={() => postAction('dismiss')}
-      title="Добро пожаловать в NutriMenu"
+      title="Добро пожаловать в Plate"
       zIndex={90}
       desktopWidth="md"
       footer={
@@ -104,7 +104,7 @@ export default function OnboardingHost() {
           </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
             Я проведу за руку: подсвечу каждый шаг, а вы будете нажимать. Покажу, как добавить ингредиенты
-            из справочника и как NutriMenu сам считает КБЖУ и выход после обработки.
+            из справочника и как Plate сам считает КБЖУ и выход после обработки.
           </p>
         </div>
         <div className="rounded-2xl p-3 sm:p-4" style={{ background: 'rgba(139,92,246,0.06)' }}>

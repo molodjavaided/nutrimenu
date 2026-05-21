@@ -32,7 +32,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/menu',
     target: '[data-tour="add-dish"]',
     title: 'Добавим первое блюдо',
-    body: 'Соберём классическую карбонару — за пару кликов NutriMenu сам посчитает КБЖУ. Нажмите «Добавить блюдо».',
+    body: 'Соберём классическую карбонару — за пару кликов Plate сам посчитает КБЖУ. Нажмите «Добавить блюдо».',
     placement: 'bottom',
     // переход — по навигации на /dashboard/item/new
   },
@@ -87,7 +87,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/item/new',
     target: `[data-tour="card-${TOUR_REF.pasta}"]`,
     title: 'Добавьте воду',
-    body: 'Появилась подсказка «+ вода» — тапните её. Вода частично выкипает, NutriMenu учтёт это. Укажите ~1000 г.',
+    body: 'Появилась подсказка «+ вода» — тапните её. Вода частично выкипает, Plate учтёт это. Укажите ~1000 г.',
     placement: 'top',
     advanceOn: { event: 'companion-added', match: p => isPayload(p) && p.parentRefId === TOUR_REF.pasta && p.kind === 'water' },
   },
@@ -171,7 +171,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/menu',
     target: null,
     title: 'Готово! 🎉',
-    body: 'Карбонара в вашем меню. Так же добавляйте любые блюда — NutriMenu посчитает КБЖУ, выход и фуд-кост за вас.',
+    body: 'Карбонара в вашем меню. Так же добавляйте любые блюда — Plate посчитает КБЖУ, выход и фуд-кост за вас.',
     showNext: true,
   },
 ]

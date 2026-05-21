@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 
-export type Placement = 'auto' | 'top' | 'bottom'
+export type Placement = 'auto' | 'top' | 'bottom' | 'screen-bottom'
 
 interface Rect { top: number; left: number; width: number; height: number }
 
@@ -75,7 +75,13 @@ export default function TourOverlay({
   // Тултип: под целью если влезает, иначе над. Без цели — по центру.
   const TOOLTIP_W = 320
   let tipStyle: React.CSSProperties
-  if (!hole) {
+  if (placement === 'screen-bottom') {
+    // Прижать к низу экрана — не перекрывать зону выдачи результатов (поиск в пикере).
+    tipStyle = {
+      bottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+      left: '50%', transform: 'translateX(-50%)', width: TOOLTIP_W, maxWidth: '92vw',
+    }
+  } else if (!hole) {
     tipStyle = { top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: TOOLTIP_W, maxWidth: '90vw' }
   } else {
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800
@@ -111,16 +117,11 @@ export default function TourOverlay({
             {panel({ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 })}
           </>}
 
-          {/* «Дышащее» лавандовое свечение под целью + чёткий контур поверх */}
+          {/* «Дышащее» лавандовое свечение наружу — мягкое облако, кнопка нетронута */}
           <div
             className="tour-breathe"
             style={{ position: 'fixed', top: hole.top, left: hole.left, width: hole.width, height: hole.height, pointerEvents: 'none' }}
-          >
-            <span
-              className="absolute inset-0"
-              style={{ borderRadius: 14, boxShadow: 'inset 0 0 0 2px rgba(139,92,246,0.9)' }}
-            />
-          </div>
+          />
         </>
       ) : (
         !soft && panel({ inset: 0 })

@@ -7,7 +7,7 @@ export interface TourStep {
   target: string | null
   title?: string
   body: string
-  placement?: 'auto' | 'top' | 'bottom'
+  placement?: 'auto' | 'top' | 'bottom' | 'screen-bottom'
   /** Информационный шаг — переход по кнопке «Дальше». */
   showNext?: boolean
   /** Мягкий шаг — не блокировать клики (поверх модального пикера). */
@@ -61,7 +61,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     soft: true,
     title: 'Найдите пасту',
     body: 'Введите «паста» в поиск и выберите «Паста (тв. сорта)».',
-    placement: 'bottom',
+    placement: 'screen-bottom',
     advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.pasta },
   },
   {
@@ -107,7 +107,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     soft: true,
     title: 'Найдите грудинку',
     body: 'Введите «бекон» и выберите «Бекон сырокопчёный».',
-    placement: 'bottom',
+    placement: 'screen-bottom',
     advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.bacon },
   },
   {
@@ -135,7 +135,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     soft: true,
     title: 'Найдите желток',
     body: 'Введите «желток» и выберите «Яичный желток».',
-    placement: 'bottom',
+    placement: 'screen-bottom',
     advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.yolk },
   },
   {

@@ -36,15 +36,14 @@ export default function ProcessingChip({
     : `${PROCESSING_LABELS[effective]} ×${currentCoef.toFixed(2)}`
 
   function pick(p: ProcessingType) {
-    onChangeProcessing(p)
-    onChangeYieldOverride(undefined) // сброс ручного коэффициента
+    onChangeProcessing(p) // сброс ручного коэффициента происходит внутри updateIngredientProcessing
     setCoefEditing(false)
     // expanded оставляем открытым: пользователь видит выбранный вариант подсвеченным
     // и может сразу переключиться. Закрытие — повторным тапом по чипу-заголовку.
   }
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
+    <div className="flex flex-col gap-1.5">
       {/* Current selection + toggle expand */}
       <button
         type="button"

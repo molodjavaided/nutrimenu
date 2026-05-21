@@ -10,14 +10,17 @@ import IngredientFormModal from '@/components/dashboard/IngredientFormModal'
 import BarcodeScannerOverlay from '@/components/dashboard/BarcodeScannerOverlay'
 import GlassCheckbox from '@/components/ui/GlassCheckbox'
 import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
+import { ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 const MY_LIBRARY_ID = 'my-library'
+const LIB_COLLAPSE_KEY = 'nutrimenu_ingredients_lib_collapsed'
 
 type BarcodeStatus = 'idle' | 'loading' | 'not_found' | 'error'
 
 export default function IngredientsPage() {
   const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
   const [activeLibId, setActiveLibId] = useState<string>(MY_LIBRARY_ID)
+  const [libCollapsed, setLibCollapsed] = useState(false)
   const [search, setSearch] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
@@ -48,7 +51,20 @@ export default function IngredientsPage() {
     fetch('/api/ingredients/enrich-limit')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setEnrichInfo(data) })
+    if (typeof window !== 'undefined') {
+      setLibCollapsed(window.localStorage.getItem(LIB_COLLAPSE_KEY) === '1')
+    }
   }, [])
+
+  function toggleLibCollapsed() {
+    setLibCollapsed(prev => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(LIB_COLLAPSE_KEY, next ? '1' : '0')
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -287,13 +303,26 @@ export default function IngredientsPage() {
 
       {/* ── Library sidebar ── */}
       <div
-        className="md:w-56 md:shrink-0 md:flex-col md:gap-1 md:pt-8 md:pb-6 md:pr-2 md:border-r md:border-b-0 md:flex
-                   flex overflow-x-auto gap-2 px-4 pt-4 pb-3 border-b shrink-0"
+        className={`${libCollapsed ? 'md:w-14' : 'md:w-56'} md:shrink-0 md:flex-col md:gap-1 md:pt-8 md:pb-6 md:pr-2 md:border-r md:border-b-0 md:flex md:transition-[width] md:duration-200
+                   flex overflow-x-auto gap-2 px-4 pt-4 pb-3 border-b shrink-0`}
         style={{ borderColor: 'rgba(139,92,246,0.18)' }}
       >
-        <p className="hidden md:block text-xs font-medium uppercase tracking-wider px-3 mb-2" style={{ color: 'var(--color-text-muted)' }}>
-          Библиотеки
-        </p>
+        <div className="hidden md:flex items-center justify-between px-3 mb-2">
+          {!libCollapsed && (
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+              Библиотеки
+            </p>
+          )}
+          <button
+            onClick={toggleLibCollapsed}
+            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors hover:bg-[rgba(176,166,223,0.2)] ${libCollapsed ? 'mx-auto' : ''}`}
+            style={{ color: 'var(--color-text-muted)' }}
+            title={libCollapsed ? 'Развернуть' : 'Скрыть'}
+            aria-label={libCollapsed ? 'Развернуть панель библиотек' : 'Скрыть панель библиотек'}
+          >
+            {libCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+          </button>
+        </div>
 
         {libraries.map(lib => {
           const active = activeLibId === lib.id
@@ -301,7 +330,8 @@ export default function IngredientsPage() {
             <button
               key={lib.id}
               onClick={() => { setActiveLibId(lib.id); setSearch('') }}
-              className="flex items-center gap-2 px-3 py-2 md:py-2.5 rounded-xl text-sm text-left shrink-0 md:w-full transition-all active:scale-[0.98]"
+              title={libCollapsed ? lib.name : undefined}
+              className={`flex items-center gap-2 px-3 py-2 md:py-2.5 rounded-xl text-sm text-left shrink-0 md:w-full transition-all active:scale-[0.98] ${libCollapsed ? 'md:justify-center md:px-0' : ''}`}
               style={{
                 background: active ? 'rgba(176,166,223,0.25)' : 'rgba(255,255,255,0.45)',
                 backdropFilter: 'blur(6px)',
@@ -322,8 +352,8 @@ export default function IngredientsPage() {
                   <path d="M2 10.5h10M2 7.5h10M2 4.5h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               )}
-              <span className="truncate">{lib.name}</span>
-              <span className="ml-auto text-xs shrink-0 hidden md:inline" style={{ color: 'var(--color-text-muted)' }}>
+              <span className={`truncate ${libCollapsed ? 'md:hidden' : ''}`}>{lib.name}</span>
+              <span className={`ml-auto text-xs shrink-0 hidden md:inline ${libCollapsed ? 'md:hidden' : ''}`} style={{ color: 'var(--color-text-muted)' }}>
                 {lib.ingredients.length}
               </span>
             </button>

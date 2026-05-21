@@ -402,18 +402,6 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
   )
 }
 
-function ContributionText({ contrib }: { contrib: RowContribution }) {
-  if (!contrib.calories && !contrib.protein && !contrib.fat && !contrib.carbs) return null
-  return (
-    <div className="flex gap-1 flex-wrap justify-end">
-      <NutriPill tone="calorie" size="xs" value={Math.round(contrib.calories)} unit=" ккал" />
-      <NutriPill tone="protein" size="xs" label="Б" value={contrib.protein.toFixed(1)} />
-      <NutriPill tone="fat" size="xs" label="Ж" value={contrib.fat.toFixed(1)} />
-      <NutriPill tone="carbs" size="xs" label="У" value={contrib.carbs.toFixed(1)} />
-    </div>
-  )
-}
-
 // ─── Desktop unified table ──────────────────────────────────────────────────
 
 function UnifiedTable({ s }: { s: ItemFormState }) {
@@ -430,16 +418,11 @@ function UnifiedTable({ s }: { s: ItemFormState }) {
                 {size.name || (s.hasMultipleSizes ? `Размер ${idx + 1}` : 'Брутто')}
               </th>
             ))}
-            <th className="text-right py-2 px-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-              Вклад в КБЖУ
-            </th>
             <th />
           </tr>
         </thead>
         <tbody>
           {s.ingredients.map(ingredient => {
-            const firstSize = s.sizes[0]
-            const firstContrib = firstSize ? rowContribution(s, ingredient, firstSize.id) : null
             return (
               <tr key={ingredient.id} style={{ borderTop: '0.5px solid rgba(139,92,246,0.12)' }}>
                 <td className="py-2 px-3 align-top">
@@ -450,9 +433,6 @@ function UnifiedTable({ s }: { s: ItemFormState }) {
                     <BruttoCell s={s} ingredient={ingredient} sizeId={size.id} />
                   </td>
                 ))}
-                <td className="py-2 px-2 align-top text-right">
-                  {firstContrib ? <ContributionText contrib={firstContrib} /> : null}
-                </td>
                 <td className="py-2 pl-1 align-top">
                   <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />
                 </td>
@@ -642,9 +622,8 @@ function MobileIngredientRow({
         </div>
       )}
 
-      {/* Row 3: КБЖУ totals · weight input */}
-      <div className="flex items-center justify-between gap-2">
-        <ContributionText contrib={contrib} />
+      {/* Row 3: weight input */}
+      <div className="flex items-center justify-end gap-2">
         <div className="flex items-center gap-1 shrink-0">
           <GlassInput
             type="number"

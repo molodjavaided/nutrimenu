@@ -171,7 +171,7 @@ export function DashboardNav() {
         )}
 
         {/* Навигация */}
-        <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} py-4 flex flex-col gap-1`}>
+        <nav className={`flex-1 min-h-0 overflow-y-auto ${collapsed ? 'px-2' : 'px-3'} py-4 flex flex-col gap-1`}>
           {navItems.map(item => {
             const active = isActive(item.href, item.exact)
             return (
@@ -194,7 +194,7 @@ export function DashboardNav() {
         </nav>
 
         {/* Ссылка на гостевое меню + смена роли */}
-        <div className={`${collapsed ? 'px-2' : 'px-3'} py-4 flex flex-col gap-1`} style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
+        <div className={`shrink-0 ${collapsed ? 'px-2' : 'px-3'} py-4 flex flex-col gap-1`} style={{ borderTop: '0.5px solid rgba(255,255,255,0.4)' }}>
           <Link
             href={venueSlug ? `/menu/${venueSlug}` : '#'}
             target="_blank"

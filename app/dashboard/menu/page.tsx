@@ -28,6 +28,7 @@ const PRESET_CATEGORIES = ['Завтраки', 'Обеды', 'Десерты', '
 export default function MenuPage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -43,6 +44,7 @@ export default function MenuPage() {
   async function loadCategories() {
     const res = await fetch('/api/categories')
     if (res.ok) setCategories(await res.json())
+    setLoaded(true)
   }
 
   useEffect(() => {
@@ -174,9 +176,13 @@ export default function MenuPage() {
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-medium mb-1 truncate" style={{ color: 'var(--color-text-primary)' }}>Меню</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            {categories.length} категорий · {categories.reduce((s, c) => s + (c.items?.length ?? 0), 0)} позиций
-          </p>
+          {loaded ? (
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {categories.length} категорий · {categories.reduce((s, c) => s + (c.items?.length ?? 0), 0)} позиций
+            </p>
+          ) : (
+            <div className="h-5 w-40 rounded animate-pulse" style={{ background: 'rgba(139,92,246,0.10)' }} />
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <GlassButton
@@ -217,7 +223,7 @@ export default function MenuPage() {
       )}
 
       {/* Empty state с пресетами — когда категорий ещё нет */}
-      {!hasCategories && (
+      {loaded && !hasCategories && (
         <GlassCard tone="glass" padding="lg" className="mb-4">
           <div className="flex items-center gap-3 mb-2">
             <div

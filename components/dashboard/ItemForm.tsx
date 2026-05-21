@@ -82,6 +82,23 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
     : baseCanSave
   const canPreview = !!s.name
 
+  async function skipTour() {
+    try {
+      const res = await fetch('/api/user/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'skip' }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setOnboardingStep(data.step)
+      }
+    } catch {
+      // не блокируем работу — просто снимаем туториал локально
+      setOnboardingStep(null)
+    }
+  }
+
   return (
     <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
       <button
@@ -118,7 +135,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 <path d="M9 3.5v5l3.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
                 Шаг 3 из 4 — Собираем «Жареный картофель»
               </p>
@@ -126,6 +143,15 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
                 Я уже добавил картошку 200 г. Дальше — два клика, и NutriMenu сам посчитает выход, впитывание масла и КБЖУ.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={skipTour}
+              className="shrink-0 px-2.5 py-1 rounded-lg text-xs transition-colors active:scale-95"
+              style={{ color: 'var(--color-text-muted)', background: 'rgba(139,92,246,0.06)' }}
+              title="Пропустить обучение и собрать блюдо самостоятельно"
+            >
+              Пропустить
+            </button>
           </div>
           <ol className="ml-9 space-y-1.5 text-xs">
             {[

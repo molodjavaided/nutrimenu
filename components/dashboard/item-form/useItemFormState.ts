@@ -710,7 +710,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
     dispatch({
       type: 'SET_INGREDIENTS',
       ingredients: ingredients.map(i => i.id === ingredientId
-        ? { ...i, processing, yieldOverride: processing === 'raw' ? undefined : i.yieldOverride }
+        ? { ...i, processing, yieldOverride: undefined }
         : i),
     })
   }, [ingredients])

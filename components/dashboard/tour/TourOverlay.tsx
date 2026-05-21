@@ -117,10 +117,10 @@ export default function TourOverlay({
             {panel({ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 })}
           </>}
 
-          {/* «Дышащее» лавандовое свечение наружу — мягкое облако, кнопка нетронута */}
+          {/* «Дышащее» лавандовое свечение наружу — вплотную к кнопке, поверх затемнения */}
           <div
             className="tour-breathe"
-            style={{ position: 'fixed', top: hole.top, left: hole.left, width: hole.width, height: hole.height, pointerEvents: 'none' }}
+            style={{ position: 'fixed', top: rect!.top, left: rect!.left, width: rect!.width, height: rect!.height, pointerEvents: 'none', zIndex: 1 }}
           />
         </>
       ) : (

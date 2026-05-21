@@ -10,6 +10,7 @@ export type TourEventName =
   | 'amount-set'       // payload: { refId: string; amount: number }
   | 'companion-added'  // payload: { parentRefId: string; kind: 'oil' | 'water' }
   | 'preview-opened'   // payload: undefined
+  | 'preview-closed'   // payload: undefined
   | 'item-saved'       // payload: undefined
 
 type Handler = (payload?: unknown) => void

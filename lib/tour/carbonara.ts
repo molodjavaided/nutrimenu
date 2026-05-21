@@ -151,10 +151,11 @@ export const CARBONARA_STEPS: TourStep[] = [
     id: 'preview',
     page: '/dashboard/item/new',
     target: '[data-tour="preview"]',
+    soft: true, // превью — модалка поверх формы; не блокируем, чтобы юзер мог её закрыть
     title: 'Взгляд гостя',
-    body: 'Посмотрите, как блюдо увидит гость — нажмите «Посмотреть как у гостя».',
+    body: 'Нажмите «Посмотреть как у гостя» — увидите карточку глазами гостя. Осмотрите и закройте превью, чтобы продолжить.',
     placement: 'top',
-    advanceOn: { event: 'preview-opened' },
+    advanceOn: { event: 'preview-closed' },
   },
   {
     id: 'save',

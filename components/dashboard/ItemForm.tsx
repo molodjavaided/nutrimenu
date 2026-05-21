@@ -163,8 +163,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       <DishSheet
         item={previewOpen ? buildPreviewItem(s) : null}
         open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        onAdd={() => setPreviewOpen(false)}
+        onClose={() => { setPreviewOpen(false); tourBus.emit('preview-closed') }}
+        onAdd={() => { setPreviewOpen(false); tourBus.emit('preview-closed') }}
         venueIngredientRefs={s.ingredientRefs}
       />
 

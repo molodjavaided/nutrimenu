@@ -91,14 +91,16 @@ export default function TourOverlay({
   // само окно цели остаётся кликабельным.
   const panel = (style: React.CSSProperties) => (
     <div
-      style={{ position: 'fixed', background: dim, ...style }}
+      style={{ position: 'fixed', background: dim, pointerEvents: 'auto', ...style }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.preventDefault()}
     />
   )
 
+  // Контейнер всегда pointer-events:none — клики ловят только дим-панели (жёсткий режим),
+  // окно-цель остаётся кликабельным, тултип переопределяет на auto.
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, pointerEvents: soft ? 'none' : undefined }} aria-live="polite">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, pointerEvents: 'none' }} aria-live="polite">
       {hole ? (
         <>
           {/* Затемняющие панели только в жёстком режиме */}

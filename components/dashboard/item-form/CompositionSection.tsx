@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
@@ -7,7 +8,7 @@ import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFor
 import { resolveCompositionRowContribution, resolveIngredientPer100 } from '@/lib/utils'
 import { asCategory } from '@/lib/cooking-coefficients'
 import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
-import ProcessingChip from './ProcessingChip'
+import { ProcessingAnchor, ProcessingPanel } from './ProcessingChip'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -87,9 +88,11 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
               <AddIngredientButton onClick={() => s.setPickerOpen(true)} />
             </div>
 
-            {/* Desktop: unified table */}
-            <div className="hidden md:block">
-              <UnifiedTable s={s} />
+            {/* Desktop: glass row-cards */}
+            <div className="hidden md:block space-y-2">
+              {s.ingredients.map(ingredient => (
+                <DesktopIngredientCard key={ingredient.id} s={s} ingredient={ingredient} />
+              ))}
               <div className="mt-2">
                 <AddIngredientButton onClick={() => s.setPickerOpen(true)} />
               </div>
@@ -312,63 +315,37 @@ function CompanionChip({ label, onClick, title }: { label: string; onClick: () =
   )
 }
 
-// ─── Ingredient header (desktop row) ───────────────────────────────────────
+// ─── Companion suggestions (shared desktop + mobile) ────────────────────────
 
-function IngredientHeader({ s, ingredient }: { s: ItemFormState; ingredient: IngredientItem }) {
+function CompanionSuggestions({ s, ingredient }: { s: ItemFormState; ingredient: IngredientItem }) {
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
   const srcCategory = asCategory(ref?.category)
   const isTTK = s.mode === 'ttk'
-  const isChild = !!ingredient.parentIngredientId
-  // Дети не получают свою ProcessingChip и не предлагают новые companions
-  const suggestions = !isChild && isTTK && ingredient.processing && ingredient.processing !== 'raw'
+  const suggestions = isTTK && ingredient.processing && ingredient.processing !== 'raw'
     ? suggestCompanions(ingredient.processing, srcCategory)
     : []
+  if (suggestions.length === 0) return null
+
   return (
-    <div
-      className="space-y-1"
-      style={isChild ? { paddingLeft: 16, borderLeft: '2px solid rgba(139,92,246,0.30)' } : undefined}
-    >
-      <div className="flex items-center gap-2 flex-wrap">
-        {isChild && <span style={{ color: 'var(--color-text-muted)' }}>↳</span>}
-        <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
-          {ingredient.name}
-        </span>
-        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>({ingredient.unit})</span>
-        {isTTK && !isChild && (
-          <ProcessingChip
-            processing={ingredient.processing}
-            yieldOverride={ingredient.yieldOverride}
-            ingredientRef={ref}
-            onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
-            onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
+    <div className="flex flex-wrap gap-1.5">
+      {suggestions.map(sg => {
+        const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
+        if (!companionRef) return null
+        if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
+        const firstSize = s.sizes[0]
+        const baseAmount = firstSize
+          ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
+          : 0
+        const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
+        return (
+          <CompanionChip
+            key={sg.kind}
+            label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
+            onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
+            title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
           />
-        )}
-        {!isChild && (
-          <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />
-        )}
-      </div>
-      {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.map(sg => {
-            const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
-            if (!companionRef) return null
-            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
-            const firstSize = s.sizes[0]
-            const baseAmount = firstSize
-              ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
-              : 0
-            const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
-            return (
-              <CompanionChip
-                key={sg.kind}
-                label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
-                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
-                title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
-              />
-            )
-          })}
-        </div>
-      )}
+        )
+      })}
     </div>
   )
 }
@@ -402,46 +379,75 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
   )
 }
 
-// ─── Desktop unified table ──────────────────────────────────────────────────
+// ─── Desktop glass row-card ─────────────────────────────────────────────────
 
-function UnifiedTable({ s }: { s: ItemFormState }) {
+function DesktopIngredientCard({ s, ingredient }: { s: ItemFormState; ingredient: IngredientItem }) {
+  const [procExpanded, setProcExpanded] = useState(false)
+  const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
+  const isTTK = s.mode === 'ttk'
+  const isChild = !!ingredient.parentIngredientId
+  const showProcessing = isTTK && !isChild
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr>
-            <th className="text-left py-2 px-3 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-              Ингредиент
-            </th>
-            {s.sizes.map((size, idx) => (
-              <th key={size.id} className="text-center py-2 px-2 text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                {size.name || (s.hasMultipleSizes ? `Размер ${idx + 1}` : 'Брутто')}
-              </th>
-            ))}
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {s.ingredients.map(ingredient => {
-            return (
-              <tr key={ingredient.id} style={{ borderTop: '0.5px solid rgba(139,92,246,0.12)' }}>
-                <td className="py-2 px-3 align-top">
-                  <IngredientHeader s={s} ingredient={ingredient} />
-                </td>
-                {s.sizes.map(size => (
-                  <td key={size.id} className="py-2 px-2 align-top">
-                    <BruttoCell s={s} ingredient={ingredient} sizeId={size.id} />
-                  </td>
-                ))}
-                <td className="py-2 pl-1 align-top">
-                  <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <GlassCard
+      tone="solid"
+      padding="sm"
+      style={isChild ? { marginLeft: 24, borderLeft: '2px solid rgba(139,92,246,0.30)' } : undefined}
+    >
+      {/* Top row — остаётся «как вкопанная» */}
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            {isChild && <span style={{ color: 'var(--color-text-muted)' }}>↳</span>}
+            <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+              {ingredient.name}
+            </span>
+            <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>({ingredient.unit})</span>
+            {showProcessing && (
+              <ProcessingAnchor
+                processing={ingredient.processing}
+                yieldOverride={ingredient.yieldOverride}
+                ingredientRef={ref}
+                expanded={procExpanded}
+                onToggle={() => setProcExpanded(o => !o)}
+              />
+            )}
+            {!isChild && (
+              <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />
+            )}
+          </div>
+          <CompanionSuggestions s={s} ingredient={ingredient} />
+        </div>
+
+        <div className="flex items-start gap-3 shrink-0">
+          {s.sizes.map((size, idx) => (
+            <div key={size.id} className="flex flex-col items-end gap-0.5">
+              {s.hasMultipleSizes && (
+                <span className="text-[10px] whitespace-nowrap" style={{ color: 'var(--color-text-muted)' }}>
+                  {size.name || `Размер ${idx + 1}`}
+                </span>
+              )}
+              <BruttoCell s={s} ingredient={ingredient} sizeId={size.id} />
+            </div>
+          ))}
+        </div>
+
+        <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />
+      </div>
+
+      {/* Processing panel — лента + коэффициент выезжают снизу */}
+      {showProcessing && procExpanded && (
+        <div className="mt-2 pt-2" style={{ borderTop: '0.5px solid rgba(139,92,246,0.12)' }}>
+          <ProcessingPanel
+            processing={ingredient.processing}
+            yieldOverride={ingredient.yieldOverride}
+            ingredientRef={ref}
+            onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
+            onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
+          />
+        </div>
+      )}
+    </GlassCard>
   )
 }
 
@@ -559,17 +565,13 @@ function MobileIngredientRow({
   sizeId: string
   isFirstSize: boolean
 }) {
+  const [procExpanded, setProcExpanded] = useState(false)
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
-  const srcCategory = asCategory(ref?.category)
   const isTTK = s.mode === 'ttk'
   const contrib = rowContribution(s, ingredient, sizeId)
   const amount = s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)?.amount || 0
   const isCount = ingredient.unit === 'шт'
   const showYield = isTTK && amount > 0 && Math.abs(contrib.brutto - contrib.finalGrams) >= 0.5
-
-  const suggestions = isTTK && ingredient.processing && ingredient.processing !== 'raw'
-    ? suggestCompanions(ingredient.processing, srcCategory)
-    : []
 
   return (
     <div className="px-3 py-3 space-y-2.5">
@@ -582,45 +584,35 @@ function MobileIngredientRow({
         {isFirstSize && <RemoveButton onClick={() => s.removeIngredient(ingredient.id)} />}
       </div>
 
-      {/* Row 2: processing + lock toggle */}
+      {/* Row 2: processing anchor + lock toggle — остаётся «как вкопанная» */}
       {isFirstSize && (
         <div className="flex items-start gap-2 flex-wrap">
           {isTTK && (
-            <ProcessingChip
+            <ProcessingAnchor
               processing={ingredient.processing}
               yieldOverride={ingredient.yieldOverride}
               ingredientRef={ref}
-              onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
-              onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
+              expanded={procExpanded}
+              onToggle={() => setProcExpanded(o => !o)}
             />
           )}
           <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />
         </div>
       )}
 
-      {/* Companions (mobile) */}
-      {isFirstSize && suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.map(sg => {
-            const companionRef = findCompanionRef(s.ingredientRefs, sg.kind)
-            if (!companionRef) return null
-            if (s.ingredients.some(i => i.ingredientRefId === companionRef.id && i.parentIngredientId === ingredient.id)) return null
-            const firstSize = s.sizes[0]
-            const baseAmount = firstSize
-              ? (s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === firstSize.id)?.amount ?? 0)
-              : 0
-            const preview = baseAmount > 0 ? Math.max(1, Math.round(baseAmount * sg.ratio)) : null
-            return (
-              <CompanionChip
-                key={sg.kind}
-                label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
-                onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
-                title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
-              />
-            )
-          })}
-        </div>
+      {/* Processing panel — лента + коэффициент выезжают снизу */}
+      {isFirstSize && isTTK && procExpanded && (
+        <ProcessingPanel
+          processing={ingredient.processing}
+          yieldOverride={ingredient.yieldOverride}
+          ingredientRef={ref}
+          onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
+          onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
+        />
       )}
+
+      {/* Companions (mobile) */}
+      {isFirstSize && <CompanionSuggestions s={s} ingredient={ingredient} />}
 
       {/* Row 3: weight input */}
       <div className="flex items-center justify-end gap-2">

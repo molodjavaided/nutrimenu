@@ -111,23 +111,32 @@ export default function TourOverlay({
             {panel({ top: hole.top + hole.height, left: 0, right: 0, bottom: 0 })}
           </>}
 
-          {/* Пульсирующее кольцо вокруг цели */}
-          <div style={{ position: 'fixed', top: hole.top, left: hole.left, width: hole.width, height: hole.height, pointerEvents: 'none' }}>
-            <span className="absolute inset-0 rounded-xl animate-ping" style={{ border: '2px solid rgba(176,166,223,0.9)' }} />
-            <span className="absolute inset-0 rounded-xl" style={{ boxShadow: '0 0 0 2px rgba(139,92,246,0.9), 0 0 22px 4px rgba(139,92,246,0.45)' }} />
+          {/* «Дышащее» лавандовое свечение под целью + чёткий контур поверх */}
+          <div
+            className="tour-breathe"
+            style={{ position: 'fixed', top: hole.top, left: hole.left, width: hole.width, height: hole.height, pointerEvents: 'none' }}
+          >
+            <span
+              className="absolute inset-0"
+              style={{ borderRadius: 14, boxShadow: 'inset 0 0 0 2px rgba(139,92,246,0.9)' }}
+            />
           </div>
         </>
       ) : (
         !soft && panel({ inset: 0 })
       )}
 
-      {/* Тултип */}
+      {/* Тултип — одна плашка, тень прижата вплотную */}
       <div
-        style={{ position: 'fixed', ...tipStyle, zIndex: 101, pointerEvents: 'auto' }}
-        className="rounded-2xl p-4 shadow-xl"
+        style={{
+          position: 'fixed', ...tipStyle, zIndex: 101, pointerEvents: 'auto',
+          background: '#FEFEF2', border: '0.5px solid rgba(139,92,246,0.22)', borderRadius: 16,
+          boxShadow: '0 8px 24px -6px rgba(44,41,80,0.25)',
+        }}
+        className="p-4"
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ background: '#FEFEF2', border: '0.5px solid rgba(139,92,246,0.22)', borderRadius: 16 }} className="p-4">
+        <div>
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-medium" style={{ color: '#8B5CF6' }}>
               Шаг {stepIndex + 1} из {totalSteps}

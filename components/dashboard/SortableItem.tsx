@@ -8,8 +8,6 @@ import { CSS } from '@dnd-kit/utilities'
 import { MenuItem } from '@/types'
 import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 import { NutritionGrid } from '@/components/ui/NutritionGrid'
-import { NutriPill } from '@/components/ui-kit'
-import { getAllergenById } from '@/lib/allergens'
 
 interface Props {
   item: MenuItem
@@ -22,6 +20,7 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
   const [available, setAvailable] = useState(item.isAvailable)
   const [toggling, setToggling] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [open, setOpen] = useState(false)
 
   async function handleDuplicate() {
     if (duplicating) return
@@ -68,17 +67,15 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
     borderBottom: '0.5px solid rgba(139,92,246,0.10)',
   }
 
-  const hasVariants = (item.variantGroups?.length ?? 0) > 0
-  const hasModifiers = (item.modifierGroups?.length ?? 0) > 0
   const photoPosition = item.photoPosition ?? 'center'
 
   return (
-    <div ref={setNodeRef} style={style} className="flex gap-3 px-4 py-3">
+    <div ref={setNodeRef} style={style} className="flex gap-2 px-3 py-3">
       {/* Drag handle */}
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing shrink-0 self-start mt-1"
+        className="cursor-grab active:cursor-grabbing shrink-0 self-center"
         style={{ color: '#C8C3F0', touchAction: 'none' }}
         aria-label="Перетащить"
       >
@@ -90,7 +87,7 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
       {/* Glass-фото 56×56 — тот же визуальный код, что у гостя в DishCard */}
       <Link
         href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
-        className="relative w-14 h-14 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden self-start"
+        className="relative w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden self-center"
         style={{
           background: 'rgba(255,255,255,0.6)',
           backdropFilter: 'blur(8px)',
@@ -106,9 +103,9 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
         }
       </Link>
 
-      {/* Инфо — повторяет иерархию DishCard для гостя */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Инфо: только название + раскрытие КБЖУ. Остальное — на странице блюда. */}
+      <div className="flex-1 min-w-0 self-center">
+        <div className="flex items-center gap-1">
           <Link
             href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
             className="text-sm font-medium truncate hover:underline"
@@ -116,53 +113,32 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
           >
             {item.name}
           </Link>
-          {hasVariants && <NutriPill tone="brand" size="xs">варианты</NutriPill>}
-          {hasModifiers && <NutriPill tone="warning" size="xs">добавки</NutriPill>}
-          {!available && <NutriPill tone="danger" size="xs">скрыто</NutriPill>}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-transform active:scale-90"
+            style={{ color: 'var(--color-text-muted)', transform: open ? 'rotate(180deg)' : 'none' }}
+            aria-label={open ? 'Свернуть КБЖУ' : 'Показать КБЖУ'}
+            aria-expanded={open}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M3 4.5L6 7.5l3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
 
-        {item.description && (
-          <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>
-            {item.description}
-          </p>
-        )}
-
-        <div className="mt-1.5">
-          <NutritionGrid nutri={item} />
-        </div>
-
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            {item.weight} {item.weightUnit}
-          </p>
-          {item.price != null && (
-            <p className="text-xs font-medium" style={{ color: 'var(--color-text-primary)' }}>
-              {item.price} ₽
-            </p>
-          )}
-        </div>
-
-        {item.allergens && item.allergens.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {item.allergens.map(id => {
-              const a = getAllergenById(id)
-              if (!a) return null
-              return (
-                <NutriPill key={id} tone="danger" size="xs" title={a.label}>
-                  {a.emoji} {a.label}
-                </NutriPill>
-              )
-            })}
+        {open && (
+          <div className="mt-1.5">
+            <NutritionGrid nutri={item} />
           </div>
         )}
       </div>
 
       {/* Toolbar действий */}
-      <div className="flex items-start gap-0.5 shrink-0">
+      <div className="flex items-center gap-0.5 shrink-0">
         <button
           onClick={toggleAvailable}
           disabled={toggling}
-          className="w-9 h-9 rounded-lg flex items-center justify-center transition-all active:scale-90"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90"
           style={{ color: available ? '#22C55E' : 'var(--color-text-muted)' }}
           title={available ? 'Скрыть от гостей' : 'Показать гостям'}
           aria-label={available ? 'Скрыть от гостей' : 'Показать гостям'}
@@ -184,7 +160,7 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
         <button
           onClick={handleDuplicate}
           disabled={duplicating}
-          className="w-9 h-9 rounded-lg flex items-center justify-center transition-all active:scale-90"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90"
           style={{ color: 'var(--color-text-secondary)', opacity: duplicating ? 0.5 : 1 }}
           title="Дублировать"
           aria-label="Дублировать"
@@ -197,7 +173,7 @@ export default function SortableItem({ item, categoryId, onDelete, onDuplicate }
 
         <Link
           href={`/dashboard/item/${item.id}?categoryId=${categoryId}`}
-          className="w-9 h-9 rounded-lg flex items-center justify-center active:scale-90 transition-all"
+          className="w-7 h-7 rounded-lg flex items-center justify-center active:scale-90 transition-all"
           style={{ color: 'var(--color-text-secondary)' }}
           title="Редактировать"
           aria-label="Редактировать"

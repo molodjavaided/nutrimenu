@@ -34,8 +34,6 @@ export default function SettingsPage() {
     resolver: zodResolver(schema),
   })
 
-  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
-
   useEffect(() => {
     fetch('/api/venue')
       .then(r => r.ok ? r.json() : null)
@@ -47,18 +45,10 @@ export default function SettingsPage() {
         }
       })
       .finally(() => setLoading(false))
-    fetch('/api/user/onboarding')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setOnboardingStep(data.step) })
-      .catch(() => {})
   }, [reset])
 
   const watched = watch()
   const hasName = (watched.name ?? '').trim().length >= 2
-  const hasCity = (watched.city ?? '').trim().length > 0
-  const hasWorkingHours = (watched.workingHours ?? '').trim().length > 0
-  const onboardingActive = onboardingStep === 1
-  const requiredFilled = hasName && hasCity && hasWorkingHours
 
   useEffect(() => {
     if (!slug || !canvasRef.current) return
@@ -85,16 +75,6 @@ export default function SettingsPage() {
       body: JSON.stringify(data),
     })
     setSaved(true)
-
-    if (onboardingStep === 1 && data.name.trim().length >= 2 && (data.city ?? '').trim() && (data.workingHours ?? '').trim()) {
-      await fetch('/api/user/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'next' }),
-      })
-      setTimeout(() => router.push('/dashboard/menu'), 600)
-      return
-    }
     setTimeout(() => setSaved(false), 2000)
   }
 
@@ -124,54 +104,6 @@ export default function SettingsPage() {
   return (
     <div className="p-6 max-w-lg">
       <h1 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>Настройки заведения</h1>
-
-      {/* Onboarding tutorial banner — глава 1 */}
-      {onboardingActive && (
-        <GlassCard tone="tinted" padding="md" className="mb-5">
-          <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(139,92,246,0.10)', color: '#5B21B6' }}
-              aria-hidden
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2.5 8L9 3l6.5 5v6.5a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                <path d="M7 14.5v-4h4v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>Шаг 1 из 4 — Заведение</p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                Эти данные гость увидит в шапке меню. Заполните хотя бы название, город и часы работы — этого хватит, чтобы двигаться дальше.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5 ml-9">
-            {[
-              { done: hasName, label: 'Название заведения' },
-              { done: hasCity, label: 'Город' },
-              { done: hasWorkingHours, label: 'Часы работы' },
-            ].map((step, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 text-xs"
-                style={{ color: step.done ? '#15803D' : 'var(--color-text-muted)' }}
-              >
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: step.done ? '#15803D' : 'transparent',
-                  border: step.done ? 'none' : '1.2px solid #C8C3F0',
-                  color: '#fff', fontSize: 10,
-                }}>
-                  {step.done ? '✓' : ''}
-                </span>
-                {step.label}
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
 
       {/* Live preview — «Как увидит гость» */}
       <GlassCard tone="solid" padding="none" className="mb-6 overflow-hidden">
@@ -262,26 +194,14 @@ export default function SettingsPage() {
           type="submit"
           variant="primary"
           fullWidth
-          disabled={onboardingActive && !requiredFilled}
           className="mt-1"
           style={
             saved
               ? { background: '#2A9D5C', boxShadow: '0 4px 12px rgba(42,157,92,0.3)', borderColor: 'rgba(42,157,92,0.6)' }
-              : onboardingActive && requiredFilled
-                ? { background: 'var(--color-text-primary)', borderColor: 'rgba(44,41,80,0.6)' }
-                : undefined
-          }
-          rightIcon={
-            onboardingActive && !saved ? (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : undefined
+              : undefined
           }
         >
-          {saved
-            ? (onboardingActive ? 'Сохранено ✓ — перехожу к категориям...' : 'Сохранено ✓')
-            : (onboardingActive ? 'Сохранить и перейти к категориям' : 'Сохранить')}
+          {saved ? 'Сохранено ✓' : 'Сохранить'}
         </GlassButton>
       </form>
 

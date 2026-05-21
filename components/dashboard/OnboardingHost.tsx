@@ -46,7 +46,10 @@ export default function OnboardingHost() {
       if (res.ok) {
         const data = await res.json()
         setState(data)
-        if (action === 'next') router.push('/dashboard/settings')
+        if (action === 'next') {
+          window.dispatchEvent(new Event('nm-tour-start'))
+          router.push('/dashboard/menu')
+        }
       }
     } finally {
       setBusy(false)
@@ -97,11 +100,11 @@ export default function OnboardingHost() {
         </div>
         <div className="space-y-2">
           <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
-            За 5 минут соберём ваше первое цифровое меню с КБЖУ.
+            Соберём вместе первое блюдо — классическую карбонару.
           </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            Проведём через настройки заведения, добавим категорию и первое блюдо, сгенерируем QR-код для гостей.
-            На каждом шаге подскажу что делать и зачем.
+            Я проведу за руку: подсвечу каждый шаг, а вы будете нажимать. Покажу, как добавить ингредиенты
+            из справочника и как NutriMenu сам считает КБЖУ и выход после обработки.
           </p>
         </div>
         <div className="rounded-2xl p-3 sm:p-4" style={{ background: 'rgba(139,92,246,0.06)' }}>
@@ -109,10 +112,10 @@ export default function OnboardingHost() {
             Что будем делать
           </p>
           <ol className="space-y-1.5 text-sm" style={{ color: 'var(--color-text-primary)' }}>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>1.</span> Заполним данные заведения</li>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>2.</span> Создадим категорию меню</li>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>3.</span> Добавим первое блюдо с КБЖУ</li>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>4.</span> Получим QR для столов</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>1.</span> Создадим новое блюдо</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>2.</span> Добавим пасту, грудинку и желток</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>3.</span> Зададим обработку — увидим автоматический пересчёт</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>4.</span> Посмотрим меню глазами гостя</li>
           </ol>
         </div>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>

@@ -8,6 +8,7 @@ import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFor
 import { resolveCompositionRowContribution, resolveIngredientPer100 } from '@/lib/utils'
 import { asCategory } from '@/lib/cooking-coefficients'
 import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
+import { tourBus } from '@/lib/tour/bus'
 import { ProcessingAnchor, ProcessingPanel } from './ProcessingChip'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
 
       <FormField label="Состав" required>
         {s.ingredients.length === 0 ? (
-          <EmptyComposition onAdd={() => s.setPickerOpen(true)} />
+          <EmptyComposition onAdd={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />
         ) : (
           <>
             {/* Mobile: per-size cards */}
@@ -85,7 +86,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
               {s.sizes.map((size, sizeIdx) => (
                 <MobileSizeCard key={size.id} s={s} sizeId={size.id} sizeIdx={sizeIdx} />
               ))}
-              <AddIngredientButton onClick={() => s.setPickerOpen(true)} />
+              <AddIngredientButton onClick={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />
             </div>
 
             {/* Desktop: glass row-cards */}
@@ -94,7 +95,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
                 <DesktopIngredientCard key={ingredient.id} s={s} ingredient={ingredient} />
               ))}
               <div className="mt-2">
-                <AddIngredientButton onClick={() => s.setPickerOpen(true)} />
+                <AddIngredientButton onClick={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />
               </div>
             </div>
           </>
@@ -251,7 +252,7 @@ const PlusIcon = (
 
 function EmptyComposition({ onAdd }: { onAdd: () => void }) {
   return (
-    <GlassButton variant="secondary" onClick={onAdd} fullWidth leftIcon={PlusIcon}>
+    <GlassButton variant="secondary" data-tour="pick-ingredient" onClick={onAdd} fullWidth leftIcon={PlusIcon}>
       Выбрать из справочника
     </GlassButton>
   )
@@ -259,7 +260,7 @@ function EmptyComposition({ onAdd }: { onAdd: () => void }) {
 
 function AddIngredientButton({ onClick }: { onClick: () => void }) {
   return (
-    <GlassButton variant="secondary" onClick={onClick} fullWidth leftIcon={PlusIcon}>
+    <GlassButton variant="secondary" data-tour="add-ingredient" onClick={onClick} fullWidth leftIcon={PlusIcon}>
       Добавить ингредиент
     </GlassButton>
   )
@@ -341,7 +342,10 @@ function CompanionSuggestions({ s, ingredient }: { s: ItemFormState; ingredient:
           <CompanionChip
             key={sg.kind}
             label={`${sg.label}${preview ? ` ~${preview}${companionRef.unit}` : ''}`}
-            onClick={() => s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)}
+            onClick={() => {
+              s.addCompanionIngredient(ingredient.id, companionRef.id, sg.ratio, sg.kind)
+              tourBus.emit('companion-added', { parentRefId: ingredient.ingredientRefId, kind: sg.kind })
+            }}
             title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
           />
         )
@@ -364,7 +368,12 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
           step={isCount ? 1 : 0.1}
           min={0}
           value={amount || ''}
-          onChange={e => s.updateAmount(ingredient.id, sizeId, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+          data-tour={`amount-${ingredient.ingredientRefId}`}
+          onChange={e => {
+            const v = isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value)
+            s.updateAmount(ingredient.id, sizeId, v)
+            tourBus.emit('amount-set', { refId: ingredient.ingredientRefId, amount: v })
+          }}
           placeholder={isCount ? 'шт' : '0'}
           className="w-20 text-center"
         />
@@ -392,6 +401,7 @@ function DesktopIngredientCard({ s, ingredient }: { s: ItemFormState; ingredient
     <GlassCard
       tone="solid"
       padding="sm"
+      data-tour={`card-${ingredient.ingredientRefId}`}
       style={isChild ? { marginLeft: 24, borderLeft: '2px solid rgba(139,92,246,0.30)' } : undefined}
     >
       {/* Top row — остаётся «как вкопанная» */}
@@ -442,7 +452,10 @@ function DesktopIngredientCard({ s, ingredient }: { s: ItemFormState; ingredient
             processing={ingredient.processing}
             yieldOverride={ingredient.yieldOverride}
             ingredientRef={ref}
-            onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
+            onChangeProcessing={p => {
+              s.updateIngredientProcessing(ingredient.id, p)
+              tourBus.emit('processing-set', { refId: ingredient.ingredientRefId, processing: p })
+            }}
             onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
           />
         </div>
@@ -574,7 +587,7 @@ function MobileIngredientRow({
   const showYield = isTTK && amount > 0 && Math.abs(contrib.brutto - contrib.finalGrams) >= 0.5
 
   return (
-    <div className="px-3 py-3 space-y-2.5">
+    <div className="px-3 py-3 space-y-2.5" data-tour={`card-${ingredient.ingredientRefId}`}>
       {/* Row 1: name + remove */}
       <div className="flex items-start justify-between gap-2">
         <div className="text-sm font-medium min-w-0" style={{ color: 'var(--color-text-primary)' }}>
@@ -606,7 +619,10 @@ function MobileIngredientRow({
           processing={ingredient.processing}
           yieldOverride={ingredient.yieldOverride}
           ingredientRef={ref}
-          onChangeProcessing={p => s.updateIngredientProcessing(ingredient.id, p)}
+          onChangeProcessing={p => {
+            s.updateIngredientProcessing(ingredient.id, p)
+            tourBus.emit('processing-set', { refId: ingredient.ingredientRefId, processing: p })
+          }}
           onChangeYieldOverride={v => s.updateIngredientYieldOverride(ingredient.id, v)}
         />
       )}
@@ -623,7 +639,12 @@ function MobileIngredientRow({
             step={isCount ? 1 : 0.1}
             min={0}
             value={amount || ''}
-            onChange={e => s.updateAmount(ingredient.id, sizeId, isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value))}
+            data-tour={`amount-${ingredient.ingredientRefId}`}
+            onChange={e => {
+              const v = isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value)
+              s.updateAmount(ingredient.id, sizeId, v)
+              tourBus.emit('amount-set', { refId: ingredient.ingredientRefId, amount: v })
+            }}
             placeholder={isCount ? 'шт' : '0'}
             className="w-20 text-center"
           />

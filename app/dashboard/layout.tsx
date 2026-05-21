@@ -4,6 +4,7 @@ import ImpersonationBanner from '@/components/dashboard/ImpersonationBanner'
 import TrialBanner from '@/components/dashboard/TrialBanner'
 import { MessagesPanelHost } from '@/components/feedback/MessagesHost'
 import OnboardingHost from '@/components/dashboard/OnboardingHost'
+import TourController from '@/components/dashboard/tour/TourController'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -22,6 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
       <MessagesPanelHost />
       <OnboardingHost />
+      <TourController />
     </div>
   )
 }

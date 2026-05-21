@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { tourBus } from '@/lib/tour/bus'
 import IngredientPickerModal from './IngredientPickerModal'
 import AddonsSection from './item-form/AddonsSection'
 import BasicSection from './item-form/BasicSection'
@@ -10,94 +11,53 @@ import VariantsSection from './item-form/VariantsSection'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
-import { GlassCard, GlassButton } from '@/components/ui-kit'
+import { GlassButton } from '@/components/ui-kit'
 
 export default function ItemForm({ itemId, categoryId: initialCategoryId }: { itemId?: string; categoryId?: string }) {
   const router = useRouter()
-  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
-  const onboardingActive = onboardingStep === 3 && !itemId
+  const [tourActive, setTourActive] = useState(false)
 
   const s = useItemFormState({
     itemId,
     initialCategoryId,
-    onSaved: async () => {
-      if (onboardingActive) {
-        await fetch('/api/user/onboarding', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'next' }),
-        })
-      }
-    },
+    onSaved: async () => { tourBus.emit('item-saved') },
   })
   const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
+    if (itemId) return
     fetch('/api/user/onboarding')
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setOnboardingStep(data.step) })
-      .catch(() => {})
-  }, [])
-
-  // ─── Guided tour state (Глава 3) ───────────────────────────────────────────
-  const POTATO_REF_ID = 'fd-1_1'
-  const tourSeededRef = useRef(false)
-  const tourAmountSetRef = useRef(false)
-
-  useEffect(() => {
-    if (!onboardingActive || tourSeededRef.current) return
-    if (!s.isReady || s.ingredientRefs.length === 0) return
-    const potato = s.ingredientRefs.find(r => r.id === POTATO_REF_ID)
-    if (!potato) return
-    tourSeededRef.current = true
-    s.setMode('ttk')
-    if (!s.name) s.setName('Жареный картофель')
-    if (!s.ingredients.some(i => i.ingredientRefId === POTATO_REF_ID)) {
-      s.addIngredient(POTATO_REF_ID)
-    }
-  }, [onboardingActive, s])
-
-  const potatoIngredient = onboardingActive
-    ? s.ingredients.find(i => i.ingredientRefId === POTATO_REF_ID && !i.parentIngredientId)
-    : undefined
-  useEffect(() => {
-    if (!onboardingActive || tourAmountSetRef.current) return
-    if (!potatoIngredient || s.sizes.length === 0) return
-    const sizeId = s.sizes[0].id
-    const existing = s.amounts.find(a => a.ingredientId === potatoIngredient.id && a.sizeId === sizeId)?.amount ?? 0
-    if (existing === 0) {
-      s.updateAmount(potatoIngredient.id, sizeId, 200)
-    }
-    tourAmountSetRef.current = true
-  }, [onboardingActive, potatoIngredient, s])
-
-  const tourStep1Done = potatoIngredient?.processing === 'fry'
-  const tourStep2Done = !!(potatoIngredient && s.ingredients.some(i =>
-    i.parentIngredientId === potatoIngredient.id && i.companionKind === 'oil'
-  ))
-
-  const baseCanSave = !!s.name && !!s.categoryId && (s.mode === 'quick' || s.ingredients.length > 0)
-  const canSave = onboardingActive
-    ? baseCanSave && tourStep1Done && tourStep2Done
-    : baseCanSave
-  const canPreview = !!s.name
-
-  async function skipTour() {
-    try {
-      const res = await fetch('/api/user/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'skip' }),
+      .then(data => {
+        if (data && !data.isCompleted && !data.isDismissed && data.step >= 1) setTourActive(true)
       })
-      if (res.ok) {
-        const data = await res.json()
-        setOnboardingStep(data.step)
+      .catch(() => {})
+  }, [itemId])
+
+  // ─── Tour prefill: название + категория (тур просит только добавить ингредиенты) ──
+  const prefilledRef = useRef(false)
+  useEffect(() => {
+    if (!tourActive || prefilledRef.current || !s.isReady) return
+    prefilledRef.current = true
+    if (!s.name) s.setName('Карбонара')
+    if (!s.categoryId) {
+      if (s.categories.length > 0) {
+        s.setCategoryId(s.categories[0].id)
+      } else {
+        fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Основное меню' }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(cat => { if (cat) s.setCategoryId(cat.id) })
+          .catch(() => {})
       }
-    } catch {
-      // не блокируем работу — просто снимаем туториал локально
-      setOnboardingStep(null)
     }
-  }
+  }, [tourActive, s])
+
+  const canSave = !!s.name && !!s.categoryId && (s.mode === 'quick' || s.ingredients.length > 0)
+  const canPreview = !!s.name
 
   return (
     <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
@@ -116,85 +76,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
         {s.isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
       </h1>
 
-      {/* Onboarding tutorial banner — глава 3, интерактивный тур */}
-      {onboardingActive && (
-        <GlassCard
-          tone="tinted"
-          padding="md"
-          className="mb-5 sticky top-2 z-20"
-          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
-        >
-          <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(139,92,246,0.10)', color: '#5B21B6' }}
-              aria-hidden
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M9 3.5v5l3.5 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
-                Шаг 3 из 4 — Собираем «Жареный картофель»
-              </p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                Я уже добавил картошку 200 г. Дальше — два клика, и NutriMenu сам посчитает выход, впитывание масла и КБЖУ.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={skipTour}
-              className="shrink-0 px-2.5 py-1 rounded-lg text-xs transition-colors active:scale-95"
-              style={{ color: 'var(--color-text-muted)', background: 'rgba(139,92,246,0.06)' }}
-              title="Пропустить обучение и собрать блюдо самостоятельно"
-            >
-              Пропустить
-            </button>
-          </div>
-          <ol className="ml-9 space-y-1.5 text-xs">
-            {[
-              {
-                done: tourStep1Done,
-                label: <>Тапните чип <b>«+ обработка»</b> под Картофелем и выберите <b>«Жарка»</b></>,
-              },
-              {
-                done: tourStep2Done,
-                hint: !tourStep1Done,
-                label: <>Появится кнопка <b>🪄 +масло</b> — тапните, чтобы добавить масло (впитается ~15% жира)</>,
-              },
-              {
-                done: tourStep1Done && tourStep2Done,
-                hint: tourStep1Done && tourStep2Done,
-                label: <>Жмите <b>«Добавить блюдо»</b> — увидите автоматический пересчёт КБЖУ и выхода</>,
-              },
-            ].map((step, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-2"
-                style={{ color: step.done ? '#15803D' : step.hint ? '#5B21B6' : 'var(--color-text-muted)' }}
-              >
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                  background: step.done ? '#15803D' : step.hint ? '#8B5CF6' : 'transparent',
-                  border: step.done || step.hint ? 'none' : '1.2px solid #C8C3F0',
-                  color: '#fff', fontSize: 10, fontWeight: 600, marginTop: 1,
-                }}>
-                  {step.done ? '✓' : i + 1}
-                </span>
-                <span className="leading-relaxed">{step.label}</span>
-              </li>
-            ))}
-          </ol>
-        </GlassCard>
-      )}
-
       {/* Mode-switcher (segmented control) */}
       <div
-        className={onboardingActive ? 'hidden' : 'inline-flex gap-1 p-1 rounded-xl mb-6'}
-        style={onboardingActive ? undefined : {
+        className="inline-flex gap-1 p-1 rounded-xl mb-6"
+        style={{
           background: 'rgba(176,166,223,0.18)',
           border: '0.5px solid rgba(139,92,246,0.18)',
           backdropFilter: 'blur(6px)',
@@ -206,7 +91,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           return (
             <button
               key={m}
-              onClick={() => s.setMode(m)}
+              data-tour={m === 'ttk' ? 'mode-ttk' : undefined}
+              onClick={() => { s.setMode(m); tourBus.emit('mode-set', m) }}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
               style={active
                 ? { background: 'var(--color-text-primary)', color: '#FEFEF2', boxShadow: '0 2px 8px rgba(44,41,80,0.18)' }
@@ -243,7 +129,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
       >
         <GlassButton
           variant="secondary"
-          onClick={() => setPreviewOpen(true)}
+          data-tour="preview"
+          onClick={() => { setPreviewOpen(true); tourBus.emit('preview-opened') }}
           disabled={!canPreview}
           className="order-1 sm:order-none sm:mr-auto"
           leftIcon={
@@ -263,6 +150,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           </GlassButton>
           <GlassButton
             variant="brand"
+            data-tour="save-dish"
             onClick={s.handleSave}
             disabled={!canSave}
             className="flex-1 sm:flex-none"
@@ -285,7 +173,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           libraries={s.libraries}
           allRefs={s.ingredientRefs}
           alreadyAddedIds={s.ingredients.map(i => i.ingredientRefId)}
-          onSelect={ref => s.addIngredient(ref.id)}
+          onSelect={ref => {
+            s.addIngredient(ref.id)
+            tourBus.emit('ingredient-picked', ref.id)
+            if (tourActive) s.setPickerOpen(false)
+          }}
           onClose={() => s.setPickerOpen(false)}
           onIngredientCreated={ref => {
             s.setIngredientRefs(prev => [...prev, ref])

@@ -196,6 +196,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
             </svg>
             <input
               value={search}
+              data-tour="picker-search"
               onChange={e => setSearch(e.target.value)}
               placeholder={isSearching ? 'Поиск по всем библиотекам...' : 'Поиск...'}
               className="flex-1 bg-transparent text-sm outline-none"

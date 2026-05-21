@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import {
   DndContext,
   closestCenter,
@@ -26,20 +25,16 @@ import { GlassCard, GlassButton, GlassInput, GlassDashedButton } from '@/compone
 const PRESET_CATEGORIES = ['Завтраки', 'Обеды', 'Десерты', 'Напитки', 'Закуски', 'Салаты']
 
 export default function MenuPage() {
-  const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [loaded, setLoaded] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
   const [showImport, setShowImport] = useState(false)
-  const [onboardingStep, setOnboardingStep] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
-
-  const onboardingActive = onboardingStep === 2
 
   async function loadCategories() {
     const res = await fetch('/api/categories')
@@ -49,10 +44,6 @@ export default function MenuPage() {
 
   useEffect(() => {
     loadCategories()
-    fetch('/api/user/onboarding')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setOnboardingStep(data.step) })
-      .catch(() => {})
   }, []) // eslint-disable-line react-hooks/set-state-in-effect
 
   async function createCategory(name: string) {
@@ -74,22 +65,10 @@ export default function MenuPage() {
     if (!cat) return
     setNewCatName('')
     setAddingCat(false)
-    if (onboardingActive) await advanceFromMenu()
   }
 
   async function handlePresetClick(name: string) {
-    const cat = await createCategory(name)
-    if (!cat) return
-    if (onboardingActive) await advanceFromMenu()
-  }
-
-  async function advanceFromMenu() {
-    await fetch('/api/user/onboarding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'next' }),
-    })
-    setTimeout(() => router.push('/dashboard/item/new'), 500)
+    await createCategory(name)
   }
 
   async function handleRenameCategory(id: string, name: string) {
@@ -146,32 +125,6 @@ export default function MenuPage() {
 
   return (
     <div className="p-4 sm:p-8">
-      {/* Onboarding tutorial banner — глава 2 */}
-      {onboardingActive && (
-        <GlassCard tone="tinted" padding="md" className="mb-5">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(139,92,246,0.10)', color: '#5B21B6' }}
-              aria-hidden
-            >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2 5a1 1 0 0 1 1-1h3.5l1.5 1.5H15a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#5B21B6' }}>
-                Шаг 2 из 4 — Категории
-              </p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                Категории — это разделы вашего меню, как страницы в бумажной карточке: Завтраки, Напитки, Десерты.
-                Создайте первую — потом сразу перейдём к блюду.
-              </p>
-            </div>
-          </div>
-        </GlassCard>
-      )}
-
       {/* Заголовок */}
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="min-w-0">
@@ -199,6 +152,7 @@ export default function MenuPage() {
           <Link href="/dashboard/item/new">
             <GlassButton
               variant="brand"
+              data-tour="add-dish"
               leftIcon={
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
                   <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

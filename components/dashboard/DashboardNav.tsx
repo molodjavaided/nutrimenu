@@ -128,7 +128,7 @@ export function DashboardNav() {
     <>
       {/* ── Sidebar — desktop only ── */}
       <aside
-        className={`hidden md:flex ${collapsed ? 'w-16' : 'w-56'} shrink-0 flex-col transition-[width] duration-200`}
+        className={`hidden md:flex ${collapsed ? 'w-16' : 'w-56'} shrink-0 flex-col transition-[width] duration-200 h-screen sticky top-0`}
         style={{
           background: 'rgba(255,255,255,0.7)',
           backdropFilter: 'blur(24px)',

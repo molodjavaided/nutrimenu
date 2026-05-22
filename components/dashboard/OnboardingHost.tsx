@@ -106,7 +106,7 @@ export default function OnboardingHost() {
         </div>
         <div className="space-y-2">
           <p className="text-base font-medium" style={{ color: 'var(--color-text-primary)' }}>
-            Соберём вместе первое блюдо — классическую карбонару.
+            Соберём вместе первое блюдо — классический омлет.
           </p>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
             Я проведу за руку: подсвечу каждый шаг, а вы будете нажимать. Покажу, как добавить ингредиенты
@@ -119,9 +119,9 @@ export default function OnboardingHost() {
           </p>
           <ol className="space-y-1.5 text-sm" style={{ color: 'var(--color-text-primary)' }}>
             <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>1.</span> Создадим новое блюдо</li>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>2.</span> Добавим пасту, грудинку и желток</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>2.</span> Добавим яйца и молоко</li>
             <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>3.</span> Зададим обработку — увидим автоматический пересчёт</li>
-            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>4.</span> Посмотрим меню глазами гостя</li>
+            <li className="flex gap-2"><span style={{ color: '#B0A6DF' }}>4.</span> Сохраним и поделимся меню через QR</li>
           </ol>
         </div>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>

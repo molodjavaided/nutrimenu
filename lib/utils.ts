@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { MenuItem, NutriTotal, SelectedModifiers, SelectedVariants, TrackerItem, ModifierGroup, CompositionRow, IngredientRef, Modifier } from '@/types'
 import { asCategory, getYieldCoef } from './cooking-coefficients'
+import { companionAbsorptionRatio } from './cooking-companions'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -266,20 +267,65 @@ export function resolveCompositionRowContribution(
 }
 
 /**
+ * Единый расчёт веса блюда по составу — учитывает обработку и компаньонов.
+ *
+ * Ключевые правила (избегаем двойного учёта воды):
+ *  - Компаньон (вода/масло): в блюдо попадает только впитавшаяся часть —
+ *    finalGrams = brutto × companionAbsorptionRatio. Остальное сливается/выкипает.
+ *  - Крупа/паста + компаньон-вода: коэффициент выхода крупы (2.5) уже включает
+ *    впитанную воду, поэтому при наличии воды-компаньона выход родителя = 1.0
+ *    (массу даёт строка воды), иначе двойной счёт.
+ *  - Прочие строки: brutto × yieldFactor по обработке.
+ *
+ * Возвращает вес каждой строки (по row.id) и суммарный вес блюда.
+ */
+export function resolveCompositionWeights(
+  composition: CompositionRow[],
+  ingredientRefs: IngredientRef[]
+): { perRow: Record<string, number>; total: number } {
+  const byId = new Map<string, CompositionRow>()
+  for (const r of composition) if (r.id) byId.set(r.id, r)
+
+  // Родительские строки, у которых есть дочерняя вода (для правила «крупа + вода»).
+  const parentsWithWater = new Set<string>()
+  for (const r of composition) {
+    if (r.companionKind === 'water' && r.parentRowId) parentsWithWater.add(r.parentRowId)
+  }
+
+  const perRow: Record<string, number> = {}
+  let total = 0
+  for (const row of composition) {
+    const ref = ingredientRefs.find(r => r.id === row.ingredientId)
+    if (!ref || !row.amount) continue
+    const per100 = resolveIngredientPer100(ref, ingredientRefs)
+
+    let finalGrams: number
+    if (row.companionKind && row.parentRowId) {
+      const brutto = (row.unit === 'шт' && ref.weightPerUnit) ? row.amount * ref.weightPerUnit : row.amount
+      const parent = byId.get(row.parentRowId)
+      const parentRef = parent ? ingredientRefs.find(r => r.id === parent.ingredientId) : undefined
+      const absorb = companionAbsorptionRatio(row.companionKind, parent?.processing ?? 'raw', asCategory(parentRef?.category))
+      finalGrams = brutto * absorb
+    } else {
+      const isGrainWithWater = asCategory(ref.category) === 'grain' && row.id !== undefined && parentsWithWater.has(row.id)
+      const effectiveRow = isGrainWithWater ? { ...row, yieldOverride: 1 } : row
+      finalGrams = resolveCompositionRowContribution(effectiveRow, ref, per100).finalGrams
+    }
+
+    if (row.id) perRow[row.id] = finalGrams
+    total += finalGrams
+  }
+  return { perRow, total: Math.round(total) }
+}
+
+/**
  * Оценить финальный вес блюда по составу (для подсказки «≈ X г» в форме).
  */
 export function expectedDishYield(
   composition: CompositionRow[],
   ingredientRefs: IngredientRef[]
 ): number {
-  let total = 0
-  for (const row of composition) {
-    const ref = ingredientRefs.find(r => r.id === row.ingredientId)
-    if (!ref || !row.amount) continue
-    const per100 = resolveIngredientPer100(ref, ingredientRefs)
-    total += resolveCompositionRowContribution(row, ref, per100).finalGrams
-  }
-  return Math.round(total)
+  return resolveCompositionWeights(composition, ingredientRefs).total
 }
 
 /**

@@ -89,7 +89,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/item/new',
     target: `[data-tour="card-${TOUR_REF.pasta}"]`,
     title: 'Добавьте воду',
-    body: 'Появилась подсказка «+ вода» — тапните её. Вода частично выкипает, Plate учтёт это. Укажите ~1000 г.',
+    body: 'Появилась подсказка «+ вода» — тапните её. Паста впитывает воду при варке, Plate учтёт это в весе блюда. Оставьте ~150 г.',
     placement: 'top',
     advanceOn: { event: 'companion-added', match: p => isPayload(p) && p.parentRefId === TOUR_REF.pasta && p.kind === 'water' },
   },

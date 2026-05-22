@@ -5,7 +5,8 @@ import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/f
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
 import { MAX_SIZES, type ItemFormState, type IngredientItem } from './useItemFormState'
-import { resolveCompositionRowContribution, resolveIngredientPer100 } from '@/lib/utils'
+import { resolveCompositionRowContribution, resolveCompositionWeights, resolveIngredientPer100 } from '@/lib/utils'
+import type { CompositionRow } from '@/types'
 import { asCategory } from '@/lib/cooking-coefficients'
 import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
 import { tourBus } from '@/lib/tour/bus'
@@ -20,6 +21,26 @@ interface RowContribution {
   protein: number
   fat: number
   carbs: number
+}
+
+// Состав конкретного размера в виде CompositionRow[] — для расчёта веса с учётом
+// связей родитель↔компаньон (вода/масло) в resolveCompositionWeights.
+function sizeCompositionRows(s: ItemFormState, sizeId: string): CompositionRow[] {
+  return s.ingredients.flatMap(ing => {
+    const amount = s.amounts.find(a => a.ingredientId === ing.id && a.sizeId === sizeId)?.amount ?? 0
+    if (!amount) return []
+    return [{
+      id: ing.id,
+      ingredientId: ing.ingredientRefId,
+      amount,
+      unit: ing.unit,
+      processing: ing.processing,
+      yieldOverride: ing.yieldOverride,
+      parentRowId: ing.parentIngredientId,
+      companionKind: ing.companionKind,
+      companionRatio: ing.companionRatio,
+    }]
+  })
 }
 
 function rowContribution(s: ItemFormState, ingredient: IngredientItem, sizeId: string): RowContribution {
@@ -39,9 +60,11 @@ function rowContribution(s: ItemFormState, ingredient: IngredientItem, sizeId: s
     per100
   )
   const brutto = (ingredient.unit === 'шт' && ref.weightPerUnit) ? amount * ref.weightPerUnit : amount
+  // finalGrams берём из единого расчёта (учитывает впитывание воды и правило «крупа + вода»).
+  const weights = resolveCompositionWeights(sizeCompositionRows(s, sizeId), s.ingredientRefs)
   return {
     brutto,
-    finalGrams: c.finalGrams,
+    finalGrams: weights.perRow[ingredient.id] ?? c.finalGrams,
     calories: c.calories,
     protein: c.protein,
     fat: c.fat,

@@ -47,7 +47,10 @@ export function suggestCompanions(
   switch (processing) {
     case 'boil':
       if (sourceCategory === 'grain') {
-        return [{ kind: 'water', label: 'Добавить воду', ratio: 2.0 }]
+        // ~1.5× сухого веса впитывается при варке (паста/крупа). Вся эта вода идёт в блюдо
+        // (absorption 1.0), а коэффициент выхода крупы при этом сбрасывается до 1.0 в
+        // resolveCompositionWeights — иначе вода считается дважды.
+        return [{ kind: 'water', label: 'Добавить воду', ratio: 1.5 }]
       }
       if (sourceCategory === 'vegetable' || sourceCategory === 'meat' || sourceCategory === 'poultry' || sourceCategory === 'fish') {
         return [{ kind: 'water', label: 'Добавить воду', ratio: 1.0 }]

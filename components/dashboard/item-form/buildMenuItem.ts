@@ -1,4 +1,5 @@
 import { MenuItem, SizeOption, ModifierGroup, VariantGroup, IngredientRef } from '@/types'
+import { resolveCompositionWeights } from '@/lib/utils'
 import type { AddonGroup, AmountCell, IngredientItem, Size, VariantOption as FormVariantGroup } from './useItemFormState'
 
 /** Снимок состояния формы для сборки MenuItem. */
@@ -111,11 +112,8 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
     })
 
     const nutri = s.calculateNutriForSize(size.id)
-    const totalWeight = composition.reduce((sum, comp) => {
-      const ref = s.ingredientRefs.find(r => r.id === comp.ingredientId)
-      const grams = comp.unit === 'шт' && ref?.weightPerUnit ? comp.amount * ref.weightPerUnit : comp.amount
-      return sum + grams
-    }, 0)
+    // Вес готового блюда: с учётом обработки и впитывания компаньонов (не сырое брутто).
+    const totalWeight = resolveCompositionWeights(composition, s.ingredientRefs).total
 
     return {
       id: size.id,

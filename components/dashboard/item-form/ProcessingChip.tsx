@@ -97,7 +97,7 @@ export function ProcessingPanel({
               key={p}
               type="button"
               onClick={() => onChangeProcessing(p)}
-              data-tour={refId && p === 'boil' ? `boil-${refId}` : undefined}
+              data-tour={refId && (p === 'boil' || p === 'fry') ? `${p}-${refId}` : undefined}
               className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all active:scale-95"
               style={isActive
                 ? {

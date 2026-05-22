@@ -184,14 +184,15 @@
   z-index: 9995 !important;
 }
 
-/* Тур — пульсирующее лавандовое свечение на кнопке */
+/* Тур — дышащее лавандовое свечение под кнопкой */
 @keyframes tour-pulse {
-  0%, 100% { box-shadow: 0 0 0 0px rgba(139, 92, 246, 0.7); }
-  50%       { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(139, 92, 246, 0.25); }
+  27%       { box-shadow: 0 0 14px 6px rgba(139, 92, 246, 0.55); }
+  73%       { box-shadow: 0 0 14px 6px rgba(139, 92, 246, 0.55); }
 }
 
 .tour-target {
-  animation: tour-pulse 2s ease-out infinite !important;
+  animation: tour-pulse 3s ease-in-out infinite !important;
 }
 
 @media (min-width: 640px) {

@@ -50,7 +50,6 @@ function useVisualViewport() {
   return vv
 }
 
-const PAD = 8
 const TOOLTIP_W = 300
 
 export default function TourOverlay({
@@ -60,18 +59,21 @@ export default function TourOverlay({
   const [rect, setRect] = useState<Rect | null>(null)
   const vv = useVisualViewport()
 
-  // Непрерывно ищем цель, меряем, вешаем .tour-target для glow-анимации
+  // Найти цель, измерить её, поднять поверх оверлея
   useLayoutEffect(() => {
     let raf = 0
-    let ringEl: HTMLElement | null = null
+    let activeEl: HTMLElement | null = null
 
     const tick = () => {
       const el = visibleEl(revealSelector ?? null) ?? visibleEl(targetSelector)
 
-      if (el !== ringEl) {
-        ringEl?.classList.remove('tour-target')
-        el?.classList.add('tour-target')
-        ringEl = el
+      if (el !== activeEl) {
+        activeEl?.classList.remove('tour-target', 'tour-elevated')
+        if (el) {
+          el.classList.add('tour-target')
+          if (overlayOpacity > 0) el.classList.add('tour-elevated')
+        }
+        activeEl = el
       }
 
       setRect(prev => {
@@ -89,18 +91,14 @@ export default function TourOverlay({
 
     return () => {
       cancelAnimationFrame(raf)
-      ringEl?.classList.remove('tour-target')
+      activeEl?.classList.remove('tour-target', 'tour-elevated')
     }
-  }, [targetSelector, revealSelector])
-
-  const dim = `rgba(20,16,40,${overlayOpacity})`
-  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
-
-  const hole = rect
-    ? { top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
-    : null
+  }, [targetSelector, revealSelector, overlayOpacity])
 
   // Позиция тултипа
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 400
+
   let tipStyle: React.CSSProperties
   if (placement === 'screen-bottom') {
     tipStyle = {
@@ -108,101 +106,108 @@ export default function TourOverlay({
       left: '50%', transform: 'translateX(-50%)',
       width: TOOLTIP_W, maxWidth: '92vw',
     }
-  } else if (!hole) {
+  } else if (!rect) {
     tipStyle = {
       top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
       width: TOOLTIP_W, maxWidth: '90vw',
     }
   } else {
-    const vh = window.innerHeight
-    const vw = window.innerWidth
-    const below = hole.top + hole.height
+    const below = rect.top + rect.height
     const wantAbove = placement === 'top' || (placement !== 'bottom' && below > vh * 0.6)
-    const left = Math.max(12, Math.min(hole.left, vw - TOOLTIP_W - 12))
+    const left = Math.max(12, Math.min(rect.left, vw - TOOLTIP_W - 12))
     tipStyle = wantAbove
-      ? { bottom: vh - hole.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
+      ? { bottom: vh - rect.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
       : { top: below + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
   }
 
-  // Корень привязан к visualViewport — не дрейфит на пинч-зуме
-  const rootStyle: React.CSSProperties = {
-    position: 'fixed', top: 0, left: 0,
-    width: vv.w || '100%', height: vv.h || '100%',
+  const vpStyle = {
     transform: `translate(${vv.x}px, ${vv.y}px)`,
-    zIndex: 9990, pointerEvents: 'none',
+    width: vv.w || '100%',
+    height: vv.h || '100%',
   }
 
-  const panelStyle: React.CSSProperties = { position: 'absolute', background: dim, pointerEvents: 'auto' }
+  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
 
   return (
-    <div style={rootStyle}>
-      {/* 4 панели вокруг дырки — цель не накрыта, остальное заблокировано */}
-      {hole ? (
-        <>
-          <div style={{ ...panelStyle, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} onMouseDown={stop} onClick={stop} />
-        </>
-      ) : (
-        <div style={{ ...panelStyle, position: 'absolute', inset: 0 }} onMouseDown={stop} onClick={stop} />
+    <>
+      {/* Один тёмный слой на весь экран */}
+      {overlayOpacity > 0 && (
+        <div
+          onMouseDown={stop}
+          onClick={stop}
+          style={{
+            position: 'fixed', inset: 0,
+            background: `rgba(20,16,40,${overlayOpacity})`,
+            zIndex: 9990,
+            ...vpStyle,
+          }}
+        />
       )}
 
-      {/* Тултип */}
+      {/* Тултип — выше оверлея И выше поднятой цели */}
       <div
-        onClick={e => e.stopPropagation()}
         style={{
-          position: 'absolute', ...tipStyle,
-          background: '#FEFEF2',
-          border: '0.5px solid rgba(139,92,246,0.22)',
-          borderRadius: 16,
-          boxShadow: '0 8px 32px -6px rgba(44,41,80,0.3)',
-          padding: 16,
-          pointerEvents: 'auto',
+          position: 'fixed', top: 0, left: 0,
+          ...vpStyle,
+          zIndex: 9996,
+          pointerEvents: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#8B5CF6' }}>
-            Шаг {stepIndex + 1} из {totalSteps}
-          </span>
-          <button
-            type="button"
-            onClick={onSkip}
-            style={{
-              fontSize: 11, color: 'var(--color-text-muted)',
-              background: 'rgba(139,92,246,0.06)',
-              border: 'none', borderRadius: 8, padding: '4px 8px', cursor: 'pointer',
-            }}
-          >
-            Пропустить
-          </button>
-        </div>
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'absolute', ...tipStyle,
+            background: '#FEFEF2',
+            border: '0.5px solid rgba(139,92,246,0.22)',
+            borderRadius: 16,
+            boxShadow: '0 8px 32px -6px rgba(44,41,80,0.3)',
+            padding: 16,
+            pointerEvents: 'auto',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#8B5CF6' }}>
+              Шаг {stepIndex + 1} из {totalSteps}
+            </span>
+            <button
+              type="button"
+              onClick={onSkip}
+              style={{
+                fontSize: 11, color: 'var(--color-text-muted)',
+                background: 'rgba(139,92,246,0.06)',
+                border: 'none', borderRadius: 8, padding: '4px 8px', cursor: 'pointer',
+              }}
+            >
+              Пропустить
+            </button>
+          </div>
 
-        {title && (
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
-            {title}
+          {title && (
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
+              {title}
+            </p>
+          )}
+
+          <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)', margin: 0 }}>
+            {body}
           </p>
-        )}
 
-        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)', margin: 0 }}>
-          {body}
-        </p>
-
-        {showNext && (
-          <button
-            type="button"
-            onClick={onNext}
-            style={{
-              marginTop: 14, width: '100%', padding: '9px 16px',
-              background: '#8B5CF6', color: '#fff', border: 'none',
-              borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
-            }}
-          >
-            Дальше
-          </button>
-        )}
+          {showNext && (
+            <button
+              type="button"
+              onClick={onNext}
+              style={{
+                marginTop: 14, width: '100%', padding: '9px 16px',
+                background: '#8B5CF6', color: '#fff', border: 'none',
+                borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
+              }}
+            >
+              Дальше
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

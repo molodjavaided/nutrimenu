@@ -189,6 +189,12 @@
   border-radius: inherit !important;
 }
 
+/* Поднять цель поверх тёмного оверлея (z-index 9990) */
+.tour-elevated {
+  position: relative !important;
+  z-index: 9995 !important;
+}
+
 @media (min-width: 640px) {
   .dish-sheet {
     height: auto !important;

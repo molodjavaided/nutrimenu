@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { FormField, FormInput, FormSelect, NutriFields } from '@/components/ui/form-fields'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { GlassCard, GlassButton, GlassInput, NutriPill } from '@/components/ui-kit'
@@ -384,6 +384,7 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
   const amount = s.amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)?.amount || 0
   const contrib = rowContribution(s, ingredient, sizeId)
   const showYield = s.mode === 'ttk' && amount > 0 && Math.abs(contrib.brutto - contrib.finalGrams) >= 0.5
+  const emitAmount = useAmountTourEmit()
   return (
     <div className="flex flex-col items-end gap-0.5">
       <div className="flex items-center gap-1">
@@ -397,7 +398,7 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
           onChange={e => {
             const v = isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value)
             s.updateAmount(ingredient.id, sizeId, v)
-            tourBus.emit('amount-set', { refId: ingredient.ingredientRefId, amount: v })
+            emitAmount(ingredient.ingredientRefId, v)
           }}
           placeholder={isCount ? 'шт' : '0'}
           className="w-20 text-center"
@@ -415,8 +416,19 @@ function BruttoCell({ s, ingredient, sizeId }: { s: ItemFormState; ingredient: I
 
 // ─── Desktop glass row-card ─────────────────────────────────────────────────
 
+function useAmountTourEmit() {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  return useCallback((refId: string, amount: number) => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      tourBus.emit('amount-set', { refId, amount })
+    }, 800)
+  }, [])
+}
+
 function DesktopIngredientCard({ s, ingredient }: { s: ItemFormState; ingredient: IngredientItem }) {
   const [procExpanded, setProcExpanded] = useState(false)
+  const emitAmount = useAmountTourEmit()
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
   const isTTK = s.mode === 'ttk'
   const isChild = !!ingredient.parentIngredientId
@@ -611,6 +623,7 @@ function MobileIngredientRow({
   isFirstSize: boolean
 }) {
   const [procExpanded, setProcExpanded] = useState(false)
+  const emitAmount = useAmountTourEmit()
   const ref = s.ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
   const isTTK = s.mode === 'ttk'
   const contrib = rowContribution(s, ingredient, sizeId)
@@ -675,7 +688,7 @@ function MobileIngredientRow({
             onChange={e => {
               const v = isCount ? parseInt(e.target.value, 10) || 0 : Number(e.target.value)
               s.updateAmount(ingredient.id, sizeId, v)
-              tourBus.emit('amount-set', { refId: ingredient.ingredientRefId, amount: v })
+              emitAmount(ingredient.ingredientRefId, v)
             }}
             placeholder={isCount ? 'шт' : '0'}
             className="w-20 text-center"

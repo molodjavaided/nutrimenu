@@ -23,12 +23,14 @@ export function ProcessingAnchor({
   ingredientRef,
   expanded,
   onToggle,
+  dataTour,
 }: {
   processing: ProcessingType | undefined
   yieldOverride: number | undefined
   ingredientRef?: IngredientRef
   expanded: boolean
   onToggle: () => void
+  dataTour?: string
 }) {
   const { effective, currentCoef } = computeCoefs(processing, yieldOverride, ingredientRef)
   const label = effective === 'raw'
@@ -40,6 +42,7 @@ export function ProcessingAnchor({
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
+      data-tour={dataTour}
       className="text-xs px-3 py-1.5 rounded-lg transition-all active:scale-[0.97] whitespace-nowrap self-start"
       style={
         effective === 'raw'

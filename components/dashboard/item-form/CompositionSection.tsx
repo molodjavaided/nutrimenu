@@ -443,6 +443,7 @@ function DesktopIngredientCard({ s, ingredient }: { s: ItemFormState; ingredient
                 ingredientRef={ref}
                 expanded={procExpanded}
                 onToggle={() => setProcExpanded(o => !o)}
+                dataTour={`processing-${ingredient.ingredientRefId}`}
               />
             )}
             {!isChild && (

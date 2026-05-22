@@ -77,7 +77,7 @@ export const CARBONARA_STEPS: TourStep[] = [
   {
     id: 'pasta-processing',
     page: '/dashboard/item/new',
-    target: `[data-tour="card-${TOUR_REF.pasta}"]`,
+    target: `[data-tour="processing-${TOUR_REF.pasta}"]`,
     title: 'Обработка: варка',
     body: 'Тапните чип «+ обработка» под пастой и выберите «Варка» — паста впитает воду, выход вырастет.',
     placement: 'top',

@@ -189,6 +189,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
         {/* Search */}
         <div className="px-4 py-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}>
           <div className="flex items-center gap-2 px-3 h-9 rounded-xl"
+            data-tour="picker-search"
             style={{ background: 'rgba(255,255,255,0.6)', border: '0.5px solid rgba(255,255,255,0.5)' }}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="7" cy="7" r="4.5" stroke="#9D99B8" strokeWidth="1.3"/>
@@ -196,7 +197,6 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
             </svg>
             <input
               value={search}
-              data-tour="picker-search"
               onChange={e => setSearch(e.target.value)}
               placeholder={isSearching ? 'Поиск по всем библиотекам...' : 'Поиск...'}
               className="flex-1 bg-transparent text-sm outline-none"

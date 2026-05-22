@@ -29,7 +29,7 @@ export interface IngredientItem {
   locked?: boolean         // true = гость не может убрать ингредиент (тесто, основа)
   // Вложенные компаньоны
   parentIngredientId?: string         // form-state id родителя (если эта строка — дочерний companion)
-  companionKind?: 'oil' | 'water'
+  companionKind?: 'oil' | 'water' | 'ice'
   companionRatio?: number              // ratio × parent.brutto на момент добавления
   manualChildAmount?: boolean          // true = пользователь редактировал ребёнка вручную, авто-пересчёт выключен (v2)
 }
@@ -296,7 +296,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
 
       if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water'; companionRatio?: number }> }>
+        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water' | 'ice'; companionRatio?: number }> }>
         const compositionData = sizesData[0].composition || []
 
         const ingredientIdMap = new Map<string, string>()
@@ -368,7 +368,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
         }
         setManualNutri(loadedManual)
       } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water'; companionRatio?: number }>
+        const compositionData = found.item.composition as Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water' | 'ice'; companionRatio?: number }>
         const ingredientIdMap = new Map<string, string>()
         const rowIdMap = new Map<string, string>()
         for (const comp of compositionData) {
@@ -725,7 +725,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
     })
   }, [ingredients])
 
-  const addCompanionIngredient = useCallback((sourceIngredientId: string, refId: string, ratio: number, kind?: 'oil' | 'water') => {
+  const addCompanionIngredient = useCallback((sourceIngredientId: string, refId: string, ratio: number, kind?: 'oil' | 'water' | 'ice') => {
     const ref = ingredientRefs.find(r => r.id === refId)
     if (!ref) return
     // Запрет дубликата: тот же companion ref у того же родителя

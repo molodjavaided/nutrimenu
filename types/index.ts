@@ -83,7 +83,7 @@ export interface ModifierGroup {
 }
 
 // Способ тепловой/холодной обработки ингредиента в блюде
-export type ProcessingType = 'raw' | 'boil' | 'fry' | 'stew' | 'bake' | 'deep_fry' | 'steam'
+export type ProcessingType = 'raw' | 'boil' | 'fry' | 'stew' | 'bake' | 'deep_fry' | 'steam' | 'steam_foam' | 'shake_ice' | 'stir_ice'
 
 // Коэффициенты выхода (готовый вес / сырой нетто) по способам обработки
 export interface YieldCoefficients {
@@ -93,6 +93,9 @@ export interface YieldCoefficients {
   bake?: number       // запекание
   deep_fry?: number   // фритюр
   steam?: number      // на пару
+  steam_foam?: number // вспенивание паром (молоко/сливки → +10% веса от конденсата)
+  shake_ice?: number  // шейк со льдом (+25% от таяния льда)
+  stir_ice?: number   // стир со льдом (+15% от таяния льда)
 }
 
 // Строка состава блюда
@@ -109,7 +112,7 @@ export interface CompositionRow {
   removable?: boolean                // false = гость не может убрать (тесто, основа). По умолчанию (undefined) — можно убрать.
   // Вложенные компаньоны (масло/вода под родительским ингредиентом)
   parentRowId?: string               // id родительской строки в этом блюде — если строка является дочерним companion'ом
-  companionKind?: 'oil' | 'water'    // тип компаньона — для расчёта впитывания/выкипания
+  companionKind?: 'oil' | 'water' | 'ice'  // тип компаньона — для расчёта впитывания/выкипания
   companionRatio?: number            // исходный brutto-коэффициент (ratio × parent.brutto при добавлении)
 }
 

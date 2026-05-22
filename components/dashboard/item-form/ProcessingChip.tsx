@@ -1,9 +1,7 @@
 'use client'
 
-import { PROCESSING_LABELS, asCategory, getYieldCoef } from '@/lib/cooking-coefficients'
+import { PROCESSING_LABELS, PROCESSING_GROUPS, asCategory, getYieldCoef } from '@/lib/cooking-coefficients'
 import type { IngredientRef, ProcessingType } from '@/types'
-
-const PROCESSING_OPTIONS: ProcessingType[] = ['raw', 'boil', 'fry', 'stew', 'bake', 'steam', 'deep_fry']
 
 function computeCoefs(processing: ProcessingType | undefined, yieldOverride: number | undefined, ingredientRef?: IngredientRef) {
   const effective = processing ?? 'raw'
@@ -88,37 +86,49 @@ export function ProcessingPanel({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Лента вариантов — горизонтальный скролл */}
-      <div className="flex gap-1.5 overflow-x-auto -mx-1 px-1 py-1" style={{ scrollbarWidth: 'thin' }}>
-        {PROCESSING_OPTIONS.map(p => {
-          const isActive = p === effective
-          return (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onChangeProcessing(p)}
-              data-tour={refId && (p === 'boil' || p === 'fry') ? `${p}-${refId}` : undefined}
-              className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all active:scale-95"
-              style={isActive
-                ? {
-                  background: '#B0A6DF',
-                  color: 'var(--color-text-primary)',
-                  fontWeight: 500,
-                  border: '0.5px solid rgba(139,92,246,0.6)',
-                  boxShadow: '0 2px 6px rgba(176,166,223,0.30)',
-                }
-                : {
-                  background: 'rgba(176,166,223,0.18)',
-                  color: 'var(--color-text-secondary)',
-                  fontWeight: 400,
-                  border: '0.5px solid rgba(139,92,246,0.12)',
-                }
-              }
+      {/* Лента вариантов с группировкой — горизонтальный скролл */}
+      <div className="flex flex-col gap-1.5">
+        {PROCESSING_GROUPS.map(group => (
+          <div key={group.label} className="flex items-center gap-1.5">
+            <span
+              className="text-[10px] shrink-0 w-10 text-right"
+              style={{ color: 'var(--color-text-muted)' }}
             >
-              {PROCESSING_LABELS[p]}
-            </button>
-          )
-        })}
+              {group.label}
+            </span>
+            <div className="flex gap-1 overflow-x-auto py-0.5" style={{ scrollbarWidth: 'none' }}>
+              {group.options.map(p => {
+                const isActive = p === effective
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => onChangeProcessing(p)}
+                    data-tour={refId && (p === 'boil' || p === 'fry') ? `${p}-${refId}` : undefined}
+                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all active:scale-95"
+                    style={isActive
+                      ? {
+                        background: '#B0A6DF',
+                        color: 'var(--color-text-primary)',
+                        fontWeight: 500,
+                        border: '0.5px solid rgba(139,92,246,0.6)',
+                        boxShadow: '0 2px 6px rgba(176,166,223,0.30)',
+                      }
+                      : {
+                        background: 'rgba(176,166,223,0.18)',
+                        color: 'var(--color-text-secondary)',
+                        fontWeight: 400,
+                        border: '0.5px solid rgba(139,92,246,0.12)',
+                      }
+                    }
+                  >
+                    {PROCESSING_LABELS[p]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Коэффициент — всегда доступен для правки, цвет = ГОСТ / вручную */}

@@ -5,15 +5,15 @@
 import type { IngredientCategory, ProcessingType, YieldCoefficients } from '@/types'
 
 export const DEFAULT_YIELD_BY_CATEGORY: Record<IngredientCategory, YieldCoefficients> = {
-  grain:     { boil: 2.5, steam: 2.2 },                                // крупы/паста впитывают воду
-  meat:      { boil: 0.60, fry: 0.65, stew: 0.65, bake: 0.70 },         // ужарка
+  grain:     { boil: 2.5, steam: 2.2 },
+  meat:      { boil: 0.60, fry: 0.65, stew: 0.65, bake: 0.70 },
   poultry:   { boil: 0.70, fry: 0.70, stew: 0.70, bake: 0.75 },
   fish:      { boil: 0.80, fry: 0.80, bake: 0.85, steam: 0.90 },
   vegetable: { boil: 0.90, fry: 0.70, stew: 0.80, bake: 0.85, steam: 0.95 },
   fruit:     { bake: 0.85, stew: 0.85 },
-  dairy:     {},
-  oil:       { fry: 0.15, deep_fry: 0.10, bake: 0.30 },                 // «ловушка для масла»: впитывается ~15% при жарке
-  liquid:    { boil: 0.50 },                                            // выкипает наполовину при варке (упрощение)
+  dairy:     { steam_foam: 1.10 },   // молоко/сливки при вспенивании паром набирают ~10% конденсата
+  oil:       { fry: 0.15, deep_fry: 0.10, bake: 0.30 },
+  liquid:    { boil: 0.50, shake_ice: 1.25, stir_ice: 1.15 }, // алкоголь/соки набирают воду от таяния льда
   other:     {},
 }
 
@@ -32,14 +32,24 @@ export const DEFAULT_COLD_LOSS_BY_CATEGORY: Record<IngredientCategory, number> =
 }
 
 export const PROCESSING_LABELS: Record<ProcessingType, string> = {
-  raw:      'Сырой',
-  boil:     'Варка',
-  fry:      'Жарка',
-  stew:     'Тушение',
-  bake:     'Запекание',
-  deep_fry: 'Фритюр',
-  steam:    'На пару',
+  raw:        'Сырой',
+  boil:       'Варка',
+  fry:        'Жарка',
+  stew:       'Тушение',
+  bake:       'Запекание',
+  deep_fry:   'Фритюр',
+  steam:      'На пару',
+  steam_foam: 'Пар/Вспенивание',
+  shake_ice:  'Шейк',
+  stir_ice:   'Стир',
 }
+
+// Группировка обработок для UI
+export const PROCESSING_GROUPS: { label: string; options: ProcessingType[] }[] = [
+  { label: 'Кухня',  options: ['raw', 'boil', 'fry', 'stew', 'bake', 'steam', 'deep_fry'] },
+  { label: 'Кофе',   options: ['steam_foam'] },
+  { label: 'Бар',    options: ['shake_ice', 'stir_ice'] },
+]
 
 export const CATEGORY_LABELS: Record<IngredientCategory, string> = {
   grain:     'Крупы / Паста',

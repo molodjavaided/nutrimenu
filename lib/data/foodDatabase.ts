@@ -365,6 +365,7 @@ export const initialFoodDatabase: FoodCategory[] = [
       // Кофейная база
       { id: '9_60', name: 'Кофе молотый (сухой)',    calories: 223, proteins: 11.0,fats: 15.0,carbs: 29.0, unit: '100g' },
       { id: '9_61', name: 'Матча (порошок)',          calories: 324, proteins: 30.0,fats: 5.0, carbs: 38.0, unit: '100g' },
+      { id: '9_70', name: 'Лёд пищевой',              calories: 0,   proteins: 0.0, fats: 0.0, carbs: 0.0,  unit: '100g' },
     ],
   },
   {

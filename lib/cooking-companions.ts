@@ -5,7 +5,7 @@
 import type { IngredientCategory, IngredientRef, ProcessingType } from '@/types'
 import { asCategory } from './cooking-coefficients'
 
-export type CompanionKind = 'water' | 'oil'
+export type CompanionKind = 'water' | 'oil' | 'ice'
 
 export interface CompanionSuggestion {
   kind: CompanionKind
@@ -21,6 +21,8 @@ export interface CompanionSuggestion {
 export function findCompanionRef(refs: IngredientRef[], kind: CompanionKind): IngredientRef | undefined {
   const preferredNames = kind === 'water'
     ? ['вода', 'water']
+    : kind === 'ice'
+    ? ['лёд', 'лед', 'ice', 'лёд пищевой']
     : ['масло подсолнечное', 'подсолнечное масло', 'растительное масло', 'масло растительное', 'sunflower oil']
 
   const lowered = (s: string) => s.trim().toLowerCase()
@@ -32,7 +34,7 @@ export function findCompanionRef(refs: IngredientRef[], kind: CompanionKind): In
     const hit = refs.find(r => lowered(r.name).includes(name))
     if (hit) return hit
   }
-  const wantCategory: IngredientCategory = kind === 'water' ? 'liquid' : 'oil'
+  const wantCategory: IngredientCategory = kind === 'water' || kind === 'ice' ? 'liquid' : 'oil'
   return refs.find(r => asCategory(r.category) === wantCategory)
 }
 
@@ -76,6 +78,10 @@ export function suggestCompanions(
         ]
       }
       return []
+    case 'shake_ice':
+      return [{ kind: 'ice', label: 'Добавить лёд', ratio: 0.30 }]
+    case 'stir_ice':
+      return [{ kind: 'ice', label: 'Добавить лёд', ratio: 0.20 }]
     default:
       return []
   }
@@ -101,8 +107,9 @@ export function companionAbsorptionRatio(
       default:          return 0.50
     }
   }
+  if (kind === 'ice') return 0.80  // ~80% льда тает и попадает в напиток
   // water
-  if (parentProcessing === 'boil' && parentCategory === 'grain') return 1.0  // крупа впитывает всю воду
+  if (parentProcessing === 'boil' && parentCategory === 'grain') return 1.0
   if (parentProcessing === 'stew') return 0.50
-  return 0.05  // boil veg/meat — почти вся вода сливается
+  return 0.05
 }

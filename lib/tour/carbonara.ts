@@ -18,213 +18,164 @@ export interface TourStep {
   advanceOn?: { event: TourEventName; match?: (p: unknown) => boolean }
 }
 
-// Ингредиенты карбонары в глобальном каталоге (foodDatabase, префикс fd-).
 export const TOUR_REF = {
-  pasta: 'fd-7_15', // Паста (тв. сорта)
-  bacon: 'fd-4_10', // Бекон сырокопчёный (грудинка)
-  yolk: 'fd-6_5',   // Яичный желток
+  egg:  'fd-6_2',  // Яйцо куриное С1
+  milk: 'fd-6_12', // Молоко 3.2%
 } as const
 
 const isPayload = (p: unknown): p is { refId?: string; parentRefId?: string; processing?: string; kind?: string; amount?: number } =>
   typeof p === 'object' && p !== null
 
 export const CARBONARA_STEPS: TourStep[] = [
+  // ── Шаг 1: добавить блюдо ──────────────────────────────────────────────────
   {
     id: 'add-dish',
     page: '/dashboard/menu',
     target: '[data-tour="add-dish"]',
     title: 'Добавим первое блюдо',
-    body: 'Соберём классическую карбонару — за пару кликов Plate сам посчитает КБЖУ. Нажмите «Добавить блюдо».',
+    body: 'Соберём классический омлет — Plate сам посчитает КБЖУ. Нажмите «Добавить блюдо».',
     placement: 'bottom',
-    // переход — по навигации на /dashboard/item/new
   },
+
+  // ── Шаг 2: выбрать режим ТТК ───────────────────────────────────────────────
   {
     id: 'mode-ttk',
     page: '/dashboard/item/new',
     target: '[data-tour="mode-ttk"]',
     title: 'Режим «По сложному проценту»',
-    body: 'Соберём блюдо из ингредиентов с обработкой — система учтёт выход и впитывание. Название и категорию я уже подставил. Выберите этот режим.',
+    body: 'Соберём блюдо из ингредиентов с обработкой — система учтёт выход. Выберите этот режим.',
     placement: 'bottom',
     advanceOn: { event: 'mode-set', match: p => p === 'ttk' },
   },
+
+  // ── Шаг 3: открыть пикер для яйца ─────────────────────────────────────────
   {
-    id: 'open-picker-pasta',
+    id: 'open-picker-egg',
     page: '/dashboard/item/new',
     target: '[data-tour="pick-ingredient"]',
-    title: 'Состав блюда',
-    body: 'Ингредиенты берём из справочника. Нажмите «Выбрать из справочника».',
+    title: 'Добавим яйца',
+    body: 'Нажмите «Выбрать из справочника».',
     placement: 'top',
     advanceOn: { event: 'picker-opened' },
   },
+
+  // ── Шаг 4: поиск яйца ──────────────────────────────────────────────────────
   {
-    id: 'search-pasta',
+    id: 'search-egg',
     page: '/dashboard/item/new',
     target: '[data-tour="picker-search"]',
-    title: 'Найдите пасту',
-    body: 'Введите «паста» в строку поиска, затем нажмите «Дальше».',
+    title: 'Найдите яйцо',
+    body: 'Введите «яйцо» в поиск, затем нажмите «Дальше».',
     placement: 'screen-bottom',
     showNext: true,
   },
+
+  // ── Шаг 5: выбрать яйцо из результатов ────────────────────────────────────
   {
-    id: 'pick-pasta',
+    id: 'pick-egg',
     page: '/dashboard/item/new',
-    target: `[data-tour="picker-result-${TOUR_REF.pasta}"]`,
-    title: 'Выберите пасту',
-    body: 'Нажмите на «Паста (тв. сорта)» в списке.',
+    target: `[data-tour="picker-result-${TOUR_REF.egg}"]`,
+    title: 'Выберите яйцо С1',
+    body: 'Нажмите на «Яйцо куриное С1» в списке.',
     placement: 'screen-bottom',
-    advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.pasta },
+    advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.egg },
   },
+
+  // ── Шаг 6: вес яйца ────────────────────────────────────────────────────────
   {
-    id: 'pasta-processing-open',
+    id: 'egg-amount',
     page: '/dashboard/item/new',
-    target: `[data-tour="processing-${TOUR_REF.pasta}"]`,
-    title: 'Обработка: варка',
-    body: 'Нажмите «+ обработка» — откроются варианты обработки.',
+    target: `[data-tour="amount-${TOUR_REF.egg}"]`,
+    title: 'Сколько яиц',
+    body: 'Два яйца — это ~120 г.',
     placement: 'top',
-    advanceOn: { event: 'processing-panel-opened', match: p => p === TOUR_REF.pasta },
+    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && (p.amount ?? 0) > 0 },
   },
+
+  // ── Шаг 7: открыть обработку яйца ─────────────────────────────────────────
   {
-    id: 'pasta-processing-boil',
+    id: 'egg-processing-open',
     page: '/dashboard/item/new',
-    target: `[data-tour="boil-${TOUR_REF.pasta}"]`,
-    title: 'Выберите «Варка»',
-    body: 'Паста впитает воду при варке — Plate учтёт это в весе блюда.',
-    placement: 'top',
-    advanceOn: { event: 'processing-set', match: p => isPayload(p) && p.refId === TOUR_REF.pasta && p.processing === 'boil' },
-  },
-  {
-    id: 'pasta-amount',
-    page: '/dashboard/item/new',
-    target: `[data-tour="amount-${TOUR_REF.pasta}"]`,
-    title: 'Сколько пасты',
-    body: 'Укажите вес сырой пасты на стандартную порцию — например, 100 г.',
-    placement: 'top',
-    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.pasta && (p.amount ?? 0) > 0 },
-  },
-  {
-    id: 'pasta-water',
-    page: '/dashboard/item/new',
-    target: `[data-tour="companion-${TOUR_REF.pasta}-water"]`,
-    title: 'Добавьте воду',
-    body: 'Появилась подсказка «+ вода» — тапните её. Паста впитывает воду при варке, Plate учтёт это в весе блюда. Оставьте ~150 г.',
-    placement: 'top',
-    advanceOn: { event: 'companion-added', match: p => isPayload(p) && p.parentRefId === TOUR_REF.pasta && p.kind === 'water' },
-  },
-  {
-    id: 'open-picker-bacon',
-    page: '/dashboard/item/new',
-    target: '[data-tour="add-ingredient"]',
-    title: 'Добавим грудинку',
-    body: 'Снова откройте справочник кнопкой «Добавить ингредиент».',
-    placement: 'top',
-    advanceOn: { event: 'picker-opened' },
-  },
-  {
-    id: 'search-bacon',
-    page: '/dashboard/item/new',
-    target: '[data-tour="picker-search"]',
-    title: 'Найдите грудинку',
-    body: 'Введите «бекон» в строку поиска, затем нажмите «Дальше».',
-    placement: 'screen-bottom',
-    showNext: true,
-  },
-  {
-    id: 'pick-bacon',
-    page: '/dashboard/item/new',
-    target: `[data-tour="picker-result-${TOUR_REF.bacon}"]`,
-    title: 'Выберите грудинку',
-    body: 'Нажмите на «Бекон сырокопчёный» в списке.',
-    placement: 'screen-bottom',
-    advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.bacon },
-  },
-  {
-    id: 'bacon-amount',
-    page: '/dashboard/item/new',
-    target: `[data-tour="amount-${TOUR_REF.bacon}"]`,
-    title: 'Сколько грудинки',
-    body: 'Для карбонары достаточно ~30 г на порцию.',
-    placement: 'top',
-    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.bacon && (p.amount ?? 0) > 0 },
-  },
-  {
-    id: 'bacon-processing-open',
-    page: '/dashboard/item/new',
-    target: `[data-tour="processing-${TOUR_REF.bacon}"]`,
+    target: `[data-tour="processing-${TOUR_REF.egg}"]`,
     title: 'Обработка: жарка',
-    body: 'Нажмите «+ обработка» под грудинкой.',
+    body: 'Нажмите «+ обработка» под яйцом.',
     placement: 'top',
-    advanceOn: { event: 'processing-panel-opened', match: p => p === TOUR_REF.bacon },
+    advanceOn: { event: 'processing-panel-opened', match: p => p === TOUR_REF.egg },
   },
+
+  // ── Шаг 8: выбрать жарку ───────────────────────────────────────────────────
   {
-    id: 'bacon-processing-fry',
+    id: 'egg-processing-fry',
     page: '/dashboard/item/new',
-    target: `[data-tour="fry-${TOUR_REF.bacon}"]`,
+    target: `[data-tour="fry-${TOUR_REF.egg}"]`,
     title: 'Выберите «Жарка»',
-    body: 'Бекон ужаривается — Plate уменьшит итоговый вес.',
+    body: 'Яйца жарятся — Plate учтёт потерю веса.',
     placement: 'top',
-    advanceOn: { event: 'processing-set', match: p => isPayload(p) && p.refId === TOUR_REF.bacon && p.processing === 'fry' },
+    advanceOn: { event: 'processing-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && p.processing === 'fry' },
   },
+
+  // ── Шаг 9: открыть пикер для молока ───────────────────────────────────────
   {
-    id: 'open-picker-yolk',
+    id: 'open-picker-milk',
     page: '/dashboard/item/new',
     target: '[data-tour="add-ingredient"]',
-    title: 'Последний ингредиент — желток',
+    title: 'Добавим молоко',
     body: 'Откройте справочник ещё раз.',
     placement: 'top',
     advanceOn: { event: 'picker-opened' },
   },
+
+  // ── Шаг 10: поиск молока ───────────────────────────────────────────────────
   {
-    id: 'search-yolk',
+    id: 'search-milk',
     page: '/dashboard/item/new',
     target: '[data-tour="picker-search"]',
-    title: 'Найдите желток',
-    body: 'Введите «желток» в строку поиска, затем нажмите «Дальше».',
+    title: 'Найдите молоко',
+    body: 'Введите «молоко» в поиск, затем нажмите «Дальше».',
     placement: 'screen-bottom',
     showNext: true,
   },
+
+  // ── Шаг 11: выбрать молоко ─────────────────────────────────────────────────
   {
-    id: 'pick-yolk',
+    id: 'pick-milk',
     page: '/dashboard/item/new',
-    target: `[data-tour="picker-result-${TOUR_REF.yolk}"]`,
-    title: 'Выберите желток',
-    body: 'Нажмите на «Яичный желток» в списке.',
+    target: `[data-tour="picker-result-${TOUR_REF.milk}"]`,
+    title: 'Выберите молоко 3.2%',
+    body: 'Нажмите на «Молоко 3.2%» в списке.',
     placement: 'screen-bottom',
-    advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.yolk },
+    advanceOn: { event: 'ingredient-picked', match: p => p === TOUR_REF.milk },
   },
+
+  // ── Шаг 12: вес молока ─────────────────────────────────────────────────────
   {
-    id: 'yolk-amount',
+    id: 'milk-amount',
     page: '/dashboard/item/new',
-    target: `[data-tour="amount-${TOUR_REF.yolk}"]`,
-    title: 'Сколько желтка',
-    body: 'Два желтка — это ~36 г.',
+    target: `[data-tour="amount-${TOUR_REF.milk}"]`,
+    title: 'Сколько молока',
+    body: 'Пара столовых ложек — ~30 г.',
     placement: 'top',
-    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.yolk && (p.amount ?? 0) > 0 },
+    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.milk && (p.amount ?? 0) > 0 },
   },
-  {
-    id: 'preview',
-    page: '/dashboard/item/new',
-    target: '[data-tour="preview"]',
-    soft: true, // превью — модалка поверх формы; не блокируем, чтобы юзер мог её закрыть
-    title: 'Взгляд гостя',
-    body: 'Нажмите «Посмотреть как у гостя» — увидите карточку глазами гостя. Осмотрите и закройте превью, чтобы продолжить.',
-    placement: 'top',
-    advanceOn: { event: 'preview-closed' },
-  },
+
+  // ── Шаг 13: сохранить ──────────────────────────────────────────────────────
   {
     id: 'save',
     page: '/dashboard/item/new',
     target: '[data-tour="save-dish"]',
     title: 'Сохраните блюдо',
-    body: 'Всё готово. Нажмите «Добавить блюдо» — карбонара появится в меню.',
+    body: 'Готово! Нажмите «Добавить блюдо» — омлет появится в меню с готовыми КБЖУ.',
     placement: 'top',
     advanceOn: { event: 'item-saved' },
   },
+
+  // ── Шаг 14: финал ──────────────────────────────────────────────────────────
   {
     id: 'done',
     page: '/dashboard/menu',
     target: null,
-    title: 'Готово! 🎉',
-    body: 'Карбонара в вашем меню. Так же добавляйте любые блюда — Plate посчитает КБЖУ, выход и фуд-кост за вас.',
+    title: 'Омлет в меню! 🎉',
+    body: 'Так же добавляйте любые блюда. Поделитесь меню с гостями через QR-код — кнопка на этой странице.',
     showNext: true,
   },
 ]

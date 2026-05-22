@@ -178,86 +178,15 @@
   border-radius: 0 !important;
 }
 
-/* Тур (driver.js) — брендовая тема Plate для поповера. */
-
-/* Сбрасываем driver.js шрифт на проектный */
-.driver-popover.plate-tour,
-.driver-popover.plate-tour * {
-  font-family: var(--font-sans) !important;
-}
-
-.driver-popover.plate-tour {
-  background: #FEFEF2;
-  color: var(--color-text-secondary);
-  border: 0.5px solid rgba(139, 92, 246, 0.22);
-  border-radius: 16px;
-  box-shadow: 0 8px 24px -6px rgba(44, 41, 80, 0.25);
-  max-width: 320px;
-  padding: 16px;
-}
-
-.driver-popover.plate-tour .driver-popover-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  margin-bottom: 8px;
-}
-
-/* Шаг X из Y — отдельная строка над телом */
-.driver-popover.plate-tour .plate-tour-step {
-  display: block !important;
-  font-size: 11px;
-  font-weight: 500;
-  color: #8B5CF6;
-  margin-bottom: 4px;
-  letter-spacing: 0.01em;
-}
-
-.driver-popover.plate-tour .plate-tour-body {
-  display: block !important;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--color-text-secondary);
-}
-
-.driver-popover.plate-tour .driver-popover-footer {
-  margin-top: 14px;
-}
-
-.driver-popover.plate-tour .driver-popover-next-btn {
-  background: #8B5CF6;
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 8px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  text-shadow: none;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-}
-
-.driver-popover.plate-tour .driver-popover-arrow {
-  color: #FEFEF2;
-}
-
-/* driver.js добавляет overflow:hidden на родителя active-element —
-   сбрасываем, чтобы не менялась геометрия кнопок */
-:not(body):has(> .driver-active-element) {
-  overflow: unset !important;
-}
-
-/* Дышащее свечение — используется TourGlowRing (portal поверх SVG) и picker-reveal */
+/* Тур — подсветка активного элемента (класс вешается через JS) */
 @keyframes tour-breathe {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.75), 0 0 10px rgba(139, 92, 246, 0.3); }
-  50%       { box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.4),  0 0 28px rgba(139, 92, 246, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.7), 0 0 12px rgba(139, 92, 246, 0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.45), 0 0 28px rgba(139, 92, 246, 0.55); }
 }
 
-/* Picker-reveal: CSS-подсветка строки результата (driver overlay прозрачен на этих шагах) */
-.tour-reveal-active {
-  pointer-events: auto !important;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.8), 0 0 18px rgba(139, 92, 246, 0.45) !important;
-  border-radius: 12px;
-  animation: tour-breathe 2s ease-in-out infinite;
+.tour-target {
+  animation: tour-breathe 2s ease-in-out infinite !important;
+  border-radius: inherit !important;
 }
 
 @media (min-width: 640px) {

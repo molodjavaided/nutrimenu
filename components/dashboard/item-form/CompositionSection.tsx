@@ -318,12 +318,13 @@ function LockToggle({ locked, onClick }: { locked: boolean; onClick: () => void 
 
 // ─── Companion suggestion chip ─────────────────────────────────────────────
 
-function CompanionChip({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
+function CompanionChip({ label, onClick, title, dataTour }: { label: string; onClick: () => void; title?: string; dataTour?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
+      data-tour={dataTour}
       className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full transition-all active:scale-95"
       style={{
         background: 'rgba(139,92,246,0.10)',
@@ -370,6 +371,7 @@ function CompanionSuggestions({ s, ingredient }: { s: ItemFormState; ingredient:
               tourBus.emit('companion-added', { parentRefId: ingredient.ingredientRefId, kind: sg.kind })
             }}
             title={`Добавит ${companionRef.name} в состав (${Math.round(sg.ratio * 100)}% от веса)`}
+            dataTour={`companion-${ingredient.ingredientRefId}-${sg.kind}`}
           />
         )
       })}

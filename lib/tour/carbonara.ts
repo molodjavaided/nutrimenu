@@ -104,7 +104,7 @@ export const CARBONARA_STEPS: TourStep[] = [
   {
     id: 'pasta-water',
     page: '/dashboard/item/new',
-    target: `[data-tour="card-${TOUR_REF.pasta}"]`,
+    target: `[data-tour="companion-${TOUR_REF.pasta}-water"]`,
     title: 'Добавьте воду',
     body: 'Появилась подсказка «+ вода» — тапните её. Паста впитывает воду при варке, Plate учтёт это в весе блюда. Оставьте ~150 г.',
     placement: 'top',

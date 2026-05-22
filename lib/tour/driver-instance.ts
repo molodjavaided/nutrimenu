@@ -14,7 +14,7 @@ export function createTourDriver(): Driver {
     allowKeyboardControl: false,
     overlayColor: '#14102a',
     overlayOpacity: 0.55,
-    stagePadding: 6,
+    stagePadding: 2,
     stageRadius: 14,
     disableActiveInteraction: false, // подсвеченная цель остаётся кликабельной
     popoverClass: 'plate-tour',

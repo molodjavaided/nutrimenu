@@ -124,13 +124,36 @@ export default function TourController() {
     let raf = 0
     let lastEl: Element | null | undefined
     let first = true
+    let lastRevealEl: HTMLElement | null = null
+
+    const clearReveal = () => {
+      lastRevealEl?.classList.remove('tour-reveal-active')
+      lastRevealEl = null
+    }
 
     const highlight = (el: HTMLElement | null) => {
+      // Picker steps: overlay transparent so whole modal is visible;
+      // glow is added via CSS class directly on the result row.
+      const isRevealPhase = !!step.revealTarget && !!el?.dataset.tour?.startsWith('picker-result-')
+
+      // Picker steps (revealTarget exists): transparent overlay so modal is fully visible
+      d.setConfig({ overlayOpacity: step.revealTarget ? 0 : 0.55 })
+
+      if (isRevealPhase) {
+        if (el !== lastRevealEl) {
+          clearReveal()
+          el!.classList.add('tour-reveal-active')
+          lastRevealEl = el
+        }
+      } else {
+        clearReveal()
+      }
+
       const description =
         `<span class="plate-tour-step">Шаг ${index + 1} из ${total}</span>` +
         `<span class="plate-tour-body">${step.body}</span>`
       d.highlight({
-        element: el ?? undefined,
+        element: isRevealPhase ? undefined : (el ?? undefined),
         disableActiveInteraction: false,
         popover: {
           title: step.title,
@@ -145,12 +168,13 @@ export default function TourController() {
     }
 
     const loop = () => {
-      const el = visibleEl(step.revealTarget ?? null) ?? visibleEl(step.target)
+      const revealEl = visibleEl(step.revealTarget ?? null)
+      const el = revealEl ?? visibleEl(step.target)
       if (first || el !== lastEl) { first = false; lastEl = el; highlight(el) }
       raf = requestAnimationFrame(loop)
     }
     loop()
-    return () => cancelAnimationFrame(raf)
+    return () => { cancelAnimationFrame(raf); clearReveal() }
   }, [ready, step, index, pathname, finish])
 
   return null

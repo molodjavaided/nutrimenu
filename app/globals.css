@@ -232,6 +232,25 @@
   color: #FEFEF2;
 }
 
+/* Дышащее свечение на подсвеченном элементе */
+@keyframes tour-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.7), 0 0 10px rgba(139, 92, 246, 0.3); }
+  50%       { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.45), 0 0 24px rgba(139, 92, 246, 0.55); }
+}
+
+.driver-active .driver-active-element {
+  border-radius: inherit;
+  animation: tour-breathe 2s ease-in-out infinite;
+}
+
+/* Picker-reveal: CSS-подсветка строки результата (driver overlay прозрачен на этих шагах) */
+.tour-reveal-active {
+  pointer-events: auto !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.8), 0 0 18px rgba(139, 92, 246, 0.45) !important;
+  border-radius: 12px;
+  animation: tour-breathe 2s ease-in-out infinite;
+}
+
 @media (min-width: 640px) {
   .dish-sheet {
     height: auto !important;

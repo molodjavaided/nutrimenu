@@ -67,7 +67,6 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
 
       {/* Mode-switcher (segmented control) */}
       <div
-        data-tour="mode-ttk"
         className="inline-flex gap-1 p-1 rounded-xl mb-6"
         style={{
           background: 'rgba(176,166,223,0.18)',
@@ -81,6 +80,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId }: { it
           return (
             <button
               key={m}
+              data-tour={m === 'ttk' ? 'mode-ttk' : undefined}
               onClick={() => { s.setMode(m); tourBus.emit('mode-set', m) }}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
               style={active

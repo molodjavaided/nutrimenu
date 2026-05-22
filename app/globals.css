@@ -178,33 +178,58 @@
   border-radius: 0 !important;
 }
 
-/* Тур: «дышащее» лавандовое свечение под подсвеченной целью.
-   Цикл 3с: 0%→27% набухает на ~5px и ярчает, 73% угасает, 100% исходное.
-   Анимируется только тень — сама цель/текст неподвижны. */
-@keyframes tour-breathe {
-  0%   { box-shadow: 0 0 8px 2px rgba(176,166,223,0.45); }
-  27%  { box-shadow: 0 0 26px 9px rgba(176,166,223,0.95); }
-  73%  { box-shadow: 0 0 12px 3px rgba(176,166,223,0.4); }
-  100% { box-shadow: 0 0 8px 2px rgba(176,166,223,0.45); }
+/* Тур (driver.js) — брендовая тема Plate для поповера.
+   Спотлайт-вырез и позиционирование driver рисует сам (SVG-маска),
+   поэтому ни зазоров, ни дрейфа при зуме/скролле. */
+.driver-popover.plate-tour {
+  background: #FEFEF2;
+  color: var(--color-text-secondary);
+  border: 0.5px solid rgba(139, 92, 246, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px -6px rgba(44, 41, 80, 0.25);
+  max-width: 320px;
+  padding: 16px;
 }
 
-.tour-breathe {
-  border-radius: 14px;
-  animation: tour-breathe 3s ease-in-out infinite;
+.driver-popover.plate-tour .driver-popover-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
 }
 
-/* Ring прямо на цели: в потоке документа → не съезжает при зуме/скролле.
-   Поднимаем элемент над затемняющими панелями, чтобы ореол не подрезался. */
-.tour-target {
-  position: relative;
-  z-index: 10002 !important;
+.driver-popover.plate-tour .plate-tour-step {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8B5CF6;
+  margin-bottom: 6px;
+}
+
+.driver-popover.plate-tour .plate-tour-body {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.driver-popover.plate-tour .driver-popover-footer {
+  margin-top: 12px;
+}
+
+.driver-popover.plate-tour .driver-popover-next-btn {
+  background: #8B5CF6;
+  color: #fff;
+  border: none;
   border-radius: 12px;
-  animation: tour-breathe 3s ease-in-out infinite;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  text-shadow: none;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tour-breathe,
-  .tour-target { animation: none; box-shadow: 0 0 20px 6px rgba(176,166,223,0.7); }
+.driver-popover.plate-tour .driver-popover-arrow {
+  color: #FEFEF2;
 }
 
 @media (min-width: 640px) {

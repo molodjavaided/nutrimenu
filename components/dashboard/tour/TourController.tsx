@@ -1,22 +1,40 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { tourBus } from '@/lib/tour/bus'
 import { CARBONARA_STEPS } from '@/lib/tour/carbonara'
-import TourOverlay from './TourOverlay'
+import type { Driver, Side } from '@/lib/tour/driver-instance'
 
 const STORAGE_KEY = 'nm-tour-carbonara-step'
 
+/** Видимый (ненулевой) элемент по селектору — mobile/desktop варианты рендерятся оба. */
+function visibleEl(selector: string | null): HTMLElement | null {
+  if (!selector) return null
+  for (const el of document.querySelectorAll(selector)) {
+    const r = el.getBoundingClientRect()
+    if (r.width > 0 || r.height > 0) return el as HTMLElement
+  }
+  return null
+}
+
+function sideFor(placement?: string): Side | undefined {
+  if (placement === 'top') return 'top'
+  if (placement === 'bottom') return 'bottom'
+  return undefined // auto / screen-bottom — пусть driver выберет сам
+}
+
 /**
- * Движок интерактивного тура «Карбонара». Монтируется в dashboard layout.
- * Тур активен, когда onboardingStep >= 1 и не завершён/не отклонён.
- * Под-шаг переживает переход menu→item/new через sessionStorage.
+ * Движок интерактивного тура «Карбонара». Спотлайт/поповер рисует driver.js
+ * (ленивый chunk, грузится при старте). Логика шагов — здесь: переходы по
+ * событиям tourBus и навигации, двухфазный reveal (input → строка результата).
  */
 export default function TourController() {
   const pathname = usePathname()
   const [active, setActive] = useState(false)
   const [index, setIndex] = useState(0)
+  const driverRef = useRef<Driver | null>(null)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     fetch('/api/user/onboarding')
@@ -43,8 +61,26 @@ export default function TourController() {
     if (active) sessionStorage.setItem(STORAGE_KEY, String(index))
   }, [active, index])
 
+  // Ленивая загрузка driver.js при первом старте тура.
+  useEffect(() => {
+    if (!active || driverRef.current) return
+    let cancelled = false
+    import('@/lib/tour/driver-instance').then(mod => {
+      if (cancelled) return
+      driverRef.current = mod.createTourDriver()
+      setReady(true)
+    })
+    return () => { cancelled = true }
+  }, [active])
+
+  // Полный демонтаж при размонтировании.
+  useEffect(() => () => { driverRef.current?.destroy(); driverRef.current = null }, [])
+
   const finish = useCallback(() => {
     setActive(false)
+    driverRef.current?.destroy()
+    driverRef.current = null
+    setReady(false)
     sessionStorage.removeItem(STORAGE_KEY)
     fetch('/api/user/onboarding', {
       method: 'POST',
@@ -75,22 +111,47 @@ export default function TourController() {
     if (fwd >= 0) setIndex(fwd)
   }, [pathname, active, step, index])
 
-  if (!active || !step || step.page !== pathname) return null
+  // Рисуем/обновляем спотлайт. Re-highlight при появлении/смене целевого элемента
+  // (двухфазный reveal, монтирование). driver сам репозиционируется на скролл/resize.
+  useEffect(() => {
+    const d = driverRef.current
+    if (!ready || !d || !step || step.page !== pathname) return
 
-  const isLast = index === CARBONARA_STEPS.length - 1
-  return (
-    <TourOverlay
-      targetSelector={step.target}
-      revealSelector={step.revealTarget ?? null}
-      title={step.title}
-      body={step.body}
-      placement={step.placement}
-      showNext={step.showNext}
-      onNext={() => (isLast ? finish() : setIndex(i => i + 1))}
-      onSkip={finish}
-      stepIndex={index}
-      totalSteps={CARBONARA_STEPS.length}
-      soft={step.soft}
-    />
-  )
+    const isLast = index === CARBONARA_STEPS.length - 1
+    const total = CARBONARA_STEPS.length
+    const showNext = !!step.showNext
+
+    let raf = 0
+    let lastEl: Element | null | undefined
+    let first = true
+
+    const highlight = (el: HTMLElement | null) => {
+      const description =
+        `<span class="plate-tour-step">Шаг ${index + 1} из ${total}</span>` +
+        `<span class="plate-tour-body">${step.body}</span>`
+      d.highlight({
+        element: el ?? undefined,
+        disableActiveInteraction: false,
+        popover: {
+          title: step.title,
+          description,
+          side: sideFor(step.placement),
+          showButtons: showNext ? ['next', 'close'] : ['close'],
+          nextBtnText: isLast ? 'Готово' : 'Дальше',
+          onNextClick: () => (isLast ? finish() : setIndex(i => i + 1)),
+          onCloseClick: () => finish(),
+        },
+      })
+    }
+
+    const loop = () => {
+      const el = visibleEl(step.revealTarget ?? null) ?? visibleEl(step.target)
+      if (first || el !== lastEl) { first = false; lastEl = el; highlight(el) }
+      raf = requestAnimationFrame(loop)
+    }
+    loop()
+    return () => cancelAnimationFrame(raf)
+  }, [ready, step, index, pathname, finish])
+
+  return null
 }

@@ -15,7 +15,6 @@ interface Props {
   onSkip: () => void
   stepIndex: number
   totalSteps: number
-  /** 0 = прозрачный оверлей (шаги с пикером), 0.55 = нормальное затемнение */
   overlayOpacity?: number
 }
 
@@ -50,6 +49,7 @@ function useVisualViewport() {
   return vv
 }
 
+const PAD = 0
 const TOOLTIP_W = 300
 
 export default function TourOverlay({
@@ -59,7 +59,6 @@ export default function TourOverlay({
   const [rect, setRect] = useState<Rect | null>(null)
   const vv = useVisualViewport()
 
-  // Найти цель, измерить её, поднять поверх оверлея
   useLayoutEffect(() => {
     let raf = 0
     let activeEl: HTMLElement | null = null
@@ -68,11 +67,8 @@ export default function TourOverlay({
       const el = visibleEl(revealSelector ?? null) ?? visibleEl(targetSelector)
 
       if (el !== activeEl) {
-        activeEl?.classList.remove('tour-target', 'tour-elevated')
-        if (el) {
-          el.classList.add('tour-target')
-          if (overlayOpacity > 0) el.classList.add('tour-elevated')
-        }
+        activeEl?.classList.remove('tour-elevated')
+        if (el && overlayOpacity > 0) el.classList.add('tour-elevated')
         activeEl = el
       }
 
@@ -91,11 +87,17 @@ export default function TourOverlay({
 
     return () => {
       cancelAnimationFrame(raf)
-      activeEl?.classList.remove('tour-target', 'tour-elevated')
+      activeEl?.classList.remove('tour-elevated')
     }
   }, [targetSelector, revealSelector, overlayOpacity])
 
-  // Позиция тултипа
+  const dim = `rgba(20,16,40,${overlayOpacity})`
+  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
+
+  const hole = rect
+    ? { top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
+    : null
+
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
   const vw = typeof window !== 'undefined' ? window.innerWidth : 400
 
@@ -106,17 +108,17 @@ export default function TourOverlay({
       left: '50%', transform: 'translateX(-50%)',
       width: TOOLTIP_W, maxWidth: '92vw',
     }
-  } else if (!rect) {
+  } else if (!hole) {
     tipStyle = {
       top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
       width: TOOLTIP_W, maxWidth: '90vw',
     }
   } else {
-    const below = rect.top + rect.height
+    const below = hole.top + hole.height
     const wantAbove = placement === 'top' || (placement !== 'bottom' && below > vh * 0.6)
-    const left = Math.max(12, Math.min(rect.left, vw - TOOLTIP_W - 12))
+    const left = Math.max(12, Math.min(hole.left, vw - TOOLTIP_W - 12))
     tipStyle = wantAbove
-      ? { bottom: vh - rect.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
+      ? { bottom: vh - hole.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
       : { top: below + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
   }
 
@@ -126,88 +128,97 @@ export default function TourOverlay({
     height: vv.h || '100%',
   }
 
-  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
+  const panelStyle: React.CSSProperties = {
+    position: 'absolute', background: dim, pointerEvents: 'auto',
+  }
 
   return (
-    <>
-      {/* Один тёмный слой на весь экран */}
-      {overlayOpacity > 0 && (
+    <div style={{ position: 'fixed', top: 0, left: 0, ...vpStyle, zIndex: 9990, pointerEvents: 'none' }}>
+
+      {/* 4 панели затемнения встык к кнопке */}
+      {hole ? (
+        <>
+          <div style={{ ...panelStyle, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panelStyle, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panelStyle, top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panelStyle, top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} onMouseDown={stop} onClick={stop} />
+        </>
+      ) : (
+        <div style={{ ...panelStyle, position: 'absolute', inset: 0 }} onMouseDown={stop} onClick={stop} />
+      )}
+
+      {/* Амбиентное свечение из-под кнопки — между панелями и кнопкой */}
+      {hole && overlayOpacity > 0 && (
         <div
-          onMouseDown={stop}
-          onClick={stop}
+          className="tour-ambient-glow"
           style={{
-            position: 'fixed', inset: 0,
-            background: `rgba(20,16,40,${overlayOpacity})`,
-            zIndex: 9990,
-            ...vpStyle,
+            position: 'absolute',
+            top: hole.top,
+            left: hole.left,
+            width: hole.width,
+            height: hole.height,
+            pointerEvents: 'none',
+            zIndex: 9991,
           }}
         />
       )}
 
-      {/* Тултип — выше оверлея И выше поднятой цели */}
+      {/* Тултип */}
       <div
+        onClick={e => e.stopPropagation()}
         style={{
-          position: 'fixed', top: 0, left: 0,
-          ...vpStyle,
+          position: 'absolute', ...tipStyle,
+          background: '#FEFEF2',
+          border: '0.5px solid rgba(139,92,246,0.22)',
+          borderRadius: 16,
+          boxShadow: '0 8px 32px -6px rgba(44,41,80,0.3)',
+          padding: 16,
+          pointerEvents: 'auto',
           zIndex: 9996,
-          pointerEvents: 'none',
         }}
       >
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            position: 'absolute', ...tipStyle,
-            background: '#FEFEF2',
-            border: '0.5px solid rgba(139,92,246,0.22)',
-            borderRadius: 16,
-            boxShadow: '0 8px 32px -6px rgba(44,41,80,0.3)',
-            padding: 16,
-            pointerEvents: 'auto',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#8B5CF6' }}>
-              Шаг {stepIndex + 1} из {totalSteps}
-            </span>
-            <button
-              type="button"
-              onClick={onSkip}
-              style={{
-                fontSize: 11, color: 'var(--color-text-muted)',
-                background: 'rgba(139,92,246,0.06)',
-                border: 'none', borderRadius: 8, padding: '4px 8px', cursor: 'pointer',
-              }}
-            >
-              Пропустить
-            </button>
-          </div>
-
-          {title && (
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
-              {title}
-            </p>
-          )}
-
-          <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)', margin: 0 }}>
-            {body}
-          </p>
-
-          {showNext && (
-            <button
-              type="button"
-              onClick={onNext}
-              style={{
-                marginTop: 14, width: '100%', padding: '9px 16px',
-                background: '#8B5CF6', color: '#fff', border: 'none',
-                borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
-              }}
-            >
-              Дальше
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#8B5CF6' }}>
+            Шаг {stepIndex + 1} из {totalSteps}
+          </span>
+          <button
+            type="button"
+            onClick={onSkip}
+            style={{
+              fontSize: 11, color: 'var(--color-text-muted)',
+              background: 'rgba(139,92,246,0.06)',
+              border: 'none', borderRadius: 8, padding: '4px 8px', cursor: 'pointer',
+            }}
+          >
+            Пропустить
+          </button>
         </div>
+
+        {title && (
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
+            {title}
+          </p>
+        )}
+
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--color-text-secondary)', margin: 0 }}>
+          {body}
+        </p>
+
+        {showNext && (
+          <button
+            type="button"
+            onClick={onNext}
+            style={{
+              marginTop: 14, width: '100%', padding: '9px 16px',
+              background: '#8B5CF6', color: '#fff', border: 'none',
+              borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
+            }}
+          >
+            Дальше
+          </button>
+        )}
       </div>
-    </>
+    </div>
   )
 }

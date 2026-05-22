@@ -178,21 +178,30 @@
   border-radius: 0 !important;
 }
 
-/* Тур — подсветка активного элемента (класс вешается через JS) */
-@keyframes tour-breathe {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.7), 0 0 12px rgba(139, 92, 246, 0.3); }
-  50%       { box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.45), 0 0 28px rgba(139, 92, 246, 0.55); }
-}
-
-.tour-target {
-  animation: tour-breathe 2s ease-in-out infinite !important;
-  border-radius: inherit !important;
-}
-
-/* Поднять цель поверх тёмного оверлея (z-index 9990) */
+/* Тур — поднять цель поверх тёмного оверлея */
 .tour-elevated {
   position: relative !important;
   z-index: 9995 !important;
+}
+
+/* Тур — амбиентное свечение из-под кнопки */
+@keyframes tour-ambient-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.8;
+  }
+}
+
+.tour-ambient-glow {
+  background: rgba(139, 92, 246, 0.6);
+  filter: blur(20px);
+  border-radius: 100px;
+  transform-origin: center;
+  animation: tour-ambient-pulse 3s ease-in-out infinite;
 }
 
 @media (min-width: 640px) {

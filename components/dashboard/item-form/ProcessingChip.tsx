@@ -75,12 +75,14 @@ export function ProcessingPanel({
   ingredientRef,
   onChangeProcessing,
   onChangeYieldOverride,
+  refId,
 }: {
   processing: ProcessingType | undefined
   yieldOverride: number | undefined
   ingredientRef?: IngredientRef
   onChangeProcessing: (p: ProcessingType | undefined) => void
   onChangeYieldOverride: (v: number | undefined) => void
+  refId?: string
 }) {
   const { effective, gostCoef, isManual } = computeCoefs(processing, yieldOverride, ingredientRef)
 
@@ -95,6 +97,7 @@ export function ProcessingPanel({
               key={p}
               type="button"
               onClick={() => onChangeProcessing(p)}
+              data-tour={refId && p === 'boil' ? `boil-${refId}` : undefined}
               className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all active:scale-95"
               style={isActive
                 ? {

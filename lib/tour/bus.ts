@@ -6,6 +6,7 @@ export type TourEventName =
   | 'picker-opened'    // payload: undefined
   | 'picker-search'    // payload: string (текущий запрос)
   | 'ingredient-picked'// payload: string (ingredientRefId)
+  | 'processing-panel-opened' // payload: string (ingredientRefId)
   | 'processing-set'   // payload: { refId: string; processing: string }
   | 'amount-set'       // payload: { refId: string; amount: number }
   | 'companion-added'  // payload: { parentRefId: string; kind: 'oil' | 'water' }

@@ -5,6 +5,8 @@ export interface TourStep {
   page: string
   /** CSS-селектор цели или null (центрированная модалка). */
   target: string | null
+  /** Двухфазный шаг: как только этот элемент появится в DOM — подсветка переедет на него. */
+  revealTarget?: string
   title?: string
   body: string
   placement?: 'auto' | 'top' | 'bottom' | 'screen-bottom'
@@ -58,7 +60,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     id: 'pick-pasta',
     page: '/dashboard/item/new',
     target: '[data-tour="picker-search"]',
-    soft: true,
+    revealTarget: `[data-tour="picker-result-${TOUR_REF.pasta}"]`,
     title: 'Найдите пасту',
     body: 'Введите «паста» в поиск и выберите «Паста (тв. сорта)».',
     placement: 'screen-bottom',
@@ -104,7 +106,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     id: 'pick-bacon',
     page: '/dashboard/item/new',
     target: '[data-tour="picker-search"]',
-    soft: true,
+    revealTarget: `[data-tour="picker-result-${TOUR_REF.bacon}"]`,
     title: 'Найдите грудинку',
     body: 'Введите «бекон» и выберите «Бекон сырокопчёный».',
     placement: 'screen-bottom',
@@ -132,7 +134,7 @@ export const CARBONARA_STEPS: TourStep[] = [
     id: 'pick-yolk',
     page: '/dashboard/item/new',
     target: '[data-tour="picker-search"]',
-    soft: true,
+    revealTarget: `[data-tour="picker-result-${TOUR_REF.yolk}"]`,
     title: 'Найдите желток',
     body: 'Введите «желток» и выберите «Яичный желток».',
     placement: 'screen-bottom',

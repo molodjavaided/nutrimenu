@@ -81,6 +81,7 @@ export default function TourController() {
   return (
     <TourOverlay
       targetSelector={step.target}
+      revealSelector={step.revealTarget ?? null}
       title={step.title}
       body={step.body}
       placement={step.placement}

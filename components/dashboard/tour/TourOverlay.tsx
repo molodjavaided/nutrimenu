@@ -9,6 +9,8 @@ interface Rect { top: number; left: number; width: number; height: number }
 interface Props {
   /** CSS-селектор подсвечиваемой цели. null → центрированная модалка (интро/финал). */
   targetSelector: string | null
+  /** Когда этот элемент появляется в DOM — подсветка/дырка переезжают на него (двухфазный шаг). */
+  revealSelector?: string | null
   title?: string
   body: ReactNode
   placement?: Placement
@@ -20,7 +22,7 @@ interface Props {
   totalSteps: number
   /** Доп. отступ окна прожектора вокруг цели, px. */
   padding?: number
-  /** Мягкий режим: не блокировать клики (для шагов поверх уже модального пикера). */
+  /** Мягкий режим: не затемнять и не блокировать клики (поверх уже модального слоя). */
   soft?: boolean
 }
 
@@ -36,25 +38,49 @@ function visibleEl(selector: string | null): HTMLElement | null {
   return null
 }
 
-function measure(selector: string | null): Rect | null {
-  const el = visibleEl(selector)
+function measure(el: HTMLElement | null): Rect | null {
   if (!el) return null
   const r = el.getBoundingClientRect()
   return { top: r.top, left: r.left, width: r.width, height: r.height }
 }
 
+/** Сдвиг визуального вьюпорта (пинч-зум/пан) — чтобы fixed-слои не съезжали от цели. */
+function useVisualViewport() {
+  const [vv, setVv] = useState({ x: 0, y: 0, w: 0, h: 0 })
+  useEffect(() => {
+    const v = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!v) return
+    const sync = () => setVv({ x: v.offsetLeft, y: v.offsetTop, w: v.width, h: v.height })
+    sync()
+    v.addEventListener('resize', sync)
+    v.addEventListener('scroll', sync)
+    return () => { v.removeEventListener('resize', sync); v.removeEventListener('scroll', sync) }
+  }, [])
+  return vv
+}
+
 export default function TourOverlay({
-  targetSelector, title, body, placement = 'auto', showNext, onNext, onSkip,
+  targetSelector, revealSelector, title, body, placement = 'auto', showNext, onNext, onSkip,
   stepIndex, totalSteps, padding = PAD, soft = false,
 }: Props) {
   const [rect, setRect] = useState<Rect | null>(() => null)
+  const vv = useVisualViewport()
 
-  // Непрерывно меряем цель (она может появляться/анимироваться/скроллиться).
+  // Непрерывно ищем актуальную цель и меряем её. Если в DOM появился revealSelector —
+  // переключаемся на него (фаза 2 шага: нашли строку нужного ингредиента).
+  // Параллельно вешаем ring-класс прямо на живой элемент — он в потоке, не дрейфит.
   useLayoutEffect(() => {
     let raf = 0
+    let ringEl: HTMLElement | null = null
     const tick = () => {
+      const el = visibleEl(revealSelector ?? null) ?? visibleEl(targetSelector)
+      if (el !== ringEl) {
+        ringEl?.classList.remove('tour-target')
+        if (el) el.classList.add('tour-target')
+        ringEl = el
+      }
       setRect(prev => {
-        const next = measure(targetSelector)
+        const next = measure(el)
         if (!prev && !next) return prev
         if (prev && next && prev.top === next.top && prev.left === next.left
           && prev.width === next.width && prev.height === next.height) return prev
@@ -63,48 +89,17 @@ export default function TourOverlay({
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [targetSelector])
+    return () => {
+      cancelAnimationFrame(raf)
+      ringEl?.classList.remove('tour-target')
+    }
+  }, [targetSelector, revealSelector])
 
   // Скроллим цель в зону видимости при смене селектора.
   useEffect(() => {
     if (!targetSelector) return
     visibleEl(targetSelector)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [targetSelector])
-
-  // Поднимаем реальную цель над затемнением — без выреза фона.
-  // Цель надо вытащить из всех родительских stacking-контекстов (backdrop-filter,
-  // transform, filter, opacity<1 и т.п.) — иначе zIndex цели не перебьёт overlay.
-  // (soft-шаги уже поверх модального пикера, их не трогаем.)
-  useEffect(() => {
-    if (soft || !targetSelector) return
-    let restores: { node: HTMLElement; position: string; zIndex: string }[] = []
-    let raf = requestAnimationFrame(function find() {
-      const el = visibleEl(targetSelector)
-      if (!el) { raf = requestAnimationFrame(find); return }
-      const lift = (node: HTMLElement) => {
-        const cs = getComputedStyle(node)
-        restores.push({ node, position: node.style.position, zIndex: node.style.zIndex })
-        if (cs.position === 'static') node.style.position = 'relative'
-        node.style.zIndex = '10002'
-      }
-      lift(el)
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const cs = getComputedStyle(p)
-        const backdrop = cs.backdropFilter ?? (cs as unknown as Record<string, string>).webkitBackdropFilter ?? 'none'
-        const createsCtx =
-          backdrop !== 'none' || cs.filter !== 'none' || cs.transform !== 'none' || cs.perspective !== 'none'
-          || parseFloat(cs.opacity) < 1 || cs.mixBlendMode !== 'normal'
-          || (cs.position !== 'static' && cs.zIndex !== 'auto') || cs.willChange.includes('transform')
-        if (createsCtx) lift(p)
-      }
-    })
-    return () => {
-      cancelAnimationFrame(raf)
-      for (const r of restores) { r.node.style.position = r.position; r.node.style.zIndex = r.zIndex }
-      restores = []
-    }
-  }, [targetSelector, soft])
 
   const dim = 'rgba(20,16,40,0.55)'
   const hole = rect
@@ -115,7 +110,6 @@ export default function TourOverlay({
   const TOOLTIP_W = 320
   let tipStyle: React.CSSProperties
   if (placement === 'screen-bottom') {
-    // Прижать к низу экрана — не перекрывать зону выдачи результатов (поиск в пикере).
     tipStyle = {
       bottom: 'calc(env(safe-area-inset-bottom) + 16px)',
       left: '50%', transform: 'translateX(-50%)', width: TOOLTIP_W, maxWidth: '92vw',
@@ -132,64 +126,69 @@ export default function TourOverlay({
       : { top: below + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
   }
 
-  // Простая схема слоёв (без выреза фона):
-  // дим на весь экран (10000) < свечение (10001) < поднятая цель (10002, эффект в effect) < тултип (10003).
+  // Корень привязан к визуальному вьюпорту: при пинч-зуме его (0,0) совпадает
+  // с тем, что видит пользователь, поэтому панели/тултип не съезжают от цели.
+  const rootStyle: React.CSSProperties = {
+    position: 'fixed', top: 0, left: 0,
+    width: vv.w || '100%', height: vv.h || '100%',
+    transform: `translate(${vv.x}px, ${vv.y}px)`,
+    zIndex: 10000, pointerEvents: 'none',
+  }
+
+  const block = { pointerEvents: 'auto' as const, background: dim }
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  const prevent = (e: React.MouseEvent) => e.preventDefault()
+
   return (
-    <div aria-live="polite">
-      {/* Полное затемнение экрана — ловит клики вне цели (жёсткий режим) */}
-      {!soft && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: dim, zIndex: 10000, pointerEvents: 'auto' }}
-          onClick={e => e.stopPropagation()}
-          onMouseDown={e => e.preventDefault()}
-        />
-      )}
+    <div aria-live="polite" style={rootStyle}>
+      {/* Затемнение. С дыркой — 4 панели вокруг цели (цель не накрыта → соседи не кликабельны).
+          Без дырки — сплошной слой (интро/финал). soft — без затемнения. */}
+      {!soft && (hole ? (
+        <>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: Math.max(0, hole.top), ...block }} onClick={stop} onMouseDown={prevent} />
+          <div style={{ position: 'absolute', top: hole.top + hole.height, left: 0, right: 0, bottom: 0, ...block }} onClick={stop} onMouseDown={prevent} />
+          <div style={{ position: 'absolute', top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height, ...block }} onClick={stop} onMouseDown={prevent} />
+          <div style={{ position: 'absolute', top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height, ...block }} onClick={stop} onMouseDown={prevent} />
+        </>
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, ...block }} onClick={stop} onMouseDown={prevent} />
+      ))}
 
-      {/* «Дышащее» лавандовое свечение вокруг цели — поверх затемнения, под самой кнопкой */}
-      {rect && (
-        <div
-          className="tour-breathe"
-          style={{ position: 'fixed', top: rect.top + 3, left: rect.left + 3, width: rect.width - 6, height: rect.height - 6, pointerEvents: 'none', zIndex: 10001 }}
-        />
-      )}
-
-      {/* Тултип — одна плашка, тень прижата вплотную */}
+      {/* Тултип */}
       <div
         style={{
-          position: 'fixed', ...tipStyle, zIndex: 10003, pointerEvents: 'auto',
+          position: 'absolute', ...tipStyle, zIndex: 1, pointerEvents: 'auto',
           background: '#FEFEF2', border: '0.5px solid rgba(139,92,246,0.22)', borderRadius: 16,
           boxShadow: '0 8px 24px -6px rgba(44,41,80,0.25)',
         }}
         className="p-4"
-        onClick={e => e.stopPropagation()}
+        onClick={stop}
       >
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-[11px] font-medium" style={{ color: '#8B5CF6' }}>
-              Шаг {stepIndex + 1} из {totalSteps}
-            </span>
-            <button
-              type="button"
-              onClick={onSkip}
-              className="text-[11px] px-2 py-1 rounded-lg transition-colors active:scale-95"
-              style={{ color: 'var(--color-text-muted)', background: 'rgba(139,92,246,0.06)' }}
-            >
-              Пропустить
-            </button>
-          </div>
-          {title && <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>{title}</p>}
-          <div className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{body}</div>
-          {showNext && (
-            <button
-              type="button"
-              onClick={onNext}
-              className="mt-3 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
-              style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
-            >
-              Дальше
-            </button>
-          )}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[11px] font-medium" style={{ color: '#8B5CF6' }}>
+            Шаг {stepIndex + 1} из {totalSteps}
+          </span>
+          <button
+            type="button"
+            onClick={onSkip}
+            className="text-[11px] px-2 py-1 rounded-lg transition-colors active:scale-95"
+            style={{ color: 'var(--color-text-muted)', background: 'rgba(139,92,246,0.06)' }}
+          >
+            Пропустить
+          </button>
         </div>
+        {title && <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>{title}</p>}
+        <div className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{body}</div>
+        {showNext && (
+          <button
+            type="button"
+            onClick={onNext}
+            className="mt-3 w-full px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
+            style={{ background: '#8B5CF6', color: '#fff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
+          >
+            Дальше
+          </button>
+        )}
       </div>
     </div>
   )

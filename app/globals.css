@@ -193,8 +193,18 @@
   animation: tour-breathe 3s ease-in-out infinite;
 }
 
+/* Ring прямо на цели: в потоке документа → не съезжает при зуме/скролле.
+   Поднимаем элемент над затемняющими панелями, чтобы ореол не подрезался. */
+.tour-target {
+  position: relative;
+  z-index: 10002 !important;
+  border-radius: 12px;
+  animation: tour-breathe 3s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tour-breathe { animation: none; box-shadow: 0 0 20px 6px rgba(176,166,223,0.7); }
+  .tour-breathe,
+  .tour-target { animation: none; box-shadow: 0 0 20px 6px rgba(176,166,223,0.7); }
 }
 
 @media (min-width: 640px) {

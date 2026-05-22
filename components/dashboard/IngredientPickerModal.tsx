@@ -232,6 +232,7 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                   return (
                     <button
                       key={`${section.key}-${ref.id}`}
+                      data-tour={`picker-result-${ref.id}`}
                       onClick={() => !added && handleSelect(ref)}
                       disabled={added}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors"

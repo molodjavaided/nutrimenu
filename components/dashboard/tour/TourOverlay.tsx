@@ -67,7 +67,10 @@ export default function TourOverlay({
 
       if (el !== activeEl) {
         activeEl?.classList.remove('tour-target')
-        if (el) el.classList.add('tour-target')
+        if (el) {
+          el.classList.add('tour-target')
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
         activeEl = el
       }
 

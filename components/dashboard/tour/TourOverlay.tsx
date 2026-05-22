@@ -66,10 +66,8 @@ export default function TourOverlay({
       const el = visibleEl(revealSelector ?? null) ?? visibleEl(targetSelector)
 
       if (el !== activeEl) {
-        activeEl?.classList.remove('tour-target', 'tour-elevated')
-        if (el) {
-          el.classList.add('tour-target', 'tour-elevated')
-        }
+        activeEl?.classList.remove('tour-target')
+        if (el) el.classList.add('tour-target')
         activeEl = el
       }
 
@@ -88,7 +86,7 @@ export default function TourOverlay({
 
     return () => {
       cancelAnimationFrame(raf)
-      activeEl?.classList.remove('tour-target', 'tour-elevated')
+      activeEl?.classList.remove('tour-target')
     }
   }, [targetSelector, revealSelector])
 
@@ -122,16 +120,27 @@ export default function TourOverlay({
     height: vv.h || '100%',
   }
 
+  const hole = rect
+    ? { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+    : null
+
   const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
+
+  const panel: React.CSSProperties = { position: 'absolute', pointerEvents: 'auto' }
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, ...vpStyle, zIndex: 9990, pointerEvents: 'none' }}>
-      {/* Прозрачный блокировщик кликов на весь экран */}
-      <div
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}
-        onMouseDown={stop}
-        onClick={stop}
-      />
+      {/* 4 прозрачных панели вокруг кнопки — кнопка в дырке и кликабельна без z-index */}
+      {hole ? (
+        <>
+          <div style={{ ...panel, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panel, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panel, top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height }} onMouseDown={stop} onClick={stop} />
+          <div style={{ ...panel, top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} onMouseDown={stop} onClick={stop} />
+        </>
+      ) : (
+        <div style={{ ...panel, inset: 0, position: 'absolute' }} onMouseDown={stop} onClick={stop} />
+      )}
 
       {/* Тултип */}
       <div

@@ -92,6 +92,7 @@ export default function TourController() {
       stepIndex={index}
       totalSteps={CARBONARA_STEPS.length}
       overlayOpacity={overlayOpacity}
+      soft={step.soft}
     />
   )
 }

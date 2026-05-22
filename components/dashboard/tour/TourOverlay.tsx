@@ -16,6 +16,8 @@ interface Props {
   stepIndex: number
   totalSteps: number
   overlayOpacity?: number
+  /** Мягкий шаг — не блокировать клики нигде (превью, модалки) */
+  soft?: boolean
 }
 
 interface Rect { top: number; left: number; width: number; height: number }
@@ -53,7 +55,7 @@ const TOOLTIP_W = 300
 
 export default function TourOverlay({
   targetSelector, revealSelector, title, body, placement = 'auto',
-  showNext, onNext, onSkip, stepIndex, totalSteps,
+  showNext, onNext, onSkip, stepIndex, totalSteps, soft = false,
 }: Props) {
   const [rect, setRect] = useState<Rect | null>(null)
   const vv = useVisualViewport()
@@ -134,16 +136,16 @@ export default function TourOverlay({
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, ...vpStyle, zIndex: 9990, pointerEvents: 'none' }}>
       {/* 4 прозрачных панели вокруг кнопки — кнопка в дырке и кликабельна без z-index */}
-      {hole ? (
+      {!soft && hole ? (
         <>
           <div style={{ ...panel, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onMouseDown={stop} onClick={stop} />
           <div style={{ ...panel, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onMouseDown={stop} onClick={stop} />
           <div style={{ ...panel, top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height }} onMouseDown={stop} onClick={stop} />
           <div style={{ ...panel, top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} onMouseDown={stop} onClick={stop} />
         </>
-      ) : (
+      ) : !soft ? (
         <div style={{ ...panel, inset: 0, position: 'absolute' }} onMouseDown={stop} onClick={stop} />
-      )}
+      ) : null}
 
       {/* Тултип */}
       <div

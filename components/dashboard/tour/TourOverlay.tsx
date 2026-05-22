@@ -49,12 +49,11 @@ function useVisualViewport() {
   return vv
 }
 
-const PAD = 0
 const TOOLTIP_W = 300
 
 export default function TourOverlay({
   targetSelector, revealSelector, title, body, placement = 'auto',
-  showNext, onNext, onSkip, stepIndex, totalSteps, overlayOpacity = 0.55,
+  showNext, onNext, onSkip, stepIndex, totalSteps,
 }: Props) {
   const [rect, setRect] = useState<Rect | null>(null)
   const vv = useVisualViewport()
@@ -67,8 +66,10 @@ export default function TourOverlay({
       const el = visibleEl(revealSelector ?? null) ?? visibleEl(targetSelector)
 
       if (el !== activeEl) {
-        activeEl?.classList.remove('tour-elevated')
-        if (el && overlayOpacity > 0) el.classList.add('tour-elevated')
+        activeEl?.classList.remove('tour-target', 'tour-elevated')
+        if (el) {
+          el.classList.add('tour-target', 'tour-elevated')
+        }
         activeEl = el
       }
 
@@ -87,16 +88,9 @@ export default function TourOverlay({
 
     return () => {
       cancelAnimationFrame(raf)
-      activeEl?.classList.remove('tour-elevated')
+      activeEl?.classList.remove('tour-target', 'tour-elevated')
     }
-  }, [targetSelector, revealSelector, overlayOpacity])
-
-  const dim = `rgba(20,16,40,${overlayOpacity})`
-  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
-
-  const hole = rect
-    ? { top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
-    : null
+  }, [targetSelector, revealSelector])
 
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800
   const vw = typeof window !== 'undefined' ? window.innerWidth : 400
@@ -108,18 +102,18 @@ export default function TourOverlay({
       left: '50%', transform: 'translateX(-50%)',
       width: TOOLTIP_W, maxWidth: '92vw',
     }
-  } else if (!hole) {
+  } else if (!rect) {
     tipStyle = {
       top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
       width: TOOLTIP_W, maxWidth: '90vw',
     }
   } else {
-    const below = hole.top + hole.height
+    const below = rect.top + rect.height
     const wantAbove = placement === 'top' || (placement !== 'bottom' && below > vh * 0.6)
-    const left = Math.max(12, Math.min(hole.left, vw - TOOLTIP_W - 12))
+    const left = Math.max(12, Math.min(rect.left, vw - TOOLTIP_W - 12))
     tipStyle = wantAbove
-      ? { bottom: vh - hole.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
-      : { top: below + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
+      ? { bottom: vh - rect.top + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
+      : { top: rect.top + rect.height + 12, left, width: TOOLTIP_W, maxWidth: '90vw' }
   }
 
   const vpStyle = {
@@ -128,40 +122,16 @@ export default function TourOverlay({
     height: vv.h || '100%',
   }
 
-  const panelStyle: React.CSSProperties = {
-    position: 'absolute', background: dim, pointerEvents: 'auto',
-  }
+  const stop = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault() }
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, ...vpStyle, zIndex: 9990, pointerEvents: 'none' }}>
-
-      {/* 4 панели затемнения встык к кнопке */}
-      {hole ? (
-        <>
-          <div style={{ ...panelStyle, top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top + hole.height, left: 0, right: 0, bottom: 0 }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top, left: 0, width: Math.max(0, hole.left), height: hole.height }} onMouseDown={stop} onClick={stop} />
-          <div style={{ ...panelStyle, top: hole.top, left: hole.left + hole.width, right: 0, height: hole.height }} onMouseDown={stop} onClick={stop} />
-        </>
-      ) : (
-        <div style={{ ...panelStyle, position: 'absolute', inset: 0 }} onMouseDown={stop} onClick={stop} />
-      )}
-
-      {/* Амбиентное свечение из-под кнопки — между панелями и кнопкой */}
-      {hole && overlayOpacity > 0 && (
-        <div
-          className="tour-ambient-glow"
-          style={{
-            position: 'absolute',
-            top: hole.top,
-            left: hole.left,
-            width: hole.width,
-            height: hole.height,
-            pointerEvents: 'none',
-            zIndex: 9991,
-          }}
-        />
-      )}
+      {/* Прозрачный блокировщик кликов на весь экран */}
+      <div
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}
+        onMouseDown={stop}
+        onClick={stop}
+      />
 
       {/* Тултип */}
       <div

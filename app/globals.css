@@ -178,30 +178,20 @@
   border-radius: 0 !important;
 }
 
-/* Тур — поднять цель поверх тёмного оверлея */
+/* Тур — поднять цель поверх прозрачного блокировщика */
 .tour-elevated {
   position: relative !important;
   z-index: 9995 !important;
 }
 
-/* Тур — амбиентное свечение из-под кнопки */
-@keyframes tour-ambient-pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.3;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 0.8;
-  }
+/* Тур — пульсирующее лавандовое свечение на кнопке */
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 0px rgba(139, 92, 246, 0.7); }
+  50%       { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
 }
 
-.tour-ambient-glow {
-  background: rgba(139, 92, 246, 0.6);
-  filter: blur(20px);
-  border-radius: 100px;
-  transform-origin: center;
-  animation: tour-ambient-pulse 3s ease-in-out infinite;
+.tour-target {
+  animation: tour-pulse 2s ease-out infinite !important;
 }
 
 @media (min-width: 640px) {

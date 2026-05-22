@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { tourBus } from '@/lib/tour/bus'
 import { CARBONARA_STEPS } from '@/lib/tour/carbonara'
 import type { Driver, Side } from '@/lib/tour/driver-instance'
+import TourGlowRing from './TourGlowRing'
 
 const STORAGE_KEY = 'nm-tour-carbonara-step'
 
@@ -21,20 +22,16 @@ function visibleEl(selector: string | null): HTMLElement | null {
 function sideFor(placement?: string): Side | undefined {
   if (placement === 'top') return 'top'
   if (placement === 'bottom') return 'bottom'
-  return undefined // auto / screen-bottom — пусть driver выберет сам
+  return undefined
 }
 
-/**
- * Движок интерактивного тура «Карбонара». Спотлайт/поповер рисует driver.js
- * (ленивый chunk, грузится при старте). Логика шагов — здесь: переходы по
- * событиям tourBus и навигации, двухфазный reveal (input → строка результата).
- */
 export default function TourController() {
   const pathname = usePathname()
   const [active, setActive] = useState(false)
   const [index, setIndex] = useState(0)
   const driverRef = useRef<Driver | null>(null)
   const [ready, setReady] = useState(false)
+  const [glowEl, setGlowEl] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
     fetch('/api/user/onboarding')
@@ -50,7 +47,6 @@ export default function TourController() {
       .catch(() => {})
   }, [])
 
-  // Старт из welcome-модалки (OnboardingHost) без перемонтирования.
   useEffect(() => {
     const onStart = () => { setIndex(0); sessionStorage.setItem(STORAGE_KEY, '0'); setActive(true) }
     window.addEventListener('nm-tour-start', onStart)
@@ -61,7 +57,6 @@ export default function TourController() {
     if (active) sessionStorage.setItem(STORAGE_KEY, String(index))
   }, [active, index])
 
-  // Ленивая загрузка driver.js при первом старте тура.
   useEffect(() => {
     if (!active || driverRef.current) return
     let cancelled = false
@@ -73,11 +68,11 @@ export default function TourController() {
     return () => { cancelled = true }
   }, [active])
 
-  // Полный демонтаж при размонтировании.
   useEffect(() => () => { driverRef.current?.destroy(); driverRef.current = null }, [])
 
   const finish = useCallback(() => {
     setActive(false)
+    setGlowEl(null)
     driverRef.current?.destroy()
     driverRef.current = null
     setReady(false)
@@ -94,7 +89,6 @@ export default function TourController() {
 
   const step = active && index < CARBONARA_STEPS.length ? CARBONARA_STEPS[index] : null
 
-  // Переход по событию реального действия.
   useEffect(() => {
     if (!step?.advanceOn) return
     const { event, match } = step.advanceOn
@@ -104,15 +98,12 @@ export default function TourController() {
     })
   }, [step])
 
-  // Переход по навигации: если следующий шаг ждёт текущую страницу.
   useEffect(() => {
     if (!active || !step || step.page === pathname) return
     const fwd = CARBONARA_STEPS.findIndex((s, i) => i > index && s.page === pathname)
     if (fwd >= 0) setIndex(fwd)
   }, [pathname, active, step, index])
 
-  // Рисуем/обновляем спотлайт. Re-highlight при появлении/смене целевого элемента
-  // (двухфазный reveal, монтирование). driver сам репозиционируется на скролл/resize.
   useEffect(() => {
     const d = driverRef.current
     if (!ready || !d || !step || step.page !== pathname) return
@@ -132,12 +123,10 @@ export default function TourController() {
     }
 
     const highlight = (el: HTMLElement | null) => {
-      // Picker steps: overlay transparent so whole modal is visible;
-      // glow is added via CSS class directly on the result row.
-      const isRevealPhase = !!step.revealTarget && !!el?.dataset.tour?.startsWith('picker-result-')
+      const isPickerStep = !!step.revealTarget
+      const isRevealPhase = isPickerStep && !!el?.dataset.tour?.startsWith('picker-result-')
 
-      // Picker steps (revealTarget exists): transparent overlay so modal is fully visible
-      d.setConfig({ overlayOpacity: step.revealTarget ? 0 : 0.55 })
+      d.setConfig({ overlayOpacity: isPickerStep ? 0 : 0.55 })
 
       if (isRevealPhase) {
         if (el !== lastRevealEl) {
@@ -145,8 +134,12 @@ export default function TourController() {
           el!.classList.add('tour-reveal-active')
           lastRevealEl = el
         }
+        // No glow ring needed — picker modal handles visibility
+        setGlowEl(null)
       } else {
         clearReveal()
+        // Update glow ring target only when element changes
+        setGlowEl(el)
       }
 
       const description =
@@ -174,8 +167,8 @@ export default function TourController() {
       raf = requestAnimationFrame(loop)
     }
     loop()
-    return () => { cancelAnimationFrame(raf); clearReveal() }
+    return () => { cancelAnimationFrame(raf); clearReveal(); setGlowEl(null) }
   }, [ready, step, index, pathname, finish])
 
-  return null
+  return <TourGlowRing el={active && ready ? glowEl : null} />
 }

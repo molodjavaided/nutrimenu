@@ -178,9 +178,14 @@
   border-radius: 0 !important;
 }
 
-/* Тур (driver.js) — брендовая тема Plate для поповера.
-   Спотлайт-вырез и позиционирование driver рисует сам (SVG-маска),
-   поэтому ни зазоров, ни дрейфа при зуме/скролле. */
+/* Тур (driver.js) — брендовая тема Plate для поповера. */
+
+/* Сбрасываем driver.js шрифт на проектный */
+.driver-popover.plate-tour,
+.driver-popover.plate-tour * {
+  font-family: var(--font-sans) !important;
+}
+
 .driver-popover.plate-tour {
   background: #FEFEF2;
   color: var(--color-text-secondary);
@@ -195,25 +200,28 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
+/* Шаг X из Y — отдельная строка над телом */
 .driver-popover.plate-tour .plate-tour-step {
-  display: block;
+  display: block !important;
   font-size: 11px;
   font-weight: 500;
   color: #8B5CF6;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
 }
 
 .driver-popover.plate-tour .plate-tour-body {
-  display: block;
-  font-size: 12px;
-  line-height: 1.6;
+  display: block !important;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
 }
 
 .driver-popover.plate-tour .driver-popover-footer {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .driver-popover.plate-tour .driver-popover-next-btn {
@@ -221,8 +229,8 @@
   color: #fff;
   border: none;
   border-radius: 12px;
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 8px 18px;
+  font-size: 13px;
   font-weight: 500;
   text-shadow: none;
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
@@ -232,15 +240,16 @@
   color: #FEFEF2;
 }
 
-/* Дышащее свечение на подсвеченном элементе */
-@keyframes tour-breathe {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.7), 0 0 10px rgba(139, 92, 246, 0.3); }
-  50%       { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.45), 0 0 24px rgba(139, 92, 246, 0.55); }
+/* driver.js добавляет overflow:hidden на родителя active-element —
+   сбрасываем, чтобы не менялась геометрия кнопок */
+:not(body):has(> .driver-active-element) {
+  overflow: unset !important;
 }
 
-.driver-active .driver-active-element {
-  border-radius: inherit;
-  animation: tour-breathe 2s ease-in-out infinite;
+/* Дышащее свечение — используется TourGlowRing (portal поверх SVG) и picker-reveal */
+@keyframes tour-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.75), 0 0 10px rgba(139, 92, 246, 0.3); }
+  50%       { box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.4),  0 0 28px rgba(139, 92, 246, 0.6); }
 }
 
 /* Picker-reveal: CSS-подсветка строки результата (driver overlay прозрачен на этих шагах) */

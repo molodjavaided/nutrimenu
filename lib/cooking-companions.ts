@@ -57,7 +57,7 @@ export function suggestCompanions(
       }
       return []
     case 'fry':
-      if (sourceCategory === 'meat' || sourceCategory === 'poultry' || sourceCategory === 'fish' || sourceCategory === 'vegetable') {
+      if (sourceCategory === 'meat' || sourceCategory === 'poultry' || sourceCategory === 'fish' || sourceCategory === 'vegetable' || sourceCategory === 'dairy') {
         return [{ kind: 'oil', label: 'Добавить масло', ratio: 0.10 }]
       }
       return []

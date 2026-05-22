@@ -28,7 +28,13 @@ export default function TourController() {
   }, [])
 
   useEffect(() => {
-    const onStart = () => { setIndex(0); sessionStorage.setItem(STORAGE_KEY, '0'); setActive(true) }
+    const onStart = () => {
+      setIndex(0)
+      sessionStorage.setItem(STORAGE_KEY, '0')
+      sessionStorage.setItem('nm-tour-prefill-name', 'Омлет')
+      sessionStorage.setItem('nm-tour-prefill-category', 'Еда')
+      setActive(true)
+    }
     window.addEventListener('nm-tour-start', onStart)
     return () => window.removeEventListener('nm-tour-start', onStart)
   }, [])

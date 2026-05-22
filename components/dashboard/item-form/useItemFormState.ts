@@ -233,7 +233,17 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       fetch('/api/ingredients').then(r => r.ok ? r.json() : []),
     ]).then(([cats, personalIngredients]) => {
       setCategories(cats)
-      if (cats.length > 0 && !initialCategoryId) setCategoryId(cats[0].id)
+      if (!initialCategoryId) {
+        const prefillCat = sessionStorage.getItem('nm-tour-prefill-category')
+        const matched = prefillCat ? cats.find((c: { name: string; id: string }) => c.name === prefillCat) : null
+        setCategoryId(matched ? matched.id : cats[0]?.id ?? '')
+      }
+      const prefillName = sessionStorage.getItem('nm-tour-prefill-name')
+      if (prefillName && !itemId) {
+        form.setValue('name', prefillName, { shouldDirty: true })
+        sessionStorage.removeItem('nm-tour-prefill-name')
+        sessionStorage.removeItem('nm-tour-prefill-category')
+      }
       const personalLib = {
         id: 'my-library',
         name: 'Мои ингредиенты',

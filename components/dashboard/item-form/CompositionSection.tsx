@@ -670,6 +670,7 @@ function MobileIngredientRow({
           processing={ingredient.processing}
           yieldOverride={ingredient.yieldOverride}
           ingredientRef={ref}
+          refId={ingredient.ingredientRefId}
           onChangeProcessing={p => {
             s.updateIngredientProcessing(ingredient.id, p)
             tourBus.emit('processing-set', { refId: ingredient.ingredientRefId, processing: p })

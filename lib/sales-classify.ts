@@ -1,4 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
+const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions'
+const MODEL = 'google/gemini-2.5-flash'
 
 export type LeadIntent = 'hot' | 'warm' | 'cold'
 
@@ -14,9 +15,10 @@ export interface LeadAnswers {
   when?: string
 }
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 export async function classifyLead(answers: LeadAnswers): Promise<ClassifyResult> {
+  const key = process.env.OPENROUTER_API_KEY
+  if (!key) return { intent: 'warm', reasoning: 'OPENROUTER_API_KEY not set' }
+
   const dialog = [
     answers.venueType && `Тип заведения: ${answers.venueType}`,
     answers.seats && `Мест/столов: ${answers.seats}`,
@@ -26,27 +28,32 @@ export async function classifyLead(answers: LeadAnswers): Promise<ClassifyResult
     .filter(Boolean)
     .join('\n')
 
-  const prompt = `Ты квалифицируешь лидов для сервиса Plate — QR-меню для заведений общепита (кафе, кофейни, рестораны).
+  const prompt = `Ты квалифицируешь лидов для сервиса Plate — QR-меню для заведений общепита.
 
 Ответы потенциального клиента:
 ${dialog}
 
-Классифицируй намерение купить по трём уровням:
+Классифицируй намерение:
 - hot: явный интерес, конкретные сроки, готов к демо или оплате
-- warm: интерес есть, но сроки размыты или есть сомнения
+- warm: интерес есть, сроки размыты или есть сомнения
 - cold: нет конкретики, нецелевой, не готов в ближайшее время
 
 Ответь строго в JSON без markdown:
 {"intent":"hot|warm|cold","reasoning":"одна фраза почему"}`
 
-  const msg = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 200,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : ''
   try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+        temperature: 0,
+      }),
+    })
+    const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
+    const text = json.choices?.[0]?.message?.content?.trim() ?? ''
     const parsed = JSON.parse(text) as { intent: LeadIntent; reasoning: string }
     if (['hot', 'warm', 'cold'].includes(parsed.intent)) return parsed
   } catch {

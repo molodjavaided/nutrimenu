@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Category, IngredientRef, Venue } from '@/types'
 import MenuView from './MenuView'
 import Image from 'next/image'
@@ -17,7 +17,6 @@ interface MenuData {
 interface Props {
   slug: string
   initialData: MenuData | null
-  isOwner: boolean
 }
 
 function ComingSoonScreen({ venue }: { venue: MenuData['venue'] }) {
@@ -80,12 +79,20 @@ function PausedScreen({ venue }: { venue: MenuData['venue'] }) {
   )
 }
 
-export default function MenuClientWrapper({ slug, initialData, isOwner }: Props) {
+export default function MenuClientWrapper({ slug, initialData }: Props) {
+  const [isOwner, setIsOwner] = useState(false)
+
   useEffect(() => {
     if (initialData?.menuStatus === 'active') {
       fetch(`/api/menu/${slug}/view`, { method: 'POST' }).catch(() => {})
     }
-  }, [slug, initialData?.menuStatus])
+    // Проверяем владельца только если есть cookie-сессия
+    fetch('/api/venue').then(r => r.ok ? r.json() : null).then(venue => {
+      if (venue && initialData?.venue && 'id' in initialData.venue) {
+        setIsOwner(venue.id === initialData.venue.id)
+      }
+    }).catch(() => {})
+  }, [slug, initialData])
 
   if (!initialData) {
     return (

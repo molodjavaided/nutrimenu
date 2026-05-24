@@ -2,9 +2,12 @@ import { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
 import { db } from '@/lib/db'
 import { getUserState } from '@/lib/plans'
-import { getSession } from '@/lib/auth'
 import MenuClientWrapper from '@/components/menu/MenuClientWrapper'
 import { Category, IngredientRef } from '@/types'
+
+// Кэшируем HTML на CDN Vercel на 60 секунд.
+// Все гости видят одинаковый HTML — isOwner определяется на клиенте.
+export const revalidate = 60
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -142,9 +145,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MenuPage({ params }: Props) {
   const { slug } = await params
-  const [data, session] = await Promise.all([getMenuData(slug), getSession()])
-
-  const isOwner = !!(session && data && 'id' in data.venue && session.venueId === data.venue.id)
+  const data = await getMenuData(slug)
 
   const jsonLd = data && 'slug' in data.venue ? {
     '@context': 'https://schema.org',
@@ -159,7 +160,7 @@ export default async function MenuPage({ params }: Props) {
       {jsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       )}
-      <MenuClientWrapper slug={slug} initialData={data} isOwner={isOwner} />
+      <MenuClientWrapper slug={slug} initialData={data} />
     </>
   )
 }

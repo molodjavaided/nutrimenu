@@ -1,13 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Category, IngredientRef, Venue } from '@/types'
 import MenuView from './MenuView'
 import Image from 'next/image'
-
-interface Props {
-  slug: string
-}
 
 type MenuStatus = 'active' | 'coming_soon' | 'paused'
 
@@ -16,6 +12,12 @@ interface MenuData {
   venue: { name: string; logo?: string; description?: string; id?: string; slug?: string; address?: string; workingHours?: string; tags?: string[] }
   categories: Category[]
   ingredientRefs: IngredientRef[]
+}
+
+interface Props {
+  slug: string
+  initialData: MenuData | null
+  isOwner: boolean
 }
 
 function ComingSoonScreen({ venue }: { venue: MenuData['venue'] }) {
@@ -78,45 +80,14 @@ function PausedScreen({ venue }: { venue: MenuData['venue'] }) {
   )
 }
 
-export default function MenuClientWrapper({ slug }: Props) {
-  const [data, setData] = useState<MenuData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
-  const [isOwner, setIsOwner] = useState(false)
-
+export default function MenuClientWrapper({ slug, initialData, isOwner }: Props) {
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/menu/${slug}`).then(r => {
-        if (r.status === 404) { setNotFound(true); return null }
-        return r.json()
-      }),
-      fetch('/api/venue').then(r => r.ok ? r.json() : null),
-    ]).then(([menuData, sessionVenue]) => {
-      if (menuData) {
-        setData(menuData)
-        if (sessionVenue && menuData.venue && sessionVenue.id === menuData.venue.id) {
-          setIsOwner(true)
-        }
-        if (menuData.menuStatus === 'active') {
-          fetch(`/api/menu/${slug}/view`, { method: 'POST' }).catch(() => {})
-        }
-      }
-    }).finally(() => setLoading(false))
-  }, [slug])
+    if (initialData?.menuStatus === 'active') {
+      fetch(`/api/menu/${slug}/view`, { method: 'POST' }).catch(() => {})
+    }
+  }, [slug, initialData?.menuStatus])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FEFEF2' }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 animate-spin"
-            style={{ borderColor: '#B0A6DF', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Загружаем меню...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (notFound || !data) {
+  if (!initialData) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#FEFEF2' }}>
         <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Заведение не найдено</p>
@@ -124,20 +95,17 @@ export default function MenuClientWrapper({ slug }: Props) {
     )
   }
 
-  // Owner always sees the real menu (preview mode)
-  if (data.menuStatus === 'coming_soon' && !isOwner) {
-    return <ComingSoonScreen venue={data.venue} />
-  }
-  if (data.menuStatus === 'paused' && !isOwner) {
-    return <PausedScreen venue={data.venue} />
-  }
+  const { menuStatus, venue, categories, ingredientRefs } = initialData
+
+  if (menuStatus === 'coming_soon' && !isOwner) return <ComingSoonScreen venue={venue} />
+  if (menuStatus === 'paused' && !isOwner) return <PausedScreen venue={venue} />
 
   return (
     <MenuView
-      venue={data.venue as Venue}
-      categories={data.categories}
+      venue={venue as Venue}
+      categories={categories}
       isOwner={isOwner}
-      ingredientRefs={data.ingredientRefs ?? []}
+      ingredientRefs={ingredientRefs ?? []}
     />
   )
 }

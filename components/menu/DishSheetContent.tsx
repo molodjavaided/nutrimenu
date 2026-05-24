@@ -50,7 +50,7 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
   }
 
   function toggleIngredient(row: { ingredientId: string; removable?: boolean }) {
-    if (row.removable === false) {
+    if (row.removable !== true) {
       showToast('Этот ингредиент нельзя убрать')
       return
     }
@@ -454,7 +454,7 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
               const ref = ingredientRefs.find(r => r.id === row.ingredientId)
               if (!ref) return null
               const isExcluded = excludedIds.has(row.ingredientId)
-              const isLocked = row.removable === false
+              const isLocked = row.removable !== true
               return (
                 <button
                   key={i}

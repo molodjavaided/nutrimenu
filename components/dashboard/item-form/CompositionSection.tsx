@@ -298,10 +298,10 @@ function LockToggle({ locked, onClick }: { locked: boolean; onClick: () => void 
       onClick={onClick}
       className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] transition-all active:scale-[0.97]"
       style={locked
-        ? { background: 'rgba(242,217,101,0.30)', color: '#7C5200', border: '0.5px solid rgba(242,217,101,0.55)' }
-        : { background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-muted)', border: '0.5px solid rgba(139,92,246,0.20)' }
+        ? { background: 'rgba(139,92,246,0.06)', color: 'var(--color-text-muted)', border: '0.5px solid rgba(139,92,246,0.15)' }
+        : { background: 'rgba(242,217,101,0.30)', color: '#7C5200', border: '0.5px solid rgba(242,217,101,0.55)' }
       }
-      title={locked ? 'Гость не сможет убрать этот ингредиент' : 'Гость сможет убрать этот ингредиент'}
+      title={locked ? 'Гость не сможет убрать (по умолчанию). Нажмите, чтобы разрешить.' : 'Гость сможет убрать этот ингредиент. Нажмите, чтобы запретить.'}
       aria-pressed={locked}
     >
       <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>

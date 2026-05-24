@@ -109,7 +109,7 @@ export interface CompositionRow {
   coldLossOverride?: number          // % холодных потерь (перебивает дефолт по ингредиенту)
   yieldOverride?: number             // коэффициент выхода (перебивает дефолт по ингредиенту)
   oilAbsorption?: number             // 0..1 — доля впитанного масла (для категории oil)
-  removable?: boolean                // false = гость не может убрать (тесто, основа). По умолчанию (undefined) — можно убрать.
+  removable?: boolean                // true = гость может убрать ингредиент. По умолчанию (undefined/false) — нельзя убрать.
   // Вложенные компаньоны (масло/вода под родительским ингредиентом)
   parentRowId?: string               // id родительской строки в этом блюде — если строка является дочерним companion'ом
   companionKind?: 'oil' | 'water' | 'ice'  // тип компаньона — для расчёта впитывания/выкипания

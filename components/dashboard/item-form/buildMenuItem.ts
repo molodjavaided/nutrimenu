@@ -104,7 +104,7 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
         ...(s.mode === 'ttk' && ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
           ? { yieldOverride: ingredient.yieldOverride }
           : {}),
-        ...(ingredient.locked ? { removable: false } : {}),
+        ...(ingredient.locked === false ? { removable: true } : {}),
         ...(ingredient.parentIngredientId ? { parentRowId: ingredient.parentIngredientId } : {}),
         ...(ingredient.companionKind ? { companionKind: ingredient.companionKind } : {}),
         ...(ingredient.companionRatio !== undefined ? { companionRatio: ingredient.companionRatio } : {}),

@@ -319,7 +319,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
               unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
               processing: comp.processing,
               yieldOverride: comp.yieldOverride,
-              locked: comp.removable === false,
+              locked: comp.removable !== true,
               parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
               companionKind: comp.companionKind,
               companionRatio: comp.companionRatio,
@@ -387,7 +387,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
             unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
             processing: comp.processing,
             yieldOverride: comp.yieldOverride,
-            locked: comp.removable === false,
+            locked: comp.removable !== true,
             parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
             companionKind: comp.companionKind,
             companionRatio: comp.companionRatio,
@@ -708,6 +708,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       ingredientRefId,
       name: ref.name,
       unit: ref.unit,
+      locked: true,
     }
     dispatch({ type: 'ADD_INGREDIENT', ingredient })
   }, [ingredientRefs])
@@ -740,6 +741,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       companionKind: kind,
       companionRatio: ratio,
       manualChildAmount: false,
+      locked: true,
     }
     dispatch({ type: 'ADD_INGREDIENT', ingredient: newIngredient })
     for (const size of sizes) {

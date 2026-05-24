@@ -3,6 +3,9 @@
 # temp files
 /.tmp
 
+# claude code local settings
+.claude/settings.local.json
+
 # dependencies
 /node_modules
 /.pnp

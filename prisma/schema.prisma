@@ -269,3 +269,19 @@ model IngredientRef {
   @@index([isSystem])
   @@index([barcode])
 }
+
+model SalesLead {
+  id              String   @id @default(cuid())
+  telegramChatId  String   @unique
+  telegramUsername String?
+  telegramName    String?
+  answers         Json     @default("{}")
+  intent          String?  // hot | warm | cold
+  reasoning       String?
+  notified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([intent])
+  @@index([createdAt])
+}

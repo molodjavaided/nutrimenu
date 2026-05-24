@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sendToChat, verifyStartToken } from '@/lib/telegram'
 import { handleBriefingMessage, startBriefing } from '@/lib/telegram-briefing'
+import { handleSalesLead } from '@/lib/sales-lead-bot'
 
 /**
  * Telegram bot webhook receiver.
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const message = (update as { message?: unknown }).message as
     | {
         chat: { id: number; username?: string }
-        from?: { id: number; username?: string }
+        from?: { id: number; username?: string; first_name?: string; last_name?: string }
         text?: string
         document?: { file_id: string; file_name?: string; mime_type?: string }
         photo?: Array<{ file_id: string; width: number; height: number }>
@@ -45,10 +46,9 @@ export async function POST(req: NextRequest) {
     const param = message.text.slice('/start'.length).trim()
     const venueId = param ? verifyStartToken(param) : null
     if (!venueId) {
-      await sendToChat(
-        chatId,
-        'Здравствуйте! Этот бот используется владельцами заведений Plate. Перейдите по ссылке из дашборда, чтобы начать.',
-      )
+      // Unknown visitor — start sales qualification
+      const name = [message.from?.first_name, message.from?.last_name].filter(Boolean).join(' ') || undefined
+      await handleSalesLead(chatId, '/start', { username: tgUsername ?? undefined, name })
       return NextResponse.json({ ok: true })
     }
     const venue = await db.venue.findUnique({
@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     select: { id: true, venue: { select: { id: true } } },
   })
   if (!user?.venue) {
-    await sendToChat(chatId, 'Ваш чат не привязан к заведению. Перейдите по ссылке из дашборда заново.')
+    // Not a registered owner — route to sales qualification
+    const text = message.text ?? ''
+    const name = [message.from?.first_name, message.from?.last_name].filter(Boolean).join(' ') || undefined
+    await handleSalesLead(chatId, text, { username: tgUsername ?? undefined, name })
     return NextResponse.json({ ok: true })
   }
 

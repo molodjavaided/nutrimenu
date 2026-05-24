@@ -270,6 +270,25 @@ model IngredientRef {
   @@index([barcode])
 }
 
+model BotConversationLog {
+  id              String   @id @default(cuid())
+  telegramChatId  String
+  userMessage     String
+  botResponse     String
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model BotKnowledge {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  frequency   Int      @default(1)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
 model SalesLead {
   id              String   @id @default(cuid())
   telegramChatId  String   @unique

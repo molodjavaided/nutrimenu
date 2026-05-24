@@ -651,7 +651,13 @@ function MobileIngredientRow({
               yieldOverride={ingredient.yieldOverride}
               ingredientRef={ref}
               expanded={procExpanded}
-              onToggle={() => setProcExpanded(o => !o)}
+              onToggle={() => {
+                setProcExpanded(o => {
+                  if (!o) tourBus.emit('processing-panel-opened', ingredient.ingredientRefId)
+                  return !o
+                })
+              }}
+              dataTour={`processing-${ingredient.ingredientRefId}`}
             />
           )}
           <LockToggle locked={!!ingredient.locked} onClick={() => s.toggleIngredientLocked(ingredient.id)} />

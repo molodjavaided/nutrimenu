@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { Category } from '@/types'
 
 interface Props {
@@ -9,16 +10,28 @@ interface Props {
 }
 
 export default function CategoryTabs({ categories, activeCategory, onSelect }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const activeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [activeCategory])
+
   return (
-    <div className="flex gap-2 px-4 pb-3 flex-wrap">
+    <div
+      ref={scrollRef}
+      className="flex gap-2 px-4 pb-3 overflow-x-auto"
+      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+    >
       {['all', ...categories.map(c => c.id)].map((id, i) => {
         const label = id === 'all' ? 'Все' : categories[i - 1]?.name ?? id
         const active = activeCategory === id
         return (
           <button
             key={id}
+            ref={active ? activeRef : null}
             onClick={() => onSelect(id)}
-            className="text-xs px-4 rounded-full whitespace-nowrap shrink-0 flex-shrink-0 transition-all min-h-[44px] active:opacity-70"
+            className="text-xs px-4 rounded-full whitespace-nowrap shrink-0 transition-all min-h-[44px] active:opacity-70"
             style={
               active
                 ? {

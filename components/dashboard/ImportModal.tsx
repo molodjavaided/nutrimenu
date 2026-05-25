@@ -1,6 +1,7 @@
 'use client'
 
 import { X, ChevronRight, Trash2 } from 'lucide-react'
+import { Drawer as VaulDrawer } from 'vaul'
 import TestBadge from '@/components/ui/TestBadge'
 import { useImportFlow } from './import/useImportFlow'
 import PaywallStep from './import/PaywallStep'
@@ -31,24 +32,32 @@ export default function ImportModal({ onClose, onImported }: Props) {
 
   const UNDO_SECONDS = 30
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'rgba(44,41,80,0.25)', backdropFilter: 'blur(8px)' }}
-        onClick={step === 'success' ? handleSuccessClose : onClose}
-      />
+  const handleOpenChange = (open: boolean) => {
+    if (!open) (step === 'success' ? handleSuccessClose : onClose)()
+  }
 
-      {/* Modal */}
-      <div
-        className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
-        style={{
-          background: 'rgba(254,254,242,0.97)',
-          border: '0.5px solid rgba(176,166,223,0.5)',
-          boxShadow: '0 24px 80px rgba(44,41,80,0.18)',
-        }}
-      >
+  return (
+    <VaulDrawer.Root open onOpenChange={handleOpenChange} shouldScaleBackground>
+      <VaulDrawer.Portal>
+        <VaulDrawer.Overlay
+          className="fixed inset-0 z-50"
+          style={{ background: 'var(--surface-overlay)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+        />
+        <VaulDrawer.Content
+          aria-label="Импорт меню"
+          className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl max-h-[92dvh] md:bottom-auto md:left-1/2 md:top-1/2 md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[calc(100vw-2rem)] md:rounded-2xl md:max-h-[88vh] md:max-w-2xl outline-none overflow-hidden"
+          style={{
+            background: 'var(--surface-3)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: 'var(--shadow-soft-xl)',
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          <VaulDrawer.Title className="sr-only">Импорт меню</VaulDrawer.Title>
+          <div className="md:hidden flex justify-center pt-2 pb-1 shrink-0">
+            <div aria-hidden className="w-12 h-1.5 rounded-full" style={{ background: 'rgba(139,92,246,0.25)' }} />
+          </div>
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-5 shrink-0"
@@ -265,7 +274,8 @@ export default function ImportModal({ onClose, onImported }: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+        </VaulDrawer.Content>
+      </VaulDrawer.Portal>
+    </VaulDrawer.Root>
   )
 }

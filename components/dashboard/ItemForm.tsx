@@ -31,14 +31,10 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
   const [previewOpen, setPreviewOpen] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
 
+  // Обучение временно отключено (см. layout.tsx). tourActive остаётся false → не активируется
+  // prefill «Карбонара» и data-tour клики не триггерят шаги.
   useEffect(() => {
-    if (itemId || demoMode) return  // в демо тур не запускаем
-    fetch('/api/user/onboarding')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && !data.isCompleted && !data.isDismissed && data.step >= 1) setTourActive(true)
-      })
-      .catch(() => {})
+    // no-op while tour is disabled
   }, [itemId, demoMode])
 
   // ─── Tour prefill: название готово, режим «по сложному %» выбран заранее,

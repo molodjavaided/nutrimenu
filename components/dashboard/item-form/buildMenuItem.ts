@@ -98,10 +98,10 @@ export function buildMenuItem(s: FormSnapshot, opts: BuildOptions): MenuItem {
         ingredientId: ingredient.ingredientRefId,
         amount,
         unit: ingredient.unit,
-        ...(s.mode === 'ttk' && ingredient.processing && ingredient.processing !== 'raw'
+        ...(ingredient.processing && ingredient.processing !== 'raw'
           ? { processing: ingredient.processing }
           : {}),
-        ...(s.mode === 'ttk' && ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
+        ...(ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0
           ? { yieldOverride: ingredient.yieldOverride }
           : {}),
         ...(ingredient.locked === false ? { removable: true } : {}),

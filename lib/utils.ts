@@ -381,6 +381,13 @@ export function resolveNutriFromComposition(
     }
   }
 
+  // modifier.calories хранится для modifier.weight грамм (по умолчанию 100).
+  // При замене нужно перевести в калории на грамм, иначе при weight ≠ 100 получаем двойное масштабирование.
+  const modifierCalPerGram = (m: Modifier) => {
+    const w = m.weight && m.weight > 0 ? m.weight : 100
+    return { cal: m.calories / w, pro: m.protein / w, fat: m.fat / w, car: m.carbs / w }
+  }
+
   // options.finalWeight зарезервирован для будущих сценариев нормализации
   // (например, отображение КБЖУ на 100 г готового блюда), здесь же возвращаем
   // абсолютные значения — нормализацию делает форма через item.weight.
@@ -390,11 +397,11 @@ export function resolveNutriFromComposition(
   for (const row of composition) {
     const replacement = replacements.get(row.ingredientId)
     if (replacement) {
-      const ratio = replacement.amount / 100
-      calories += replacement.modifier.calories * ratio
-      protein  += replacement.modifier.protein  * ratio
-      fat      += replacement.modifier.fat      * ratio
-      carbs    += replacement.modifier.carbs    * ratio
+      const perG = modifierCalPerGram(replacement.modifier)
+      calories += perG.cal * replacement.amount
+      protein  += perG.pro * replacement.amount
+      fat      += perG.fat * replacement.amount
+      carbs    += perG.car * replacement.amount
       continue
     }
 

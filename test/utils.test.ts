@@ -298,13 +298,15 @@ describe('resolveNutriFromComposition', () => {
           multi: false,
           required: false,
           modifiers: [
-            { id: 'tofu', label: 'Тофу', calories: 76, protein: 8, fat: 4.2, carbs: 1.9, weight: 150, weightUnit: 'г' },
+            // modifier.calories хранится за modifier.weight грамм (как сохраняет buildMenuItem):
+            // 76 ккал/100г × 1.5 = 114 ккал на 150 г
+            { id: 'tofu', label: 'Тофу', calories: 114, protein: 12, fat: 6.3, carbs: 2.85, weight: 150, weightUnit: 'г' },
           ],
         },
       ],
       { 'protein-swap': 'tofu' }
     )
-    // tofu 150g at per-100g: 76*1.5=114 cal, rice 130 cal → 244
+    // tofu занимает 150 г (как и оригинальная курица): 114 ккал + rice 130 ккал → 244
     expect(result.calories).toBe(244)
   })
 

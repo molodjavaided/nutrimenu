@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { tourBus } from '@/lib/tour/bus'
 import IngredientPickerModal from './IngredientPickerModal'
-import AddonsSection from './item-form/AddonsSection'
 import BasicSection from './item-form/BasicSection'
 import CompositionSection from './item-form/CompositionSection'
-import VariantsSection from './item-form/VariantsSection'
+import DishOptionsModal from './item-form/DishOptionsModal'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
 import { GlassButton } from '@/components/ui-kit'
 import { useInvalidateIngredients } from '@/lib/queries/menu-client'
+import type { ItemFormState } from './item-form/useItemFormState'
 
 export default function ItemForm({ itemId, categoryId: initialCategoryId, redirectAfterSave, demoMode }: { itemId?: string; categoryId?: string; redirectAfterSave?: string; demoMode?: boolean }) {
   const router = useRouter()
@@ -26,6 +26,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
     onSaved: async () => { tourBus.emit('item-saved') },
   })
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
 
   useEffect(() => {
     if (itemId || demoMode) return  // в демо тур не запускаем
@@ -110,9 +111,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
         </div>
       )}
 
-      {s.mode !== 'quick' && <VariantsSection s={s} />}
-
-      {s.mode !== 'quick' && <AddonsSection s={s} />}
+      {s.mode !== 'quick' && (
+        <div className="mb-8">
+          <DishOptionsChip s={s} onOpen={() => setOptionsOpen(true)} />
+        </div>
+      )}
 
       {/* Footer: Preview / Cancel / Save */}
       <div
@@ -151,6 +154,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
           </GlassButton>
         </div>
       </div>
+
+      <DishOptionsModal s={s} open={optionsOpen} onClose={() => setOptionsOpen(false)} />
 
       <DishSheet
         item={previewOpen ? buildPreviewItem(s) : null}
@@ -226,5 +231,50 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
         />
       )}
     </div>
+  )
+}
+
+function DishOptionsChip({ s, onOpen }: { s: ItemFormState; onOpen: () => void }) {
+  const sizesCount = s.hasMultipleSizes ? s.sizes.length : 0
+  const choiceCount = s.variantGroups.length
+  const addonsCount = s.addonGroups.length
+  const hasAny = sizesCount + choiceCount + addonsCount > 0
+
+  const parts: string[] = []
+  if (sizesCount) parts.push(`${sizesCount} ${sizesCount === 1 ? 'размер' : sizesCount < 5 ? 'размера' : 'размеров'}`)
+  if (choiceCount) parts.push(`${choiceCount} ${choiceCount === 1 ? 'выбор' : 'выбора'}`)
+  if (addonsCount) parts.push(`${addonsCount} ${addonsCount === 1 ? 'добавка' : 'добавки'}`)
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] flex items-center gap-3"
+      style={{
+        background: hasAny ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.45)',
+        border: hasAny ? '0.5px solid rgba(139,92,246,0.28)' : '1px dashed rgba(139,92,246,0.35)',
+      }}
+    >
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'rgba(139,92,246,0.12)', color: '#7C3AED' }}
+        aria-hidden
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M3 5h12M3 9h12M3 13h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+          {hasAny ? 'Опции для гостя' : 'Что гость может выбрать или добавить?'}
+        </p>
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-muted)' }}>
+          {hasAny ? parts.join(' · ') : 'Размеры, опции на выбор, платные добавки'}
+        </p>
+      </div>
+      <span className="text-xs shrink-0" style={{ color: '#7C3AED' }}>
+        {hasAny ? 'Изменить →' : 'Добавить →'}
+      </span>
+    </button>
   )
 }

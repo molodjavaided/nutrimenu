@@ -97,8 +97,6 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
 
   return (
     <>
-      <SizePortionSection s={s} />
-
       <FormField label="Состав" required>
         {s.ingredients.length === 0 ? (
           <EmptyComposition onAdd={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />
@@ -137,7 +135,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
 
 // ─── Size portion selector ─────────────────────────────────────────────────
 
-function SizePortionSection({ s }: { s: ItemFormState }) {
+export function SizePortionSection({ s }: { s: ItemFormState }) {
   return (
     <FormField label="Размер порции" required>
       <div className="space-y-3">

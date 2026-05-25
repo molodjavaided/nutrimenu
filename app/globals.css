@@ -23,9 +23,27 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+
+  /* Typography stack — next/font в layout.tsx экспортирует переменные:
+     --font-sans (Inter), --font-heading (Manrope), --font-mono (Geist Mono).
+     Здесь даём системные fallback'ы на случай если шрифт ещё грузится. */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Manrope", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Type scale — крупнее, чем дефолт Tailwind. Заголовки дышат, цены бьют. */
+  --text-xs: 0.75rem;        /* 12px — мета */
+  --text-sm: 0.875rem;       /* 14px — вторичный текст */
+  --text-base: 1rem;         /* 16px — body */
+  --text-lg: 1.125rem;       /* 18px — крупный body */
+  --text-xl: 1.375rem;       /* 22px — sub-heading */
+  --text-2xl: 1.75rem;       /* 28px — heading */
+  --text-3xl: 2.25rem;       /* 36px — display */
+  --text-4xl: 2.75rem;       /* 44px — hero */
+
+  /* Letter-spacing для заголовков (drinkit-стиль — плотные крупные заголовки) */
+  --tracking-tight: -0.02em;
+  --tracking-tighter: -0.03em;
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -154,10 +172,27 @@
   body {
     @apply text-foreground;
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01"; /* Inter: humanist alt-1, single-storey g */
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     background: linear-gradient(160deg, #EDE9FE 0%, #FEFEF2 55%, #E8E2FF 100%);
     background-attachment: fixed;
     min-height: 100vh;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+    letter-spacing: var(--tracking-tight);
+    font-feature-settings: "ss01";
+  }
+
+  /* Все числовые ячейки — табличные цифры (цены, КБЖУ, веса).
+     Никаких прыжков при пересчёте. */
+  .tabular-nums,
+  [data-numeric] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
   }
 
   .dashboard-main {

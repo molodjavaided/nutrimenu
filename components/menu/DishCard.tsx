@@ -56,11 +56,11 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
           )}
           <NutritionGrid nutri={item} />
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-xs text-text-muted">
+            <p className="text-xs text-text-muted tabular-nums">
               {item.weight} {item.weightUnit}
             </p>
             {item.price != null && (
-              <p className="text-xs font-medium" style={{ color: 'var(--color-text-primary)' }}>
+              <p className="text-xs font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
                 {item.price} ₽
               </p>
             )}

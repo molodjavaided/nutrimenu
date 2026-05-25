@@ -63,7 +63,7 @@ export function NutriPill({
   const hasStructured = label != null || value != null || unit
   return (
     <span
-      className={cn('inline-flex items-center font-medium whitespace-nowrap', SIZES[size], className)}
+      className={cn('inline-flex items-center font-medium whitespace-nowrap tabular-nums', SIZES[size], className)}
       style={{ ...TONES[tone], ...style }}
       {...rest}
     >

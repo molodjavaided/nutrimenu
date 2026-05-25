@@ -1,19 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppInitializer } from "@/components/AppInitializer";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
 import { Providers } from "./providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Body font — лучший шрифт для UI с поддержкой кириллицы.
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  weight: ["400", "500", "600"],
+});
+
+// Heading font — геометричный, премиальный, отличная кириллица.
+const manrope = Manrope({
+  variable: "--font-heading",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  weight: ["500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://plate.menu'
@@ -53,7 +65,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${manrope.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>

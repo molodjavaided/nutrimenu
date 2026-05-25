@@ -281,9 +281,9 @@ function ChoiceGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState[
                 <RemoveButton size="sm" onClick={() => s.removeVariantOption(group.id, opt.id)} />
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {replacedAmountsPerSize ? (
+                {usesComposition ? (
                   <>
-                    {replacedAmountsPerSize.map(({ size, amount }, idx) => (
+                    {(replacedAmountsPerSize ?? []).map(({ size, amount }, idx) => (
                       <NutriPill key={size.id} tone="brand" size="xs">
                         {size.name || (s.sizes.length === 1 ? 'порция' : `Размер ${idx + 1}`)}: {amount} {size.unit}
                       </NutriPill>
@@ -295,9 +295,10 @@ function ChoiceGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState[
                     <GlassInput
                       type="number"
                       inputMode="decimal"
+                      min={0}
                       value={opt.weight || ''}
                       onChange={e => {
-                        const newWeight = Number(e.target.value)
+                        const newWeight = Math.max(0, Number(e.target.value))
                         s.updateVariantOption(group.id, opt.id, { weight: newWeight })
                         if (selectedRef) {
                           const ratio = newWeight / 100
@@ -329,8 +330,9 @@ function ChoiceGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState[
                   <GlassInput
                     type="number"
                     inputMode="decimal"
+                    min={0}
                     value={opt.price ?? ''}
-                    onChange={e => s.updateVariantOption(group.id, opt.id, { price: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={e => s.updateVariantOption(group.id, opt.id, { price: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })}
                     placeholder="0"
                     className="w-16 text-center"
                   />
@@ -454,8 +456,9 @@ function AddonGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState['
                 <GlassInput
                   type="number"
                   inputMode="decimal"
+                  min={0}
                   value={addon.weight ?? ''}
-                  onChange={e => updateAddonField('weight', e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={e => updateAddonField('weight', e.target.value ? Math.max(0, Number(e.target.value)) : undefined)}
                   placeholder="100"
                   className="w-16 text-center"
                 />
@@ -466,8 +469,9 @@ function AddonGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState['
                 <GlassInput
                   type="number"
                   inputMode="decimal"
+                  min={0}
                   value={addon.price ?? ''}
-                  onChange={e => updateAddonField('price', e.target.value ? Number(e.target.value) : undefined)}
+                  onChange={e => updateAddonField('price', e.target.value ? Math.max(0, Number(e.target.value)) : undefined)}
                   placeholder="0"
                   className="w-16 text-center"
                 />

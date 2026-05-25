@@ -188,26 +188,28 @@ const resolved = {
             </p>
           ) : (
             filteredCategories.map((cat) => (
-              <div key={cat.id} className="mb-6">
-                <p
-                  className="text-xs font-medium uppercase tracking-wider pb-2 mb-1 text-text-muted"
-                  style={{ borderBottom: '0.5px solid rgba(139,92,246,0.15)' }}
+              <div key={cat.id} className="mb-8">
+                <h2
+                  className="font-heading text-xl md:text-2xl font-medium tracking-tight pb-3 mb-3"
+                  style={{ color: 'var(--color-text-primary)', borderBottom: '0.5px solid rgba(139,92,246,0.15)' }}
                 >
                   {cat.name}
-                </p>
-                {cat.items.map((item) => (
-                  <DishCard
-                    key={item.id}
-                    item={item}
-                    quantity={
-                      trackerItems.find((t) => t.menuItem.id === item.id)
-                        ?.quantity ?? 0
-                    }
-                    onOpen={() => handleOpenDish(item)}
-                    onAdd={() => handleAddToTracker(item, 1)}
-                    onRemove={() => handleRemoveOne(item.id)}
-                  />
-                ))}
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                  {cat.items.map((item) => (
+                    <DishCard
+                      key={item.id}
+                      item={item}
+                      quantity={
+                        trackerItems.find((t) => t.menuItem.id === item.id)
+                          ?.quantity ?? 0
+                      }
+                      onOpen={() => handleOpenDish(item)}
+                      onAdd={() => handleAddToTracker(item, 1)}
+                      onRemove={() => handleRemoveOne(item.id)}
+                    />
+                  ))}
+                </div>
               </div>
             ))
           )}

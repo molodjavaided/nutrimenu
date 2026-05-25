@@ -1,8 +1,8 @@
 'use client'
 
 import Image from 'next/image'
+import { motion } from 'motion/react'
 import { MenuItem } from '@/types'
-import { NutritionGrid } from '@/components/ui/NutritionGrid'
 import { QuantityControl } from '@/components/ui/QuantityControl'
 import { getAllergenById } from '@/lib/allergens'
 
@@ -14,92 +14,131 @@ interface Props {
   onRemove: () => void
 }
 
+/**
+ * Карточка блюда в стиле drinkit:
+ * - Фото-герой сверху во всю ширину (5:4)
+ * - Заголовок Stolzl + цена крупные
+ * - + button плавает над фото внизу справа
+ * - Минимум мета-инфы: вес · ккал. Б/Ж/У и описание — внутри DishSheet.
+ *
+ * Карточка не знает о соседях — родитель (MenuView) оборачивает их в grid.
+ */
 export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Props) {
   const inTracker = quantity > 0
+  const hasPhoto = !!item.photo
 
   return (
-    <div
-      className="flex gap-3 py-3"
-      style={{ borderBottom: '0.5px solid rgba(139,92,246,0.1)' }}
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+      className="relative rounded-2xl overflow-hidden cursor-pointer"
+      style={{ background: 'var(--surface-1)', boxShadow: 'var(--shadow-soft-sm)' }}
     >
-      {/* Tap area: photo + info */}
       <button
-        className="flex gap-3 flex-1 min-w-0 text-left active:opacity-70 transition-opacity"
         onClick={onOpen}
+        className="block w-full text-left"
+        aria-label={`Открыть карточку: ${item.name}`}
       >
-        {/* Фото */}
+        {/* Photo / placeholder */}
         <div
-          className="relative w-16 h-16 rounded-xl shrink-0 flex items-center justify-center text-2xl overflow-hidden"
-          style={{
-            background: 'rgba(255,255,255,0.6)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            border: '0.5px solid rgba(255,255,255,0.5)',
-            WebkitMaskImage: '-webkit-radial-gradient(white, black)',
-          }}
+          className="relative w-full aspect-[5/4] overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(176,166,223,0.10))' }}
         >
-          {item.photo
-            ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="64px" />
-            : '🍽️'
-          }
-        </div>
-
-        {/* Инфо */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium mb-0.5 truncate text-text-primary">
-            {item.name}
-          </p>
-          {item.description && (
-            <p className="text-xs mb-1.5 truncate text-text-secondary">
-              {item.description}
-            </p>
+          {hasPhoto ? (
+            <Image
+              src={item.photo!}
+              alt={item.name}
+              fill
+              className="object-cover transition-transform duration-500 hover:scale-[1.04]"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40" aria-hidden>🍽️</div>
           )}
-          <NutritionGrid nutri={item} />
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-xs text-text-muted tabular-nums">
-              {item.weight} {item.weightUnit}
-            </p>
-            {item.price != null && (
-              <p className="text-xs font-medium tabular-nums" style={{ color: 'var(--color-text-primary)' }}>
-                {item.price} ₽
-              </p>
-            )}
-          </div>
+
+          {/* Allergens overlay top-right */}
           {item.allergens && item.allergens.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {item.allergens.map(id => {
+            <div className="absolute top-2.5 right-2.5 flex gap-1">
+              {item.allergens.slice(0, 3).map(id => {
                 const a = getAllergenById(id)
                 if (!a) return null
                 return (
                   <span
                     key={id}
                     title={a.label}
-                    className="text-xs px-1.5 py-0.5 rounded-full"
-                    style={{ background: 'rgba(239,68,68,0.1)', color: '#DC2626', border: '0.5px solid rgba(239,68,68,0.25)' }}
-                  >
-                    {a.emoji} {a.label}
-                  </span>
+                    aria-label={a.label}
+                    className="text-sm w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'rgba(255,255,255,0.85)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      boxShadow: 'var(--shadow-soft-xs)',
+                    }}
+                  >{a.emoji}</span>
                 )
               })}
             </div>
           )}
         </div>
+
+        {/* Info */}
+        <div className="p-3 md:p-4 pr-14 md:pr-16">
+          <h3
+            className="font-heading text-base md:text-lg font-medium tracking-tight line-clamp-2"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            {item.name}
+          </h3>
+          {item.description && (
+            <p
+              className="text-xs mt-1 line-clamp-2"
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {item.description}
+            </p>
+          )}
+          <div className="flex items-baseline gap-2 mt-3 flex-wrap">
+            {item.price != null && (
+              <span
+                className="text-lg md:text-xl font-medium tabular-nums leading-none"
+                style={{ color: 'var(--color-text-primary)' }}
+              >
+                {item.price}&nbsp;₽
+              </span>
+            )}
+            <span
+              className="text-[11px] tabular-nums"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              {item.weight}&nbsp;{item.weightUnit} · {item.calories}&nbsp;ккал
+            </span>
+          </div>
+        </div>
       </button>
 
-      {/* Контрол добавления */}
-      <div className="flex flex-col items-center justify-center shrink-0 gap-1">
+      {/* Floating add control — bottom-right, поверх info */}
+      <div
+        className="absolute bottom-3 right-3 md:bottom-4 md:right-4"
+        onClick={e => e.stopPropagation()}
+      >
         {inTracker ? (
           <QuantityControl quantity={quantity} onAdd={onAdd} onRemove={onRemove} size="sm" />
         ) : (
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={onAdd}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-all active:scale-90"
-            style={{ background: '#8B5CF6', color: '#ffffff', boxShadow: '0 4px 12px rgba(139,92,246,0.3)' }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium transition-shadow"
+            style={{
+              background: '#8B5CF6',
+              color: '#fff',
+              boxShadow: '0 6px 18px rgba(139,92,246,0.40), 0 1px 2px rgba(44,41,80,0.08)',
+            }}
+            aria-label={`Добавить ${item.name}`}
           >
             +
-          </button>
+          </motion.button>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

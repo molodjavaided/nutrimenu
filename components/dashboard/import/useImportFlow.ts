@@ -11,9 +11,9 @@ import {
   type ParsedDish,
   type IngredientMatch,
 } from '@/lib/importer'
-import { Category, IngredientRef } from '@/types'
 import { getTTKExamples, saveTTKExample } from '@/lib/ttk-examples'
 import { pluralBlud, buildButtonLabel } from './utils'
+import { useCategoriesQuery, useIngredientsQuery } from '@/lib/queries/menu-client'
 
 const UNDO_SECONDS = 30
 
@@ -28,13 +28,11 @@ export interface ImportLimit {
 export type ImportStep = 'upload' | 'preview' | 'matching' | 'success'
 
 export function useImportFlow(onClose: () => void, onImported: (count: number) => void) {
-  const [existingCategories, setExistingCategories] = useState<Category[]>([])
-  const [existingIngredients, setExistingIngredients] = useState<IngredientRef[]>([])
+  const { data: existingCategories = [] } = useCategoriesQuery()
+  const { data: existingIngredients = [] } = useIngredientsQuery()
   const [importLimit, setImportLimit] = useState<ImportLimit | null>(null)
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.ok ? r.json() : []).then(setExistingCategories)
-    fetch('/api/ingredients').then(r => r.ok ? r.json() : []).then(setExistingIngredients)
     fetch('/api/import/limit').then(r => r.ok ? r.json() : null).then(setImportLimit)
   }, [])
 

@@ -22,13 +22,29 @@ import { Category } from '@/types'
 import SortableCategory from '@/components/dashboard/SortableCategory'
 import ImportModal from '@/components/dashboard/ImportModal'
 import { GlassCard, GlassButton, GlassInput, GlassDashedButton } from '@/components/ui-kit'
+import {
+  useCategoriesQuery,
+  useCreateCategory,
+  useRenameCategory,
+  useDeleteCategory,
+  useDeleteItem,
+  useReorderItems,
+  useReorderCategories,
+  useInvalidateCategories,
+} from '@/lib/queries/menu-client'
 
 const PRESET_CATEGORIES = ['Завтраки', 'Обеды', 'Десерты', 'Напитки', 'Закуски', 'Салаты']
 
-// initialCategories приходит из server-page без типового сужения weightUnit;
-// safe: формат идентичен ответу /api/categories, который раньше успешно использовался.
 export default function MenuClient({ initialCategories }: { initialCategories: unknown[] }) {
-  const [categories, setCategories] = useState<Category[]>(initialCategories as Category[])
+  const { data: categories = [] } = useCategoriesQuery(initialCategories as Category[])
+  const createCat = useCreateCategory()
+  const renameCat = useRenameCategory()
+  const deleteCat = useDeleteCategory()
+  const deleteItem = useDeleteItem()
+  const reorderItems = useReorderItems()
+  const reorderCats = useReorderCategories()
+  const invalidate = useInvalidateCategories()
+
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -38,84 +54,49 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  async function refetchCategories() {
-    const res = await fetch('/api/categories')
-    if (res.ok) setCategories(await res.json())
-  }
-
   async function createCategory(name: string) {
     const trimmed = name.trim()
-    if (!trimmed) return null
-    const res = await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: trimmed }),
-    })
-    if (!res.ok) return null
-    const cat = await res.json()
-    setCategories(prev => [...prev, cat])
-    return cat as Category
+    if (!trimmed) return
+    await createCat.mutateAsync({ tempId: `temp-${Date.now()}`, name: trimmed })
   }
 
   async function handleAddCategory() {
-    const cat = await createCategory(newCatName)
-    if (!cat) return
+    await createCategory(newCatName)
     setNewCatName('')
     setAddingCat(false)
   }
 
-  async function handlePresetClick(name: string) {
-    await createCategory(name)
+  function handleRenameCategory(id: string, name: string) {
+    renameCat.mutate({ id, name })
   }
 
-  async function handleRenameCategory(id: string, name: string) {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, name } : c))
-    await fetch(`/api/categories/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
+  function handleDeleteCategory(id: string) {
+    deleteCat.mutate({ id })
   }
 
-  async function handleDeleteCategory(id: string) {
-    setCategories(prev => prev.filter(c => c.id !== id))
-    await fetch(`/api/categories/${id}`, { method: 'DELETE' })
+  function handleDeleteItem(categoryId: string, itemId: string) {
+    deleteItem.mutate({ categoryId, itemId })
   }
 
-  async function handleDeleteItem(categoryId: string, itemId: string) {
-    setCategories(prev => prev.map(c =>
-      c.id === categoryId ? { ...c, items: (c.items ?? []).filter(i => i.id !== itemId) } : c
-    ))
-    await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
-  }
-
-  async function handleReorderItems(categoryId: string, activeId: string, overId: string) {
+  function handleReorderItems(categoryId: string, activeId: string, overId: string) {
     const cat = categories.find(c => c.id === categoryId)
     if (!cat) return
     const items = cat.items ?? []
     const oldIndex = items.findIndex(i => i.id === activeId)
     const newIndex = items.findIndex(i => i.id === overId)
+    if (oldIndex < 0 || newIndex < 0) return
     const reordered = arrayMove(items, oldIndex, newIndex)
-    setCategories(prev => prev.map(c => c.id === categoryId ? { ...c, items: reordered } : c))
-    await fetch('/api/items/reorder', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reordered.map((item, i) => ({ id: item.id, sortOrder: i }))),
-    })
+    reorderItems.mutate({ categoryId, items: reordered })
   }
 
-  async function handleDragEndCategories(event: DragEndEvent) {
+  function handleDragEndCategories(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
     const oldIndex = categories.findIndex(c => c.id === active.id)
     const newIndex = categories.findIndex(c => c.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
     const reordered = arrayMove(categories, oldIndex, newIndex).map((c, i) => ({ ...c, order: i }))
-    setCategories(reordered)
-    await fetch('/api/categories', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reordered.map((c, i) => ({ id: c.id, sortOrder: i }))),
-    })
+    reorderCats.mutate({ categories: reordered })
   }
 
   const hasCategories = categories.length > 0
@@ -163,13 +144,13 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
         <ImportModal
           onClose={() => setShowImport(false)}
           onImported={() => {
-            refetchCategories()
+            invalidate()
             setShowImport(false)
           }}
         />
       )}
 
-      {/* Empty state с пресетами — когда категорий ещё нет */}
+      {/* Empty state с пресетами */}
       {!hasCategories && (
         <GlassCard tone="glass" padding="lg" className="mb-4">
           <div className="flex items-center gap-3 mb-2">
@@ -192,12 +173,11 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
             </div>
           </div>
 
-          {/* Пресет-чипы */}
           <div className="flex flex-wrap gap-2 mb-4 mt-4">
             {PRESET_CATEGORIES.map(name => (
               <button
                 key={name}
-                onClick={() => handlePresetClick(name)}
+                onClick={() => createCategory(name)}
                 className="inline-flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all active:scale-[0.97]"
                 style={{
                   background: 'rgba(139,92,246,0.10)',
@@ -210,7 +190,6 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
             ))}
           </div>
 
-          {/* Ручной ввод */}
           <div className="flex items-center gap-2">
             <GlassInput
               inputSize="md"
@@ -242,9 +221,6 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
           strategy={verticalListSortingStrategy}
         >
           <div className="flex flex-col gap-3">
-            {/* AnimatePresence: новая категория появляется (opacity + slide-down),
-                удалённая — плавно схлопывается. layout не используем,
-                чтобы не конфликтовать с transform от @dnd-kit. */}
             <AnimatePresence initial={false}>
               {categories.map(cat => (
                 <motion.div
@@ -260,7 +236,7 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
                     onRename={handleRenameCategory}
                     onDelete={handleDeleteCategory}
                     onDeleteItem={handleDeleteItem}
-                    onDuplicateItem={refetchCategories}
+                    onDuplicateItem={invalidate}
                     onReorderItems={handleReorderItems}
                   />
                 </motion.div>
@@ -270,7 +246,7 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
         </SortableContext>
       </DndContext>
 
-      {/* Добавить категорию (только если уже есть хотя бы одна — для пустого случая используется empty state выше) */}
+      {/* Добавить категорию */}
       {hasCategories && (
         <div className="mt-4">
           {addingCat ? (

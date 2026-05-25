@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { Category, IngredientLibrary, IngredientRef, ProcessingType } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
+import { useCategoriesQuery, useIngredientsQuery, useCreateCategory } from '@/lib/queries/menu-client'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
 import { buildMenuItem } from './buildMenuItem'
@@ -139,11 +140,26 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectA
   const setPhotoPosition = makePlainSetter('photoPosition')
 
   // ── basic ────────────────────────────────────────────────────────────────
-  const [categories, setCategories] = useState<Category[]>([])
+  const { data: categories = [] } = useCategoriesQuery()
+  const { data: personalIngredients = [] } = useIngredientsQuery()
+  const createCategoryMutation = useCreateCategory()
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
-  const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
-  const [libraries, setLibraries] = useState<IngredientLibrary[]>([])
+
+  const libraries = useMemo<IngredientLibrary[]>(() => {
+    const personalLib: IngredientLibrary = {
+      id: 'my-library',
+      name: 'Мои ингредиенты',
+      isSystem: false,
+      ingredients: personalIngredients,
+    }
+    return [...systemLibraries, personalLib]
+  }, [personalIngredients])
+
+  const ingredientRefs = useMemo<IngredientRef[]>(
+    () => libraries.flatMap(l => l.ingredients),
+    [libraries],
+  )
   const [pickerOpen, setPickerOpen] = useState(false)
   const [variantPickerTarget, setVariantPickerTarget] = useState<{ groupId: string; optionId: string } | null>(null)
 
@@ -215,51 +231,38 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectA
   const isEdit = !!itemId
 
   async function handleCreateCategory() {
-    if (!newCategoryName.trim()) return
-    const res = await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newCategoryName.trim() }),
-    })
-    if (res.ok) {
-      const cat = await res.json()
-      setCategories(prev => [...prev, cat])
-      setCategoryId(cat.id)
-    }
+    const trimmed = newCategoryName.trim()
+    if (!trimmed) return
+    const tempId = `temp-${Date.now()}`
+    const cat = await createCategoryMutation.mutateAsync({ tempId, name: trimmed })
+    setCategoryId(cat.id)
     setNewCategoryName('')
     setAddingCategory(false)
   }
 
-  // ── load references ──────────────────────────────────────────────────────
+  // ── initial side effects when references arrive ──────────────────────────
+  // One-time: pick default category + apply tour prefill. Triggers once when
+  // both queries have data (initialData = []; real data flips length > 0 or stays
+  // empty after fetch completes — we still want to fire once).
+  const sideEffectsApplied = useRef(false)
   useEffect(() => {
-    Promise.all([
-      fetch('/api/categories').then(r => r.ok ? r.json() : []),
-      fetch('/api/ingredients').then(r => r.ok ? r.json() : []),
-    ]).then(([cats, personalIngredients]) => {
-      setCategories(cats)
-      if (!initialCategoryId) {
-        const prefillCat = sessionStorage.getItem('nm-tour-prefill-category')
-        const matched = prefillCat ? cats.find((c: { name: string; id: string }) => c.name === prefillCat) : null
-        setCategoryId(matched ? matched.id : cats[0]?.id ?? '')
-      }
-      const prefillName = sessionStorage.getItem('nm-tour-prefill-name')
-      if (prefillName && !itemId) {
-        form.setValue('name', prefillName, { shouldDirty: true })
-        sessionStorage.removeItem('nm-tour-prefill-name')
-        sessionStorage.removeItem('nm-tour-prefill-category')
-      }
-      const personalLib = {
-        id: 'my-library',
-        name: 'Мои ингредиенты',
-        isSystem: false,
-        ingredients: personalIngredients,
-      }
-      const allLibs = [...systemLibraries, personalLib]
-      setLibraries(allLibs)
-      setIngredientRefs(allLibs.flatMap((l: { ingredients: IngredientRef[] }) => l.ingredients))
-      setIsReady(true)
-    })
-  }, [initialCategoryId])
+    if (sideEffectsApplied.current) return
+    if (!categories) return
+    sideEffectsApplied.current = true
+
+    if (!initialCategoryId) {
+      const prefillCat = sessionStorage.getItem('nm-tour-prefill-category')
+      const matched = prefillCat ? categories.find(c => c.name === prefillCat) : null
+      setCategoryId(matched ? matched.id : categories[0]?.id ?? '')
+    }
+    const prefillName = sessionStorage.getItem('nm-tour-prefill-name')
+    if (prefillName && !itemId) {
+      form.setValue('name', prefillName, { shouldDirty: true })
+      sessionStorage.removeItem('nm-tour-prefill-name')
+      sessionStorage.removeItem('nm-tour-prefill-category')
+    }
+    setIsReady(true)
+  }, [categories]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── load existing item (uses pure builder, just applies setters) ─────────
   useEffect(() => { void loadItem() }, [isReady, ingredientRefs, itemId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -498,7 +501,6 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectA
   return {
     // refs / loaded
     categories, libraries, ingredientRefs,
-    setIngredientRefs, setLibraries,
     // basic
     categoryId, setCategoryId, name, setName, price, setPrice,
     isAvailable, setIsAvailable, description, setDescription,

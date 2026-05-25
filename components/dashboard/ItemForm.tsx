@@ -12,11 +12,13 @@ import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
 import { GlassButton } from '@/components/ui-kit'
+import { useInvalidateIngredients } from '@/lib/queries/menu-client'
 
 export default function ItemForm({ itemId, categoryId: initialCategoryId, redirectAfterSave, demoMode }: { itemId?: string; categoryId?: string; redirectAfterSave?: string; demoMode?: boolean }) {
   const router = useRouter()
   const [tourActive, setTourActive] = useState(false)
 
+  const invalidateIngredients = useInvalidateIngredients()
   const s = useItemFormState({
     itemId,
     initialCategoryId,
@@ -169,11 +171,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             if (tourActive) s.setPickerOpen(false)
           }}
           onClose={() => s.setPickerOpen(false)}
-          onIngredientCreated={ref => {
-            s.setIngredientRefs(prev => [...prev, ref])
-            s.setLibraries(prev => prev.map(l =>
-              l.id === 'my-library' ? { ...l, ingredients: [...l.ingredients, ref] } : l
-            ))
+          onIngredientCreated={_ref => {
+            invalidateIngredients()
           }}
         />
       )}
@@ -189,11 +188,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             s.setAddonPickerTarget(null)
           }}
           onClose={() => s.setAddonPickerTarget(null)}
-          onIngredientCreated={ref => {
-            s.setIngredientRefs(prev => [...prev, ref])
-            s.setLibraries(prev => prev.map(l =>
-              l.id === 'my-library' ? { ...l, ingredients: [...l.ingredients, ref] } : l
-            ))
+          onIngredientCreated={_ref => {
+            invalidateIngredients()
           }}
         />
       )}

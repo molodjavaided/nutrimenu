@@ -5,13 +5,15 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { Category, IngredientLibrary, IngredientRef, ProcessingType, SizeOption } from '@/types'
+import type { Category, IngredientLibrary, IngredientRef, ProcessingType } from '@/types'
 import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
 import { buildMenuItem } from './buildMenuItem'
-import { resolveNutriFromComposition } from '@/lib/utils'
-import type { CompositionRow } from '@/types'
+import { buildLoadedItemState } from './loadItemFromApi'
+import { calcNutriForSize } from './nutri-calc'
+import { useVariantGroups } from './useVariantGroups'
+import { useAddonGroups } from './useAddonGroups'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -259,323 +261,44 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectA
     })
   }, [initialCategoryId])
 
-  // ── load existing item ───────────────────────────────────────────────────
+  // ── load existing item (uses pure builder, just applies setters) ─────────
   useEffect(() => { void loadItem() }, [isReady, ingredientRefs, itemId]) // eslint-disable-line react-hooks/exhaustive-deps
   async function loadItem() {
     if (!isReady) return
     if (ingredientRefs.length === 0) return
     if (!itemId || !isInitialLoad.current) return
 
-    const found = await fetch(`/api/items/${itemId}`).then(r => r.ok ? r.json() : null).then(item => item ? { item, categoryId: item.categoryId } : null)
+    const apiItem = await fetch(`/api/items/${itemId}`).then(r => r.ok ? r.json() : null)
+    if (!apiItem) { isInitialLoad.current = false; return }
 
-    if (found) {
-      setName(found.item.name)
-      setPrice(found.item.price != null ? String(found.item.price) : '')
-      setIsAvailable(found.item.isAvailable ?? true)
-      setDescription(found.item.description ?? '')
-      setPhoto(found.item.photo ?? '')
-      setPhotoPosition(found.item.photoPosition ?? 'center')
-      setCategoryId(found.categoryId)
-      setAllergens(found.item.allergens ?? [])
-
-      const hasComposition = (found.item.sizes?.length > 0 && found.item.sizes[0]?.composition?.length > 0)
-        || (found.item.composition?.length > 0)
-
-      if (!hasComposition) {
-        setMode('quick')
-        setQuickWeight(found.item.weight ?? 0)
-        setQuickWeightUnit((found.item.weightUnit ?? 'г') as 'г' | 'мл')
-        setQuickCalories(found.item.calories ?? 0)
-        setQuickProtein(found.item.protein ?? 0)
-        setQuickFat(found.item.fat ?? 0)
-        setQuickCarbs(found.item.carbs ?? 0)
-        isInitialLoad.current = false
-        return
-      }
-
-      setMode((found.item.creationMode === 'ttk' ? 'ttk' : 'composition'))
-      if (typeof found.item.finalWeight === 'number') setFinalWeight(found.item.finalWeight)
-      if (typeof found.item.servingSize === 'number') setServingSize(found.item.servingSize)
-
-      if (found.item.sizes && found.item.sizes.length > 0) {
-        const sizesData = found.item.sizes as Array<{ id: string; name?: string; weight: number; weightUnit: string; calories: number; protein: number; fat: number; carbs: number; composition?: Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water' | 'ice'; companionRatio?: number }> }>
-        const compositionData = sizesData[0].composition || []
-
-        const ingredientIdMap = new Map<string, string>()
-
-        if (compositionData.length > 0) {
-          // rowId → newId, чтобы восстановить parent-child связи между строками
-          const rowIdMap = new Map<string, string>()
-          for (const comp of compositionData) {
-            if (comp.id) rowIdMap.set(comp.id, crypto.randomUUID())
-          }
-          const loadedIngredients = compositionData.map((comp) => {
-            const newId = (comp.id && rowIdMap.get(comp.id)) || crypto.randomUUID()
-            if (comp.id) rowIdMap.set(comp.id, newId)
-            const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
-            ingredientIdMap.set(comp.ingredientId, newId)
-            return {
-              id: newId,
-              ingredientRefId: comp.ingredientId,
-              name: ref?.name || `Неизвестный ингредиент (${comp.ingredientId})`,
-              unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
-              processing: comp.processing,
-              yieldOverride: comp.yieldOverride,
-              locked: comp.removable !== true,
-              parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
-              companionKind: comp.companionKind,
-              companionRatio: comp.companionRatio,
-            }
-          })
-          setIngredients(loadedIngredients)
-
-          const loadedAmounts: AmountCell[] = []
-          for (const size of sizesData) {
-            for (const comp of size.composition || []) {
-              const mappedId = ingredientIdMap.get(comp.ingredientId)
-              if (mappedId) {
-                loadedAmounts.push({ ingredientId: mappedId, sizeId: size.id, amount: comp.amount })
-              }
-            }
-          }
-          setAmounts(loadedAmounts)
-        }
-
-        if (sizesData.length === 1) {
-          setHasMultipleSizes(false)
-          setSizes([{
-            id: sizesData[0].id,
-            name: sizesData[0].name || '',
-            unit: (sizesData[0].weightUnit || 'г') as 'г' | 'мл',
-          }])
-        } else {
-          setHasMultipleSizes(true)
-          setSizes(sizesData.map(s => ({
-            id: s.id,
-            name: s.name || `${s.weight}${s.weightUnit}`,
-            unit: (s.weightUnit || 'г') as 'г' | 'мл',
-            price: (s as { price?: number }).price,
-          })))
-        }
-
-        const loadedManual: Record<string, { calories: number; protein: number; fat: number; carbs: number; isManual: boolean }> = {}
-        for (const size of sizesData) {
-          loadedManual[size.id] = {
-            calories: size.calories,
-            protein: size.protein,
-            fat: size.fat,
-            carbs: size.carbs,
-            isManual: true,
-          }
-        }
-        setManualNutri(loadedManual)
-      } else if (found.item.composition && found.item.composition.length > 0) {
-        const compositionData = found.item.composition as Array<{ id?: string; ingredientId: string; unit?: string; amount: number; processing?: ProcessingType; yieldOverride?: number; removable?: boolean; parentRowId?: string; companionKind?: 'oil' | 'water' | 'ice'; companionRatio?: number }>
-        const ingredientIdMap = new Map<string, string>()
-        const rowIdMap = new Map<string, string>()
-        for (const comp of compositionData) {
-          if (comp.id) rowIdMap.set(comp.id, crypto.randomUUID())
-        }
-
-        const loadedIngredients = compositionData.map(comp => {
-          const newId = (comp.id && rowIdMap.get(comp.id)) || crypto.randomUUID()
-          if (comp.id) rowIdMap.set(comp.id, newId)
-          const ref = ingredientRefs.find(r => r.id === comp.ingredientId)
-          ingredientIdMap.set(comp.ingredientId, newId)
-          return {
-            id: newId,
-            ingredientRefId: comp.ingredientId,
-            name: ref?.name || `ID: ${comp.ingredientId}`,
-            unit: (ref?.unit || comp.unit || 'г') as IngredientItem['unit'],
-            processing: comp.processing,
-            yieldOverride: comp.yieldOverride,
-            locked: comp.removable !== true,
-            parentIngredientId: comp.parentRowId ? rowIdMap.get(comp.parentRowId) : undefined,
-            companionKind: comp.companionKind,
-            companionRatio: comp.companionRatio,
-          }
-        })
-        setIngredients(loadedIngredients)
-
-        const loadedAmounts: AmountCell[] = compositionData
-          .map(comp => ({
-            ingredientId: ingredientIdMap.get(comp.ingredientId) ?? '',
-            sizeId: 'default',
-            amount: comp.amount,
-          }))
-          .filter(a => a.ingredientId)
-        setAmounts(loadedAmounts)
-
-        setManualNutri({
-          default: {
-            calories: found.item.calories,
-            protein: found.item.protein,
-            fat: found.item.fat,
-            carbs: found.item.carbs,
-            isManual: true,
-          },
-        })
-      }
-
-      if (found.item.modifierGroups && found.item.modifierGroups.length > 0) {
-        const loadedAddonGroups: AddonGroup[] = (found.item.modifierGroups as ApiModifierGroup[]).map(mg => ({
-          id: mg.id,
-          label: mg.label ?? '',
-          allowCustomGrams: mg.allowCustomGrams ?? false,
-          addons: (mg.modifiers ?? []).map(m => ({
-            id: m.id,
-            ingredientRefId: m.ingredientRefId ?? '',
-            label: m.label ?? '',
-            price: m.price,
-            weight: m.weight,
-          })),
-        }))
-        setAddonGroups(loadedAddonGroups)
-      }
-
-      if (found.item.variantGroups && found.item.variantGroups.length > 0) {
-        const loadedVariantGroups: VariantOption[] = (found.item.variantGroups as ApiVariantGroup[]).map(vg => ({
-          id: vg.id,
-          label: vg.label ?? '',
-          required: vg.required ?? false,
-          replacesIngredientRefId: vg.replacesIngredientRefId,
-          options: (vg.options ?? []).map((opt) => {
-            const ref = ingredientRefs.find(r => r.id === opt.ingredientRefId)
-            return {
-              id: opt.id,
-              ingredientRefId: opt.ingredientRefId || '',
-              label: ref?.name || opt.label || '',
-              weight: opt.weight ?? 100,
-              weightUnit: (opt.weightUnit ?? 'г') as 'г' | 'мл',
-              calories: opt.calories ?? 0,
-              protein: opt.protein ?? 0,
-              fat: opt.fat ?? 0,
-              carbs: opt.carbs ?? 0,
-              price: opt.price,
-              isManual: true,
-            }
-          }),
-        }))
-        setVariantGroups(loadedVariantGroups)
-      }
+    const s = buildLoadedItemState(apiItem, ingredientRefs)
+    setName(s.name); setPrice(s.price); setIsAvailable(s.isAvailable)
+    setDescription(s.description); setPhoto(s.photo); setPhotoPosition(s.photoPosition)
+    setCategoryId(s.categoryId); setAllergens(s.allergens)
+    setMode(s.mode)
+    if (s.mode === 'quick') {
+      setQuickWeight(s.quickWeight); setQuickWeightUnit(s.quickWeightUnit)
+      setQuickCalories(s.quickCalories); setQuickProtein(s.quickProtein)
+      setQuickFat(s.quickFat); setQuickCarbs(s.quickCarbs)
+    } else {
+      if (s.finalWeight !== undefined) setFinalWeight(s.finalWeight)
+      if (s.servingSize !== undefined) setServingSize(s.servingSize)
+      setIngredients(s.ingredients); setAmounts(s.amounts); setSizes(s.sizes)
+      setHasMultipleSizes(s.hasMultipleSizes); setManualNutri(s.manualNutri)
+      if (s.variantGroups.length > 0) setVariantGroups(s.variantGroups)
+      if (s.addonGroups.length > 0) setAddonGroups(s.addonGroups)
     }
 
     isInitialLoad.current = false
   }
 
-  // ── variants ─────────────────────────────────────────────────────────────
-  const addVariantGroup = useCallback(() => {
-    setVariantGroups(prev => [...prev, { id: crypto.randomUUID(), label: '', required: false, options: [] }])
-  }, [])
-
-  const updateVariantGroup = useCallback((groupId: string, updates: Partial<VariantOption>) => {
-    setVariantGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g))
-  }, [])
-
-  const removeVariantGroup = useCallback((groupId: string) => {
-    setVariantGroups(prev => prev.filter(g => g.id !== groupId))
-  }, [])
-
-  const addVariantOption = useCallback((groupId: string) => {
-    const newOption: VariantChoice = {
-      id: crypto.randomUUID(),
-      ingredientRefId: '',
-      label: '',
-      weight: 100,
-      weightUnit: 'г',
-      calories: 0,
-      protein: 0,
-      fat: 0,
-      carbs: 0,
-      isManual: false,
-    }
-    setVariantGroups(prev => prev.map(g =>
-      g.id === groupId ? { ...g, options: [...g.options, newOption] } : g
-    ))
-  }, [])
-
-  const updateVariantOption = useCallback((groupId: string, optionId: string, updates: Partial<VariantChoice>) => {
-    setVariantGroups(prev => prev.map(g =>
-      g.id === groupId
-        ? { ...g, options: g.options.map(o => o.id === optionId ? { ...o, ...updates, isManual: updates.calories !== undefined ? true : o.isManual } : o) }
-        : g
-    ))
-  }, [])
-
-  const removeVariantOption = useCallback((groupId: string, optionId: string) => {
-    setVariantGroups(prev => prev.map(g =>
-      g.id === groupId ? { ...g, options: g.options.filter(o => o.id !== optionId) } : g
-    ))
-  }, [])
-
-  // ── addons ───────────────────────────────────────────────────────────────
-  const addAddonGroup = useCallback(() => {
-    setAddonGroups(prev => [...prev, { id: crypto.randomUUID(), label: '', allowCustomGrams: false, addons: [] }])
-  }, [])
-
-  const updateAddonGroup = useCallback((groupId: string, updates: Partial<AddonGroup>) => {
-    setAddonGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g))
-  }, [])
-
-  const removeAddonGroup = useCallback((groupId: string) => {
-    setAddonGroups(prev => prev.filter(g => g.id !== groupId))
-  }, [])
-
-  const addAddonToGroup = useCallback((groupId: string) => {
-    setAddonGroups(prev => prev.map(g =>
-      g.id === groupId
-        ? { ...g, addons: [...g.addons, { id: crypto.randomUUID(), ingredientRefId: '', label: '' }] }
-        : g
-    ))
-  }, [])
-
-  const updateAddon = useCallback((groupId: string, addonId: string, updates: Partial<AddonItem>) => {
-    setAddonGroups(prev => prev.map(g =>
-      g.id === groupId
-        ? { ...g, addons: g.addons.map(a => a.id === addonId ? { ...a, ...updates } : a) }
-        : g
-    ))
-  }, [])
-
-  const removeAddon = useCallback((groupId: string, addonId: string) => {
-    setAddonGroups(prev => prev.map(g =>
-      g.id === groupId ? { ...g, addons: g.addons.filter(a => a.id !== addonId) } : g
-    ))
-  }, [])
-
-  // ── nutri calc ───────────────────────────────────────────────────────────
-  const calculateNutriForSize = useCallback((sizeId: string) => {
-    if (manualNutri[sizeId]?.isManual) {
-      return {
-        calories: manualNutri[sizeId].calories,
-        protein: manualNutri[sizeId].protein,
-        fat: manualNutri[sizeId].fat,
-        carbs: manualNutri[sizeId].carbs,
-      }
-    }
-
-    // Собираем CompositionRow[] для общего рассчётчика — он сам учтёт:
-    //  - впитывание масла при жарке (oil absorption)
-    //  - рекурсивный пересчёт composite-ингредиентов через resolveIngredientPer100
-    //  - впитывание дочерних компаньонов (вода/масло/лёд)
-    const composition: CompositionRow[] = ingredients.flatMap(ingredient => {
-      const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)
-      if (!amountCell || !amountCell.amount) return []
-      const row: CompositionRow = {
-        id: ingredient.id,
-        ingredientId: ingredient.ingredientRefId,
-        unit: ingredient.unit,
-        amount: amountCell.amount,
-        ...(ingredient.processing && ingredient.processing !== 'raw' ? { processing: ingredient.processing } : {}),
-        ...(ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0 ? { yieldOverride: ingredient.yieldOverride } : {}),
-        ...(ingredient.parentIngredientId ? { parentRowId: ingredient.parentIngredientId } : {}),
-        ...(ingredient.companionKind ? { companionKind: ingredient.companionKind } : {}),
-      }
-      return [row]
-    })
-
-    return resolveNutriFromComposition(composition, ingredientRefs, [], {})
-  }, [ingredients, amounts, ingredientRefs, manualNutri])
+  // ── variants / addons / nutri (extracted into focused hooks/fn) ──────────
+  const variantHandlers = useVariantGroups(setVariantGroups)
+  const addonHandlers = useAddonGroups(setAddonGroups)
+  const calculateNutriForSize = useCallback(
+    (sizeId: string) => calcNutriForSize(sizeId, ingredients, amounts, ingredientRefs, manualNutri),
+    [ingredients, amounts, ingredientRefs, manualNutri],
+  )
 
   // ── save (validated via zod on submit) ───────────────────────────────────
   const handleSave = form.handleSubmit(async () => {
@@ -805,12 +528,10 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectA
     calculateNutriForSize, getAmountFromComposition,
     // variants
     variantGroups, setVariantGroups,
-    addVariantGroup, updateVariantGroup, removeVariantGroup,
-    addVariantOption, updateVariantOption, removeVariantOption,
+    ...variantHandlers,
     // addons
     addonGroups, setAddonGroups,
-    addAddonGroup, updateAddonGroup, removeAddonGroup,
-    addAddonToGroup, updateAddon, removeAddon,
+    ...addonHandlers,
     // pickers
     pickerOpen, setPickerOpen,
     variantPickerTarget, setVariantPickerTarget,

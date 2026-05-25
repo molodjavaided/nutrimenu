@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { tourBus } from '@/lib/tour/bus'
 import IngredientPickerModal from './IngredientPickerModal'
 import BasicSection from './item-form/BasicSection'
 import CompositionSection from './item-form/CompositionSection'
 import DishOptionsModal from './item-form/DishOptionsModal'
+import { LevelExpander, LevelPanelHeader } from './item-form/LevelCard'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
@@ -69,48 +71,66 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
         {s.isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
       </h1>
 
-      {/* Mode-switcher (segmented control) */}
-      <div
-        className="inline-flex gap-1 p-1 rounded-xl mb-6"
-        style={{
-          background: 'rgba(176,166,223,0.18)',
-          border: '0.5px solid rgba(139,92,246,0.18)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-        }}
-      >
-        {(['quick', 'composition', 'ttk'] as const).map(m => {
-          const active = s.mode === m
-          return (
-            <button
-              key={m}
-              data-tour={m === 'ttk' ? 'mode-ttk' : undefined}
-              onClick={() => { s.setMode(m); tourBus.emit('mode-set', m) }}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
-              style={active
-                ? { background: 'var(--color-text-primary)', color: '#FEFEF2', boxShadow: '0 2px 8px rgba(44,41,80,0.18)' }
-                : { color: 'var(--color-text-secondary)', background: 'transparent' }
-              }
-              title={
-                m === 'quick' ? 'Название + КБЖУ вручную, без состава' :
-                m === 'composition' ? 'Список ингредиентов с количеством' :
-                'По сложному проценту: брутто, обработка, выход, фуд-кост (ТТК)'
-              }
-            >
-              {m === 'quick' ? 'Быстро' : m === 'composition' ? 'По составу' : 'По сложному проценту'}
-            </button>
-          )
-        })}
-      </div>
-
+      {/* ── Уровень 1: основа ─────────────────────────────────────── */}
       <BasicSection s={s} />
 
-      {s.mode !== 'quick' && (
-        <div className="mb-8">
+      {/* ── Уровень 2: состав (раскрытие по клику) ────────────────── */}
+      {s.mode === 'quick' ? (
+        <div className="mb-6">
+          <LevelExpander
+            title="Считать КБЖУ из ингредиентов"
+            hint="Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента"
+            onExpand={() => {
+              const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
+              s.setMode('composition')
+              tourBus.emit('mode-set', 'composition')
+              if (hadManualNutri) {
+                toast('КБЖУ теперь считается из состава', {
+                  description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
+                })
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <div className="mb-6">
+          <LevelPanelHeader
+            title="Состав"
+            badge={s.mode === 'ttk' ? 'ТТК' : undefined}
+            onCollapse={() => { s.setMode('quick'); tourBus.emit('mode-set', 'quick') }}
+            collapseLabel="Свернуть, вводить КБЖУ вручную"
+          />
           <CompositionSection s={s} />
         </div>
       )}
 
+      {/* ── Уровень 3: ТТК (только когда состав раскрыт) ──────────── */}
+      {s.mode === 'composition' && (
+        <div className="mb-6">
+          <LevelExpander
+            title="Учитывать обработку и фуд-кост (ТТК)"
+            hint="Уварка/усушка, ловушка для масла, финальный вес, себестоимость порции"
+            onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}
+          />
+        </div>
+      )}
+      {s.mode === 'ttk' && (
+        <div className="mb-6 -mt-3">
+          <button
+            type="button"
+            onClick={() => { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }}
+            className="text-xs inline-flex items-center gap-1 transition-colors"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+              <path d="M3 8l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Скрыть ТТК-поля (обработка, фуд-кост)
+          </button>
+        </div>
+      )}
+
+      {/* ── Опции для гостя ───────────────────────────────────────── */}
       {s.mode !== 'quick' && (
         <div className="mb-8">
           <DishOptionsChip s={s} onOpen={() => setOptionsOpen(true)} />

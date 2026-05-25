@@ -5,6 +5,7 @@ import { SizePortionSection } from './CompositionSection'
 import { RemoveButton } from '@/components/ui/RemoveButton'
 import { GlassCard, GlassButton, GlassDashedButton, GlassInput, GlassSelect, NutriPill } from '@/components/ui-kit'
 import { FormInput } from '@/components/ui/form-fields'
+import { HelpHint } from '@/components/ui/HelpHint'
 import type { ItemFormState } from './useItemFormState'
 
 const PlusIcon = (
@@ -17,13 +18,6 @@ const CloseIcon = (
     <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
   </svg>
 )
-const InfoIcon = (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-    <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2" />
-    <path d="M7 6.5v3M7 4.5v.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-  </svg>
-)
-
 type Tab = 'sizes' | 'choice' | 'addons'
 
 interface Props {
@@ -34,7 +28,6 @@ interface Props {
 
 export default function DishOptionsModal({ s, open, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('sizes')
-  const [helpOpen, setHelpOpen] = useState(false)
 
   if (!open) return null
 
@@ -77,22 +70,11 @@ export default function DishOptionsModal({ s, open, onClose }: Props) {
             <TabButton active={tab === 'addons'} onClick={() => setTab('addons')} label="➕ Добавки" count={addonsCount} />
           </div>
 
-          {/* Collapsible help */}
-          <button
-            type="button"
-            onClick={() => setHelpOpen(v => !v)}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            {InfoIcon} Не уверены, что выбрать? {helpOpen ? '▴' : '▾'}
-          </button>
-          {helpOpen && (
-            <div className="mt-2 text-xs space-y-1.5 p-3 rounded-lg" style={{ background: 'rgba(139,92,246,0.06)', color: 'var(--color-text-secondary)' }}>
-              <p><b>Размеры</b> — если меняется <b>вес всего блюда</b> (S/M/L пиццы, объём кофе).</p>
-              <p><b>На выбор</b> — гость выбирает <b>одну</b> опцию из равноценных. Цена обычно одна (гарнир, молоко в кофе, прожарка).</p>
-              <p><b>Добавки</b> — гость <b>доплачивает</b> за лишнее (двойной сыр, доп. шот). КБЖУ плюсуется.</p>
-            </div>
-          )}
+          <HelpHint title="Не уверены, что выбрать?" className="mt-3">
+            <p><b>Размеры</b> — если меняется <b>вес всего блюда</b> (S/M/L пиццы, объём кофе).</p>
+            <p><b>На выбор</b> — гость выбирает <b>одну</b> опцию из равноценных. Цена обычно одна (гарнир, молоко в кофе, прожарка).</p>
+            <p><b>Добавки</b> — гость <b>доплачивает</b> за лишнее (двойной сыр, доп. шот). КБЖУ плюсуется.</p>
+          </HelpHint>
         </div>
 
         {/* Content */}

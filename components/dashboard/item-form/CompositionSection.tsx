@@ -11,6 +11,7 @@ import { asCategory } from '@/lib/cooking-coefficients'
 import { companionAbsorptionRatio, findCompanionRef, suggestCompanions } from '@/lib/cooking-companions'
 import { tourBus } from '@/lib/tour/bus'
 import { ProcessingAnchor, ProcessingPanel } from './ProcessingChip'
+import { HelpHint } from '@/components/ui/HelpHint'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,11 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
 
   return (
     <>
+      <HelpHint title="Что такое 🔒 замок и обработка?" className="mb-3">
+        <p><b>🔒 Замок</b> — гость не сможет убрать ингредиент из блюда. По умолчанию все ингредиенты заблокированы. Открой замок только у тех, что гость реально может «снять» (лук в бургере, соус сбоку).</p>
+        <p><b>🔥 Обработка</b> {isTTK ? '— ' : '(появляется в режиме ТТК) — '}способ приготовления (жарка/варка/тушение). КБЖУ автоматически пересчитывается с учётом потери или прибавки веса. Например: жарка добавляет масло (поглощается), варка убирает воду.</p>
+      </HelpHint>
+
       <FormField label="Состав" required>
         {s.ingredients.length === 0 ? (
           <EmptyComposition onAdd={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />

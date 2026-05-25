@@ -36,6 +36,7 @@
     "driver.js": "^1.4.0",
     "jose": "^6.2.3",
     "lucide-react": "^0.577.0",
+    "motion": "^12.40.0",
     "next": "16.2.1",
     "papaparse": "^5.5.3",
     "pdfjs-dist": "5.7.284",

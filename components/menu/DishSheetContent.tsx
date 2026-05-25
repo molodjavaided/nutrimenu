@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'motion/react'
 import { IngredientRef, MenuItem, ModifierGroup, SelectedModifiers, SelectedVariants, VariantGroup } from '@/types'
 import { buildVariantLabel, resolveCompositionRowContribution, resolveIngredientPer100, resolveNutriFromComposition } from '@/lib/utils'
 import { getAllergenById } from '@/lib/allergens'
@@ -386,7 +387,20 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
             { val: `${Math.round(resolvedNutri.carbs)}г`, label: 'углеводы' },
           ].map(({ val, label }) => (
             <div key={label} className="text-center">
-              <p className="text-[15px] font-semibold" style={{ color: TEXT }}>{val}</p>
+              {/* key={val} — Framer перерисует <span> при изменении числа → плавная замена */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.p
+                  key={String(val)}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="text-[15px] font-semibold"
+                  style={{ color: TEXT }}
+                >
+                  {val}
+                </motion.p>
+              </AnimatePresence>
               <p className="text-[11px] mt-0.5" style={{ color: TEXT_MUTED }}>{label}</p>
             </div>
           ))}

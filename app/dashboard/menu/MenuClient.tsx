@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable'
+import { motion, AnimatePresence } from 'motion/react'
 import { Category } from '@/types'
 import SortableCategory from '@/components/dashboard/SortableCategory'
 import ImportModal from '@/components/dashboard/ImportModal'
@@ -241,17 +242,30 @@ export default function MenuClient({ initialCategories }: { initialCategories: u
           strategy={verticalListSortingStrategy}
         >
           <div className="flex flex-col gap-3">
-            {categories.map(cat => (
-              <SortableCategory
-                key={cat.id}
-                category={cat}
-                onRename={handleRenameCategory}
-                onDelete={handleDeleteCategory}
-                onDeleteItem={handleDeleteItem}
-                onDuplicateItem={refetchCategories}
-                onReorderItems={handleReorderItems}
-              />
-            ))}
+            {/* AnimatePresence: новая категория появляется (opacity + slide-down),
+                удалённая — плавно схлопывается. layout не используем,
+                чтобы не конфликтовать с transform от @dnd-kit. */}
+            <AnimatePresence initial={false}>
+              {categories.map(cat => (
+                <motion.div
+                  key={cat.id}
+                  initial={{ opacity: 0, height: 0, y: -8 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -8 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <SortableCategory
+                    category={cat}
+                    onRename={handleRenameCategory}
+                    onDelete={handleDeleteCategory}
+                    onDeleteItem={handleDeleteItem}
+                    onDuplicateItem={refetchCategories}
+                    onReorderItems={handleReorderItems}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         </SortableContext>
       </DndContext>

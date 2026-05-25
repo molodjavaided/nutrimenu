@@ -45,6 +45,37 @@
   --tracking-tight: -0.02em;
   --tracking-tighter: -0.03em;
 
+  /* ── Surfaces (3 уровня глубины) ───────────────────────────────
+     1 — фон страницы (есть в body как gradient)
+     2 — карточки на странице
+     3 — попапы/модалки/drawer'ы поверх */
+  --surface-1: #FEFEF2;
+  --surface-2: rgba(255, 255, 255, 0.72);
+  --surface-3: rgba(255, 255, 255, 0.92);
+  --surface-overlay: rgba(20, 18, 40, 0.42);
+
+  /* ── Ambient shadows — многослойные с лавандовым оттенком ──────
+     Заменяют tailwind shadow-sm/md/lg/xl. Используют две тени:
+     близкая чёткая (контур) + дальняя размытая (объём). */
+  --shadow-soft-xs:
+    0 1px 1px rgba(44, 41, 80, 0.04),
+    0 2px 4px rgba(139, 92, 246, 0.04);
+  --shadow-soft-sm:
+    0 1px 2px rgba(44, 41, 80, 0.05),
+    0 4px 12px rgba(139, 92, 246, 0.06);
+  --shadow-soft-md:
+    0 2px 4px rgba(44, 41, 80, 0.04),
+    0 12px 32px rgba(139, 92, 246, 0.10);
+  --shadow-soft-lg:
+    0 4px 8px rgba(44, 41, 80, 0.05),
+    0 24px 64px rgba(139, 92, 246, 0.14);
+  --shadow-soft-xl:
+    0 8px 16px rgba(44, 41, 80, 0.06),
+    0 40px 96px rgba(139, 92, 246, 0.18);
+  --shadow-inset-focus:
+    inset 0 0 0 1px rgba(139, 92, 246, 0.35),
+    0 0 0 3px rgba(139, 92, 246, 0.12);
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -194,7 +225,16 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
+}
 
+/* ── Shadow utilities (используются в className напрямую) ──────── */
+@utility shadow-soft-xs { box-shadow: var(--shadow-soft-xs); }
+@utility shadow-soft-sm { box-shadow: var(--shadow-soft-sm); }
+@utility shadow-soft-md { box-shadow: var(--shadow-soft-md); }
+@utility shadow-soft-lg { box-shadow: var(--shadow-soft-lg); }
+@utility shadow-soft-xl { box-shadow: var(--shadow-soft-xl); }
+
+@layer base {
   .dashboard-main {
     padding-bottom: calc(4rem + env(safe-area-inset-bottom));
   }

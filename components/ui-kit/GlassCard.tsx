@@ -24,19 +24,19 @@ const TONES: Record<Tone, React.CSSProperties> = {
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
     border: '0.5px solid rgba(255,255,255,0.55)',
-    boxShadow: '0 4px 16px rgba(139,92,246,0.10)',
+    boxShadow: 'var(--shadow-soft-md)',
   },
   // Opaque cream — рабочие секции форм на светлом фоне.
   solid: {
-    background: '#FEFEF2',
-    border: '0.5px solid rgba(139,92,246,0.18)',
-    boxShadow: '0 2px 10px rgba(139,92,246,0.06)',
+    background: 'var(--surface-1)',
+    border: 'none',
+    boxShadow: 'var(--shadow-soft-sm)',
   },
   // Lavender wash — акценты, выделенные блоки, summary-секции.
   tinted: {
     background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(176,166,223,0.14))',
     border: '0.5px solid rgba(139,92,246,0.22)',
-    boxShadow: '0 2px 10px rgba(139,92,246,0.08)',
+    boxShadow: 'var(--shadow-soft-sm)',
   },
 }
 

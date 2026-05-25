@@ -6,6 +6,7 @@ import { RemoveButton } from '@/components/ui/RemoveButton'
 import { GlassCard, GlassButton, GlassDashedButton, GlassInput, GlassSelect, NutriPill } from '@/components/ui-kit'
 import { FormInput } from '@/components/ui/form-fields'
 import { HelpHint } from '@/components/ui/HelpHint'
+import { Drawer } from '@/components/ui/Drawer'
 import type { ItemFormState } from './useItemFormState'
 
 const PlusIcon = (
@@ -29,67 +30,37 @@ interface Props {
 export default function DishOptionsModal({ s, open, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('sizes')
 
-  if (!open) return null
-
   const sizesCount = s.hasMultipleSizes ? s.sizes.length : 0
   const choiceCount = s.variantGroups.length
   const addonsCount = s.addonGroups.length
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Опции блюда"
-      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center"
-      style={{ background: 'rgba(20,18,40,0.42)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
-      onClick={onClose}
+    <Drawer
+      open={open}
+      onOpenChange={v => { if (!v) onClose() }}
+      title="Опции для гостя"
+      footer={<GlassButton variant="brand" onClick={onClose}>Готово</GlassButton>}
+      contentClassName="pt-0"
     >
-      <div
-        className="relative bg-white w-full md:max-w-3xl md:max-h-[90vh] md:rounded-2xl flex flex-col overflow-hidden shadow-2xl"
-        style={{ color: 'var(--color-text-primary)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-4 border-b" style={{ borderColor: 'rgba(139,92,246,0.18)' }}>
-          <h2 className="text-base md:text-lg font-medium">Опции для гостя</h2>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-90"
-            style={{ background: 'rgba(139,92,246,0.10)', color: 'var(--color-text-muted)' }}
-            aria-label="Закрыть"
-          >
-            {CloseIcon}
-          </button>
+      {/* Tabs (segmented) */}
+      <div className="sticky top-0 pt-1 pb-3 z-10" style={{ background: 'linear-gradient(to bottom, var(--surface-3) 70%, transparent)' }}>
+        <div className="inline-flex w-full gap-1 p-1 rounded-xl" style={{ background: 'rgba(176,166,223,0.18)', border: '0.5px solid rgba(139,92,246,0.18)' }}>
+          <TabButton active={tab === 'sizes'} onClick={() => setTab('sizes')} label="📏 Размеры" count={sizesCount} />
+          <TabButton active={tab === 'choice'} onClick={() => setTab('choice')} label="🔄 На выбор" count={choiceCount} />
+          <TabButton active={tab === 'addons'} onClick={() => setTab('addons')} label="➕ Добавки" count={addonsCount} />
         </div>
 
-        {/* Tabs (segmented) */}
-        <div className="px-3 md:px-6 pt-3 md:pt-4">
-          <div className="inline-flex w-full gap-1 p-1 rounded-xl" style={{ background: 'rgba(176,166,223,0.18)', border: '0.5px solid rgba(139,92,246,0.18)' }}>
-            <TabButton active={tab === 'sizes'} onClick={() => setTab('sizes')} label="📏 Размеры" count={sizesCount} />
-            <TabButton active={tab === 'choice'} onClick={() => setTab('choice')} label="🔄 На выбор" count={choiceCount} />
-            <TabButton active={tab === 'addons'} onClick={() => setTab('addons')} label="➕ Добавки" count={addonsCount} />
-          </div>
-
-          <HelpHint title="Не уверены, что выбрать?" className="mt-3">
-            <p><b>Размеры</b> — если меняется <b>вес всего блюда</b> (S/M/L пиццы, объём кофе).</p>
-            <p><b>На выбор</b> — гость выбирает <b>одну</b> опцию из равноценных. Цена обычно одна (гарнир, молоко в кофе, прожарка).</p>
-            <p><b>Добавки</b> — гость <b>доплачивает</b> за лишнее (двойной сыр, доп. шот). КБЖУ плюсуется.</p>
-          </HelpHint>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4">
-          {tab === 'sizes' && <SizesTab s={s} />}
-          {tab === 'choice' && <ChoiceTab s={s} />}
-          {tab === 'addons' && <AddonsTab s={s} />}
-        </div>
-
-        {/* Footer */}
-        <div className="px-4 md:px-6 py-3 md:py-4 border-t flex justify-end" style={{ borderColor: 'rgba(139,92,246,0.18)', background: 'rgba(176,166,223,0.06)' }}>
-          <GlassButton variant="brand" onClick={onClose}>Готово</GlassButton>
-        </div>
+        <HelpHint title="Не уверены, что выбрать?" className="mt-3">
+          <p><b>Размеры</b> — если меняется <b>вес всего блюда</b> (S/M/L пиццы, объём кофе).</p>
+          <p><b>На выбор</b> — гость выбирает <b>одну</b> опцию из равноценных. Цена обычно одна (гарнир, молоко в кофе, прожарка).</p>
+          <p><b>Добавки</b> — гость <b>доплачивает</b> за лишнее (двойной сыр, доп. шот). КБЖУ плюсуется.</p>
+        </HelpHint>
       </div>
-    </div>
+
+      {tab === 'sizes' && <SizesTab s={s} />}
+      {tab === 'choice' && <ChoiceTab s={s} />}
+      {tab === 'addons' && <AddonsTab s={s} />}
+    </Drawer>
   )
 }
 

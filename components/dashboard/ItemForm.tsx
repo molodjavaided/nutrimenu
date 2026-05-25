@@ -108,8 +108,8 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
       {s.mode === 'composition' && (
         <div className="mb-6">
           <LevelExpander
-            title="Учитывать обработку и фуд-кост (ТТК)"
-            hint="Уварка/усушка, ловушка для масла, финальный вес, себестоимость порции"
+            title="Учитывать обработку (ТТК)"
+            hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
             onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}
           />
         </div>

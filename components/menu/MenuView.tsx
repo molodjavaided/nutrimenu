@@ -12,7 +12,7 @@ import NutriTracker from './NutriTracker'
 import VenueHeader from './VenueHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import GuestFeedbackLink from '@/components/feedback/GuestFeedbackLink'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react'
 
 interface Props {
   venue: Venue
@@ -157,6 +157,7 @@ const resolved = {
 }
 
   return (
+    <LayoutGroup>
     <div className="min-h-screen bg-background">
       <div className="max-w-lg md:max-w-5xl mx-auto">
 
@@ -273,5 +274,6 @@ const resolved = {
         </div>
       )}
     </div>
+    </LayoutGroup>
   )
 }

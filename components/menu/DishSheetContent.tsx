@@ -328,11 +328,26 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
 
   return (
     <div className="relative w-full h-full">
-      {item.photo
-        ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority style={{ objectPosition: item.photoPosition === 'top' ? 'center top' : item.photoPosition === 'bottom' ? 'center bottom' : 'center center' }} />
-        : <div className="w-full h-full flex items-center justify-center text-7xl" style={{ background: '#1a1426' }}>🍽️</div>
-      }
+      {/* Hero photo. layoutId = совпадает с DishCard → Framer Motion плавно
+          увеличивает фото из карточки в hero шторки. */}
+      <motion.div
+        layoutId={`dish-photo-${item.id}`}
+        className="absolute inset-0"
+        transition={{ type: 'spring', stiffness: 260, damping: 32 }}
+      >
+        {item.photo
+          ? <Image src={item.photo} alt={item.name} fill className="object-cover" sizes="(max-width: 512px) 100vw, 512px" priority style={{ objectPosition: item.photoPosition === 'top' ? 'center top' : item.photoPosition === 'bottom' ? 'center bottom' : 'center center' }} />
+          : <div className="w-full h-full flex items-center justify-center text-7xl" style={{ background: '#1a1426' }}>🍽️</div>
+        }
+      </motion.div>
 
+      {/* Контент (overlays + текст) появляется плавно после того, как фото «доехало». */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, delay: 0.18, ease: 'easeOut' }}
+        className="absolute inset-0"
+      >
       <div
         className="absolute inset-x-0 top-0"
         style={{
@@ -712,6 +727,7 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
           </button>
         </div>
       </div>
+      </motion.div>
     </div>
   )
 }

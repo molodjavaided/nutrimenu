@@ -39,8 +39,10 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
         className="block w-full text-left"
         aria-label={`Открыть карточку: ${item.name}`}
       >
-        {/* Photo / placeholder */}
-        <div
+        {/* Photo / placeholder. layoutId синхронизирует с hero в DishSheet — Framer Motion
+            анимирует фото от карточки до раскрытой шторки. */}
+        <motion.div
+          layoutId={`dish-photo-${item.id}`}
           className="relative w-full aspect-[5/4] overflow-hidden"
           style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(176,166,223,0.10))' }}
         >
@@ -79,7 +81,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
               })}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Info */}
         <div className="p-3 md:p-4 pr-14 md:pr-16">

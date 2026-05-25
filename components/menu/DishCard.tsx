@@ -89,15 +89,7 @@ export default function DishCard({ item, quantity, onOpen, onAdd, onRemove }: Pr
           >
             {item.name}
           </h3>
-          {item.description && (
-            <p
-              className="text-xs mt-1 line-clamp-2"
-              style={{ color: 'var(--color-text-secondary)' }}
-            >
-              {item.description}
-            </p>
-          )}
-          <div className="flex items-baseline gap-2 mt-3 flex-wrap">
+          <div className="flex items-baseline gap-2 mt-2 flex-wrap">
             {item.price != null && (
               <span
                 className="text-lg md:text-xl font-medium tabular-nums leading-none"

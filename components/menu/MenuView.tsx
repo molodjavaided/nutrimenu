@@ -12,6 +12,7 @@ import NutriTracker from './NutriTracker'
 import VenueHeader from './VenueHeader'
 import { SearchInput } from '@/components/ui/SearchInput'
 import GuestFeedbackLink from '@/components/feedback/GuestFeedbackLink'
+import { motion, AnimatePresence } from 'motion/react'
 
 interface Props {
   venue: Venue
@@ -157,7 +158,7 @@ const resolved = {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-lg md:max-w-5xl mx-auto">
 
         <VenueHeader venue={venue} isOwner={isOwner} />
 
@@ -166,7 +167,7 @@ const resolved = {
           className="sticky top-0 z-20 pt-1 pb-0"
           style={{ background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderBottom: '0.5px solid rgba(255,255,255,0.4)' }}
         >
-          <div className="px-4 pb-2">
+          <div className="px-4 pb-2 max-w-lg md:max-w-2xl mx-auto">
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -195,21 +196,38 @@ const resolved = {
                 >
                   {cat.name}
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                  {cat.items.map((item) => (
-                    <DishCard
-                      key={item.id}
-                      item={item}
-                      quantity={
-                        trackerItems.find((t) => t.menuItem.id === item.id)
-                          ?.quantity ?? 0
-                      }
-                      onOpen={() => handleOpenDish(item)}
-                      onAdd={() => handleAddToTracker(item, 1)}
-                      onRemove={() => handleRemoveOne(item.id)}
-                    />
-                  ))}
-                </div>
+                <motion.div
+                  layout
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {cat.items.map((item, idx) => (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                        transition={{
+                          duration: 0.28,
+                          delay: Math.min(idx * 0.03, 0.24),
+                          ease: [0.22, 0.61, 0.36, 1],
+                        }}
+                      >
+                        <DishCard
+                          item={item}
+                          quantity={
+                            trackerItems.find((t) => t.menuItem.id === item.id)
+                              ?.quantity ?? 0
+                          }
+                          onOpen={() => handleOpenDish(item)}
+                          onAdd={() => handleAddToTracker(item, 1)}
+                          onRemove={() => handleRemoveOne(item.id)}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
               </div>
             ))
           )}

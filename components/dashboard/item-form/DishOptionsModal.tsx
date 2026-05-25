@@ -386,13 +386,13 @@ function AddonGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState['
           className="w-4 h-4 rounded accent-lavender"
         />
         <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          Гость выбирает количество (1 порция / N грамм)
+          Гость может изменить количество (для сиропов, соусов «на вес»)
         </span>
       </label>
       <p className="text-xs mb-3 ml-6" style={{ color: 'var(--color-text-muted)' }}>
         {group.allowCustomGrams
-          ? 'Включи, если «двойной/тройной» — норма для блюда. Гость указывает граммы, КБЖУ пересчитается.'
-          : 'Выключено: гость нажимает кнопку «добавить» — КБЖУ плюсуется фиксированной порцией (по умолчанию 100 г).'
+          ? 'Гость указывает граммы. Цена считается кратно порциям (взял 21 г при порции 20 г → 2 порции), КБЖУ — точно по граммам.'
+          : 'Гость нажимает кнопку «добавить» — одна порция (КБЖУ и цена по строке ниже).'
         }
       </p>
 
@@ -434,7 +434,9 @@ function AddonGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState['
             </div>
             <div className="flex items-center gap-2 text-xs flex-wrap">
               <label className="flex items-center gap-1.5 flex-1 min-w-0">
-                <span style={{ color: 'var(--color-text-secondary)' }}>Граммовка</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>
+                  {group.allowCustomGrams ? 'Размер порции' : 'Граммовка'}
+                </span>
                 <GlassInput
                   type="number"
                   inputMode="decimal"
@@ -447,7 +449,9 @@ function AddonGroupCard({ s, group }: { s: ItemFormState; group: ItemFormState['
                 <span style={{ color: 'var(--color-text-muted)' }}>г</span>
               </label>
               <label className="flex items-center gap-1.5">
-                <span style={{ color: 'var(--color-text-secondary)' }}>Цена</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>
+                  {group.allowCustomGrams ? 'Цена порции' : 'Цена'}
+                </span>
                 <GlassInput
                   type="number"
                   inputMode="decimal"

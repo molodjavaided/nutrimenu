@@ -5,6 +5,43 @@ import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/
 import { GlassButton, GlassDashedButton, NutriPill } from '@/components/ui-kit'
 import type { ItemFormState } from './useItemFormState'
 
+function ComputedNutriSummary({ s }: { s: ItemFormState }) {
+  const hasIngredients = s.ingredients.length > 0
+  const firstSize = s.sizes[0]
+  const nutri = firstSize ? s.calculateNutriForSize(firstSize.id) : { calories: 0, protein: 0, fat: 0, carbs: 0 }
+  const hasValues = nutri.calories > 0 || nutri.protein > 0 || nutri.fat > 0 || nutri.carbs > 0
+
+  return (
+    <div
+      className="mb-6 p-3 rounded-xl flex items-center gap-3 flex-wrap"
+      style={{ background: 'rgba(139,92,246,0.06)', border: '0.5px solid rgba(139,92,246,0.18)' }}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
+          КБЖУ блюда (из состава){s.hasMultipleSizes ? ' · первый размер' : ''}
+        </p>
+        {hasValues ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <NutriPill tone="calorie" size="sm" value={nutri.calories} unit=" ккал" />
+            <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              {Math.round(nutri.protein * 10) / 10} б · {Math.round(nutri.fat * 10) / 10} ж · {Math.round(nutri.carbs * 10) / 10} у
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            {hasIngredients ? 'Укажите граммы ингредиентов ниже' : 'Добавьте ингредиенты в состав ниже'}
+          </p>
+        )}
+      </div>
+      {s.hasMultipleSizes && hasValues && (
+        <span className="text-xs shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+          Все размеры ↓
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function BasicSection({ s }: { s: ItemFormState }) {
   return (
     <div className="mb-8">
@@ -258,6 +295,8 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
           </div>
         )}
       </FormField>
+
+      {s.mode !== 'quick' && <ComputedNutriSummary s={s} />}
 
       {s.mode === 'quick' && (
         <>

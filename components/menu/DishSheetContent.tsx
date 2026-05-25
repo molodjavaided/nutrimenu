@@ -144,11 +144,14 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
     for (const group of item.modifierGroups ?? []) {
       if (group.type === 'replace') continue  // обработано выше
       if (group.allowCustomGrams) {
+        // modifier.calories/protein/fat/carbs стораджатся как КБЖУ ОДНОЙ порции (modifier.weight грамм).
+        // Для пересчёта на произвольные граммы делим на portionWeight, не на 100.
         const groupGrams = gramAmounts[group.id] ?? {}
         for (const modifier of group.modifiers) {
           const grams = groupGrams[modifier.id] ?? 0
           if (grams > 0) {
-            const ratio = grams / 100
+            const portionWeight = modifier.weight && modifier.weight > 0 ? modifier.weight : 100
+            const ratio = grams / portionWeight
             total.calories += Math.round(modifier.calories * ratio)
             total.protein += Math.round(modifier.protein * ratio * 10) / 10
             total.fat += Math.round(modifier.fat * ratio * 10) / 10
@@ -228,6 +231,19 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
       if (opt?.price) extra += opt.price
     }
     for (const group of item.modifierGroups ?? []) {
+      // Кастомные граммы: цена кратна порциям. Если порция 20 г / 20 ₽ и гость взял 21 г → 2 порции = 40 ₽.
+      if (group.allowCustomGrams) {
+        const groupGrams = gramAmounts[group.id] ?? {}
+        for (const modifier of group.modifiers) {
+          const grams = groupGrams[modifier.id] ?? 0
+          if (grams > 0 && modifier.price) {
+            const portionWeight = modifier.weight && modifier.weight > 0 ? modifier.weight : 100
+            const portions = Math.ceil(grams / portionWeight)
+            extra += portions * modifier.price
+          }
+        }
+        continue
+      }
       if (group.multi) {
         const sel = Array.isArray(modifiers[group.id]) ? modifiers[group.id] as unknown as string[] : []
         for (const id of sel) {
@@ -243,7 +259,7 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
       }
     }
     return extra * quantity
-  }, [item, variants, modifiers, quantity])
+  }, [item, variants, modifiers, gramAmounts, quantity])
 
   const activeSize = item.sizes && item.sizes.length > 0
     ? (item.sizes.find(s => s.id === selectedSizeId) ?? item.sizes[0])

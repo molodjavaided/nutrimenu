@@ -28,7 +28,7 @@
      --font-sans (Inter), --font-heading (Manrope), --font-mono (Geist Mono).
      Здесь даём системные fallback'ы на случай если шрифт ещё грузится. */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-heading: "Manrope", "Inter", system-ui, -apple-system, sans-serif;
+  --font-heading: "Stolzl", "Manrope", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 
   /* Type scale — крупнее, чем дефолт Tailwind. Заголовки дышат, цены бьют. */

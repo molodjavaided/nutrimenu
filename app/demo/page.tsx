@@ -104,9 +104,20 @@ export default function DemoPage() {
         return jsonResponse({ step: 0, isCompleted: true, isDismissed: true })
       }
 
-      // /api/upload — фото в демо отключено
-      if (url.endsWith('/api/upload')) {
-        return jsonResponse({ error: 'Фото доступно после регистрации' }, 501)
+      // /api/upload — в демо фото в data-URL и хранится прямо в localStorage
+      if (url.endsWith('/api/upload') && method === 'POST') {
+        const form = init?.body as FormData
+        const file = form?.get('file') as File | null
+        if (!file) return jsonResponse({ error: 'No file' }, 400)
+        if (!file.type.startsWith('image/')) return jsonResponse({ error: 'Only images allowed' }, 400)
+        if (file.size > 2_000_000) return jsonResponse({ error: 'Max 2MB в демо' }, 400)
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(file)
+        })
+        return jsonResponse({ url: dataUrl })
       }
 
       // AI-эндпоинты (штрихкод, AI-импорт TTK) — заглушки

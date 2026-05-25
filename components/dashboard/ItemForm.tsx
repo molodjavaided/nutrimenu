@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'motion/react'
 import { tourBus } from '@/lib/tour/bus'
 import IngredientPickerModal from './IngredientPickerModal'
 import BasicSection from './item-form/BasicSection'
@@ -75,60 +76,92 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
       <BasicSection s={s} />
 
       {/* ── Уровень 2: состав (раскрытие по клику) ────────────────── */}
-      {s.mode === 'quick' ? (
-        <div className="mb-6">
-          <LevelExpander
-            title="Считать КБЖУ из ингредиентов"
-            hint="Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента"
-            onExpand={() => {
-              const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
-              s.setMode('composition')
-              tourBus.emit('mode-set', 'composition')
-              if (hadManualNutri) {
-                toast('КБЖУ теперь считается из состава', {
-                  description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
-                })
-              }
-            }}
-          />
-        </div>
-      ) : (
-        <div className="mb-6">
-          <LevelPanelHeader
-            title="Состав"
-            badge={s.mode === 'ttk' ? 'ТТК' : undefined}
-            onCollapse={() => { s.setMode('quick'); tourBus.emit('mode-set', 'quick') }}
-            collapseLabel="Свернуть, вводить КБЖУ вручную"
-          />
-          <CompositionSection s={s} />
-        </div>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {s.mode === 'quick' ? (
+          <motion.div
+            key="lvl2-cta"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="mb-6"
+          >
+            <LevelExpander
+              title="Считать КБЖУ из ингредиентов"
+              hint="Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента"
+              onExpand={() => {
+                const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
+                s.setMode('composition')
+                tourBus.emit('mode-set', 'composition')
+                if (hadManualNutri) {
+                  toast('КБЖУ теперь считается из состава', {
+                    description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
+                  })
+                }
+              }}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="lvl2-panel"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+            className="mb-6"
+          >
+            <LevelPanelHeader
+              title="Состав"
+              badge={s.mode === 'ttk' ? 'ТТК' : undefined}
+              onCollapse={() => { s.setMode('quick'); tourBus.emit('mode-set', 'quick') }}
+              collapseLabel="Свернуть, вводить КБЖУ вручную"
+            />
+            <CompositionSection s={s} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Уровень 3: ТТК (только когда состав раскрыт) ──────────── */}
-      {s.mode === 'composition' && (
-        <div className="mb-6">
-          <LevelExpander
-            title="Учитывать обработку (ТТК)"
-            hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
-            onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}
-          />
-        </div>
-      )}
-      {s.mode === 'ttk' && (
-        <div className="mb-6 -mt-3">
-          <button
-            type="button"
-            onClick={() => { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }}
-            className="text-xs inline-flex items-center gap-1 transition-colors"
-            style={{ color: 'var(--color-text-muted)' }}
+      <AnimatePresence mode="wait" initial={false}>
+        {s.mode === 'composition' && (
+          <motion.div
+            key="lvl3-cta"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="mb-6"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-              <path d="M3 8l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Скрыть ТТК-поля (обработка, фуд-кост)
-          </button>
-        </div>
-      )}
+            <LevelExpander
+              title="Учитывать обработку (ТТК)"
+              hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
+              onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}
+            />
+          </motion.div>
+        )}
+        {s.mode === 'ttk' && (
+          <motion.div
+            key="lvl3-collapse"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="mb-6 -mt-3"
+          >
+            <button
+              type="button"
+              onClick={() => { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }}
+              className="text-xs inline-flex items-center gap-1 transition-colors"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                <path d="M3 8l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Скрыть ТТК-поля (обработка)
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Опции для гостя ───────────────────────────────────────── */}
       {s.mode !== 'quick' && (

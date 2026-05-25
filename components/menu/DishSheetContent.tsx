@@ -341,32 +341,43 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
         }
       </motion.div>
 
-      {/* Контент (overlays + текст) появляется плавно после того, как фото «доехало». */}
+      {/* Градиенты появляются первыми — приглушают фото под текст. */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, delay: 0.10, ease: 'easeOut' }}
+        className="absolute inset-0 pointer-events-none"
+      >
+        <div
+          className="absolute inset-x-0 top-0"
+          style={{
+            height: '40%',
+            background: `linear-gradient(to bottom, rgba(28,23,38,0.85) 0%, rgba(28,23,38,0.6) 50%, transparent 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-x-0 bottom-0"
+          style={{
+            height: '40%',
+            background: `linear-gradient(to top, rgba(28,23,38,0.95) 0%, rgba(28,23,38,0.7) 50%, transparent 100%)`,
+          }}
+        />
+      </motion.div>
+
+      {/* Контент шторки — stagger fade-in, чтобы создать ощущение «подгрузки». */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.25, delay: 0.18, ease: 'easeOut' }}
         className="absolute inset-0"
       >
-      <div
-        className="absolute inset-x-0 top-0"
-        style={{
-          height: '40%',
-          background: `linear-gradient(to bottom, rgba(28,23,38,0.85) 0%, rgba(28,23,38,0.6) 50%, transparent 100%)`,
-          pointerEvents: 'none',
-        }}
-      />
 
-      <div
-        className="absolute inset-x-0 bottom-0"
-        style={{
-          height: '40%',
-          background: `linear-gradient(to top, rgba(28,23,38,0.95) 0%, rgba(28,23,38,0.7) 50%, transparent 100%)`,
-          pointerEvents: 'none',
-        }}
-      />
-
-      <div className="absolute inset-x-0 top-0 px-5 pt-4 pb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28, delay: 0.22, ease: 'easeOut' }}
+        className="absolute inset-x-0 top-0 px-5 pt-4 pb-4"
+      >
         <div className="flex items-start justify-between gap-3 mb-3">
           <h2 className="text-[17px] font-semibold leading-snug flex-1" style={{ color: TEXT, fontFamily: 'Stolzl, sans-serif' }}>
             {item.name}
@@ -537,9 +548,14 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
             </span>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      <div className="absolute inset-x-0 bottom-0">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.30, delay: 0.30, ease: 'easeOut' }}
+        className="absolute inset-x-0 bottom-0"
+      >
         {activeGroupId && (() => {
           const entry = allGroups.find(e => e.id === activeGroupId)
           if (!entry) return null
@@ -726,7 +742,7 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
             </svg>
           </button>
         </div>
-      </div>
+      </motion.div>
       </motion.div>
     </div>
   )

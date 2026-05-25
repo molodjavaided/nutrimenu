@@ -5,7 +5,9 @@ import {
   calcNutriTotal,
   resolveIngredientPer100,
   resolveNutriFromComposition,
+  resolveCompositionRowContribution,
 } from '@/lib/utils'
+import { buildMenuItem, type FormSnapshot } from '@/components/dashboard/item-form/buildMenuItem'
 import type { MenuItem, IngredientRef, TrackerItem } from '@/types'
 
 const baseItem: MenuItem = {
@@ -324,5 +326,131 @@ describe('resolveNutriFromComposition', () => {
     )
     // 2 eggs * 60g each = 120g → 155 * 1.2 = 186
     expect(result.calories).toBe(186)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Регрессии на 7 кейсов синхронизации owner ↔ guest (PR 07627dc, d35a5d7)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('regression — 7 owner↔guest nutri sync fixes', () => {
+  const chicken: IngredientRef = {
+    id: 'chicken', name: 'Курица', type: 'mono', unit: 'г', category: 'poultry',
+    caloriesPer100: 165, proteinPer100: 31, fatPer100: 3.6, carbsPer100: 0,
+  }
+  const sunflowerOil: IngredientRef = {
+    id: 'oil', name: 'Масло', type: 'mono', unit: 'мл', category: 'oil',
+    caloriesPer100: 884, proteinPer100: 0, fatPer100: 100, carbsPer100: 0,
+  }
+
+  // #1 — Oil at fry: только впитанная часть попадает в КБЖУ блюда (не полное брутто).
+  it('#1 oil + fry processing → only absorbed fraction counted', () => {
+    const composition = [
+      { id: 'r1', ingredientId: 'chicken', amount: 200, unit: 'г' as const, processing: 'fry' as const },
+      { id: 'r2', ingredientId: 'oil', amount: 20, unit: 'мл' as const, processing: 'fry' as const, oilAbsorption: 0.15 },
+    ]
+    const result = resolveNutriFromComposition(composition, [chicken, sunflowerOil], [], {})
+    // Курица: 165 × 2 = 330. Масло (впитано 15%): 884 × 0.2 × 0.15 = 26.52 → 27.
+    // Итого 357 (а не 330 + 177 = 507, как при подсчёте по полному брутто).
+    expect(result.calories).toBe(357)
+  })
+
+  // #2 — Composite ингредиент: агрегаты пересчитываются из composition, даже если
+  // сохранённые caloriesPer100 у composite устарели.
+  it('#2 composite ingredient: per100 recomputed from sub-recipe, ignoring stale stored values', () => {
+    const sauceComposite: IngredientRef = {
+      id: 'sauce', name: 'Соус (с устаревшими КБЖУ)', type: 'composite', unit: 'г',
+      // Намеренно «битые» агрегаты — должны быть проигнорированы:
+      caloriesPer100: 0, proteinPer100: 0, fatPer100: 0, carbsPer100: 0,
+      composition: [
+        { ingredientId: 'oil', amount: 50, unit: 'мл' },     // 884 × 0.5 = 442 ккал
+        { ingredientId: 'chicken', amount: 50, unit: 'г' },  // 165 × 0.5 = 82.5 ккал
+      ],
+    }
+    const result = resolveNutriFromComposition(
+      [{ id: 'r1', ingredientId: 'sauce', amount: 100, unit: 'г' }],
+      [chicken, sunflowerOil, sauceComposite],
+      [], {}
+    )
+    // Per100 соуса = (442 + 82.5) / 100 г × 100 = 525 ккал/100г → 100 г × 5.25 = 525.
+    expect(result.calories).toBe(525)
+  })
+
+  // #3 — Replace-модификатор должен применяться как дельта, не затирая variant-дельты.
+  // На уровне утилит проверяем, что resolveNutriFromComposition корректно даёт
+  // (а) baseline без модификатора и (б) результат с модификатором — чтобы caller мог
+  // посчитать дельту = withReplace − baseline.
+  it('#3 replace modifier yields baseline+delta math (no clobber of upstream additions)', () => {
+    const tofu: IngredientRef = {
+      id: 'tofu', name: 'Тофу', type: 'mono', unit: 'г', category: 'other',
+      caloriesPer100: 76, proteinPer100: 8, fatPer100: 4.2, carbsPer100: 1.9,
+    }
+    const comp = [{ id: 'r1', ingredientId: 'chicken', amount: 150, unit: 'г' as const }]
+    const replaceGroup = {
+      id: 'swap', label: '', type: 'replace' as const, replacesIngredientId: 'chicken',
+      multi: false, required: false,
+      modifiers: [{ id: 'tofu', label: 'Тофу', calories: 114, protein: 12, fat: 6.3, carbs: 2.85, weight: 150, weightUnit: 'г' as const }],
+    }
+    const baseline = resolveNutriFromComposition(comp, [chicken, tofu], [replaceGroup], {})
+    const withRepl = resolveNutriFromComposition(comp, [chicken, tofu], [replaceGroup], { swap: 'tofu' })
+    expect(baseline.calories).toBe(248)  // 165 × 1.5
+    expect(withRepl.calories).toBe(114)  // tofu 114 ккал на 150 г
+    // Дельта замены = -134. Накладывается на любое исходное total в caller'е.
+    expect(withRepl.calories - baseline.calories).toBe(-134)
+  })
+
+  // #4 — Excluded ingredient: вычитание идёт через resolveCompositionRowContribution,
+  // так что для масла при жарке отнимается ровно впитавшаяся часть.
+  it('#4 excluded oil at fry: subtraction uses absorbed amount, not brutto', () => {
+    const oilRow = { id: 'r1', ingredientId: 'oil', amount: 20, unit: 'мл' as const, processing: 'fry' as const, oilAbsorption: 0.15 }
+    const per100 = resolveIngredientPer100(sunflowerOil, [sunflowerOil])
+    const contrib = resolveCompositionRowContribution(oilRow, sunflowerOil, per100)
+    // Впитано: 20 × 0.15 = 3 мл → 884 × 0.03 = 26.52 ккал.
+    expect(Math.round(contrib.calories)).toBe(27)
+    // Если бы вычитали по брутто — было бы 884 × 0.2 = 176.8 ккал. Дельта почти 7×.
+  })
+
+  // #6 — processing/yieldOverride сохраняются всегда, не только в режиме ttk.
+  it('#6 buildMenuItem persists processing/yieldOverride in composition mode (not only ttk)', () => {
+    const snapshot: FormSnapshot = {
+      mode: 'composition',
+      name: 'Стейк жареный', description: '', photo: '', photoPosition: 'center',
+      price: '', categoryId: 'hot', isAvailable: true, allergens: [],
+      quickWeight: 0, quickWeightUnit: 'г', quickCalories: 0, quickProtein: 0, quickFat: 0, quickCarbs: 0,
+      ingredients: [
+        { id: 'i1', ingredientRefId: 'chicken', name: 'Курица', unit: 'г', processing: 'fry', yieldOverride: 0.7 },
+      ],
+      amounts: [{ ingredientId: 'i1', sizeId: 's1', amount: 200 }],
+      sizes: [{ id: 's1', name: '', unit: 'г' }],
+      variantGroups: [], addonGroups: [],
+      ingredientRefs: [chicken],
+      calculateNutriForSize: () => ({ calories: 330, protein: 62, fat: 7.2, carbs: 0 }),
+    }
+    const item = buildMenuItem(snapshot, { id: 'test' })
+    const row = item.sizes?.[0]?.composition?.[0]
+    expect(row?.processing).toBe('fry')
+    expect(row?.yieldOverride).toBe(0.7)
+  })
+
+  // #7 — modifier.weight учитывается в формуле замены (нет двойного масштабирования).
+  it('#7 replace modifier with weight ≠ 100: no double-scaling', () => {
+    // Сценарий: оригинал 50 г, модификатор представлен как «100 ккал на 200 г»
+    // (т.е. реально 0.5 ккал/г). Ожидаем 50 г × 0.5 = 25 ккал.
+    const ing: IngredientRef = {
+      id: 'a', name: 'A', type: 'mono', unit: 'г',
+      caloriesPer100: 200, proteinPer100: 0, fatPer100: 0, carbsPer100: 0,
+    }
+    const result = resolveNutriFromComposition(
+      [{ id: 'r1', ingredientId: 'a', amount: 50, unit: 'г' }],
+      [ing],
+      [{
+        id: 'g', label: '', type: 'replace', replacesIngredientId: 'a',
+        multi: false, required: false,
+        modifiers: [{ id: 'b', label: 'B', calories: 100, protein: 0, fat: 0, carbs: 0, weight: 200, weightUnit: 'г' }],
+      }],
+      { g: 'b' }
+    )
+    expect(result.calories).toBe(25)
+    // Старая формула: 100 × (50/100) = 50 — двойное масштабирование, неверно.
   })
 })

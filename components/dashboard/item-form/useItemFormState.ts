@@ -10,8 +10,8 @@ import { systemLibraries } from '@/lib/mock-data'
 import { defaultItemFormValues, itemFormSchema, type ItemFormValues } from './schema'
 import { compositionReducer, initialCompositionState, type ManualNutri } from './composition-reducer'
 import { buildMenuItem } from './buildMenuItem'
-import { asCategory } from '@/lib/cooking-coefficients'
-import { companionAbsorptionRatio } from '@/lib/cooking-companions'
+import { resolveNutriFromComposition } from '@/lib/utils'
+import type { CompositionRow } from '@/types'
 
 // ─── Domain types (used by sections) ───────────────────────────────────────
 export interface ApiVariantOption { id: string; ingredientRefId?: string; label?: string; weight?: number; weightUnit?: string; calories?: number; protein?: number; fat?: number; carbs?: number; price?: number }
@@ -552,46 +552,27 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       }
     }
 
-    let totalCalories = 0
-    let totalProtein = 0
-    let totalFat = 0
-    let totalCarbs = 0
-
-    for (const ingredient of ingredients) {
+    // Собираем CompositionRow[] для общего рассчётчика — он сам учтёт:
+    //  - впитывание масла при жарке (oil absorption)
+    //  - рекурсивный пересчёт composite-ингредиентов через resolveIngredientPer100
+    //  - впитывание дочерних компаньонов (вода/масло/лёд)
+    const composition: CompositionRow[] = ingredients.flatMap(ingredient => {
       const amountCell = amounts.find(a => a.ingredientId === ingredient.id && a.sizeId === sizeId)
-      if (!amountCell || !amountCell.amount) continue
-
-      const ref = ingredientRefs.find(r => r.id === ingredient.ingredientRefId)
-      if (!ref) continue
-
-      let effectiveGrams = (ingredient.unit === 'шт' && ref.weightPerUnit)
-        ? amountCell.amount * ref.weightPerUnit
-        : amountCell.amount
-
-      // Если это дочерний companion — в КБЖУ блюда попадает только впитавшаяся часть
-      if (ingredient.parentIngredientId && ingredient.companionKind) {
-        const parent = ingredients.find(i => i.id === ingredient.parentIngredientId)
-        const parentRef = parent ? ingredientRefs.find(r => r.id === parent.ingredientRefId) : undefined
-        const parentCategory = asCategory(parentRef?.category)
-        if (parent?.processing) {
-          const absorption = companionAbsorptionRatio(ingredient.companionKind, parent.processing, parentCategory)
-          effectiveGrams *= absorption
-        }
+      if (!amountCell || !amountCell.amount) return []
+      const row: CompositionRow = {
+        id: ingredient.id,
+        ingredientId: ingredient.ingredientRefId,
+        unit: ingredient.unit,
+        amount: amountCell.amount,
+        ...(ingredient.processing && ingredient.processing !== 'raw' ? { processing: ingredient.processing } : {}),
+        ...(ingredient.yieldOverride !== undefined && ingredient.yieldOverride > 0 ? { yieldOverride: ingredient.yieldOverride } : {}),
+        ...(ingredient.parentIngredientId ? { parentRowId: ingredient.parentIngredientId } : {}),
+        ...(ingredient.companionKind ? { companionKind: ingredient.companionKind } : {}),
       }
+      return [row]
+    })
 
-      const ratio = effectiveGrams / 100
-      totalCalories += ref.caloriesPer100 * ratio
-      totalProtein += ref.proteinPer100 * ratio
-      totalFat += ref.fatPer100 * ratio
-      totalCarbs += ref.carbsPer100 * ratio
-    }
-
-    return {
-      calories: Math.round(totalCalories),
-      protein: Math.round(totalProtein * 10) / 10,
-      fat: Math.round(totalFat * 10) / 10,
-      carbs: Math.round(totalCarbs * 10) / 10,
-    }
+    return resolveNutriFromComposition(composition, ingredientRefs, [], {})
   }, [ingredients, amounts, ingredientRefs, manualNutri])
 
   // ── save (validated via zod on submit) ───────────────────────────────────

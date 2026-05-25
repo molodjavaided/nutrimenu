@@ -122,15 +122,22 @@ export default function DishSheetContent({ item, onClose, onAdd, venueIngredient
       }
     }
 
-    for (const group of item.modifierGroups ?? []) {
-      if (group.type === 'replace') {
-        const as = item.sizes?.find(s => s.id === selectedSizeId) ?? item.sizes?.[0]
-        if (as?.composition) {
-          const r = resolveNutriFromComposition(as.composition, ingredientRefs, item.modifierGroups ?? [], modifiers)
-          total.calories = r.calories; total.protein = r.protein; total.fat = r.fat; total.carbs = r.carbs
-        }
-        continue
+    // Применяем все replace-модификаторы как дельту, чтобы не затереть variant-дельты выше.
+    const replaceGroups = (item.modifierGroups ?? []).filter(g => g.type === 'replace')
+    if (replaceGroups.length > 0) {
+      const as = item.sizes?.find(s => s.id === selectedSizeId) ?? item.sizes?.[0]
+      if (as?.composition) {
+        const baseline = resolveNutriFromComposition(as.composition, ingredientRefs, replaceGroups, {})
+        const withRepl = resolveNutriFromComposition(as.composition, ingredientRefs, replaceGroups, modifiers)
+        total.calories += withRepl.calories - baseline.calories
+        total.protein  += withRepl.protein  - baseline.protein
+        total.fat      += withRepl.fat      - baseline.fat
+        total.carbs    += withRepl.carbs    - baseline.carbs
       }
+    }
+
+    for (const group of item.modifierGroups ?? []) {
+      if (group.type === 'replace') continue  // обработано выше
       if (group.allowCustomGrams) {
         const groupGrams = gramAmounts[group.id] ?? {}
         for (const modifier of group.modifiers) {

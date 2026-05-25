@@ -90,9 +90,11 @@ export interface UseItemFormStateArgs {
   itemId?: string
   initialCategoryId?: string
   onSaved?: () => void | Promise<void>
+  /** Куда переходить после успешного сохранения. По умолчанию /dashboard/menu. Для /demo — /demo/preview. */
+  redirectAfterSave?: string
 }
 
-export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItemFormStateArgs) {
+export function useItemFormState({ itemId, initialCategoryId, onSaved, redirectAfterSave = '/dashboard/menu' }: UseItemFormStateArgs) {
   const router = useRouter()
 
   // ── RHF: validated form fields (basic + quick + mode) ───────────────────
@@ -614,7 +616,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
       }
       toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
       if (onSaved) await onSaved()
-      router.push('/dashboard/menu')
+      router.push(redirectAfterSave)
       return
     }
 
@@ -675,7 +677,7 @@ export function useItemFormState({ itemId, initialCategoryId, onSaved }: UseItem
 
     toast.success(isEdit ? 'Блюдо сохранено' : 'Блюдо добавлено')
     if (onSaved) await onSaved()
-    router.push('/dashboard/menu')
+    router.push(redirectAfterSave)
   }, () => {
     toast.error('Проверьте обязательные поля')
   })

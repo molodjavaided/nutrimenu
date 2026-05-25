@@ -13,26 +13,27 @@ import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
 import { GlassButton } from '@/components/ui-kit'
 
-export default function ItemForm({ itemId, categoryId: initialCategoryId }: { itemId?: string; categoryId?: string }) {
+export default function ItemForm({ itemId, categoryId: initialCategoryId, redirectAfterSave, demoMode }: { itemId?: string; categoryId?: string; redirectAfterSave?: string; demoMode?: boolean }) {
   const router = useRouter()
   const [tourActive, setTourActive] = useState(false)
 
   const s = useItemFormState({
     itemId,
     initialCategoryId,
+    redirectAfterSave,
     onSaved: async () => { tourBus.emit('item-saved') },
   })
   const [previewOpen, setPreviewOpen] = useState(false)
 
   useEffect(() => {
-    if (itemId) return
+    if (itemId || demoMode) return  // в демо тур не запускаем
     fetch('/api/user/onboarding')
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data && !data.isCompleted && !data.isDismissed && data.step >= 1) setTourActive(true)
       })
       .catch(() => {})
-  }, [itemId])
+  }, [itemId, demoMode])
 
   // ─── Tour prefill: название готово, режим «по сложному %» выбран заранее,
   //     категорию пользователь создаёт сам (открываем поле ввода). ──

@@ -4,21 +4,25 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Category, IngredientRef, Venue } from '@/types'
 import MenuView from '@/components/menu/MenuView'
+import { DEMO_INGREDIENTS } from '@/lib/demo-data'
 
 export default function DemoPreviewPage() {
   const router = useRouter()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [ingredientRefs, setIngredientRefs] = useState<IngredientRef[]>([])
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     try {
       const v = localStorage.getItem('nutrimenu_venue')
       const c = localStorage.getItem('nutrimenu_categories')
+      const i = localStorage.getItem('nutrimenu_demo_ings')
       if (v) setVenue(JSON.parse(v))
       if (c) setCategories(JSON.parse(c))
+      setIngredientRefs(i ? JSON.parse(i) : DEMO_INGREDIENTS)
     } catch {
-      // ignore
+      setIngredientRefs(DEMO_INGREDIENTS)
     }
     setReady(true)
   }, [])
@@ -52,7 +56,7 @@ export default function DemoPreviewPage() {
       venue={venue}
       categories={categories}
       isOwner={false}
-      ingredientRefs={[] as IngredientRef[]}
+      ingredientRefs={ingredientRefs}
     />
   )
 }

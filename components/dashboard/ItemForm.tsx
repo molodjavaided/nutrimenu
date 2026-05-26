@@ -31,10 +31,14 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
   const [previewOpen, setPreviewOpen] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
 
-  // Обучение временно отключено (см. layout.tsx). tourActive остаётся false → не активируется
-  // prefill «Карбонара» и data-tour клики не триггерят шаги.
   useEffect(() => {
-    // no-op while tour is disabled
+    if (itemId || demoMode) return
+    fetch('/api/user/onboarding')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && !data.isCompleted && !data.isDismissed && data.step >= 1) setTourActive(true)
+      })
+      .catch(() => {})
   }, [itemId, demoMode])
 
   // ─── Tour prefill: название готово, режим «по сложному %» выбран заранее,
@@ -44,7 +48,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
     if (!tourActive || prefilledRef.current || !s.isReady) return
     prefilledRef.current = true
     if (!s.name) s.setName('Карбонара')
-    if (s.mode !== 'ttk') s.setMode('ttk')
+    // mode не префилим: тур ведёт пользователя через CTA-карточки Уровня 2 → 3
     if (!s.categoryId) s.setAddingCategory(true)
   }, [tourActive, s])
 
@@ -83,6 +87,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             className="mb-6"
           >
             <LevelExpander
+              dataTour="expand-composition"
               title="Считать КБЖУ из ингредиентов"
               hint="Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента"
               onExpand={() => {
@@ -129,6 +134,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             className="mb-6"
           >
             <LevelExpander
+              dataTour="expand-ttk"
               title="Учитывать обработку (ТТК)"
               hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
               onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}

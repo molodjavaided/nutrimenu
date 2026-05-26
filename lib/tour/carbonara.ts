@@ -37,15 +37,15 @@ export const CARBONARA_STEPS: TourStep[] = [
     placement: 'bottom',
   },
 
-  // ── Шаг 2: выбрать режим ТТК ───────────────────────────────────────────────
+  // ── Шаг 2: раскрыть состав (Уровень 2) ─────────────────────────────────────
   {
-    id: 'mode-ttk',
+    id: 'expand-composition',
     page: '/dashboard/item/new',
-    target: '[data-tour="mode-ttk"]',
-    title: 'Режим «По сложному проценту»',
-    body: 'Соберём блюдо из ингредиентов с обработкой — система учтёт выход. Выберите этот режим.',
-    placement: 'bottom',
-    advanceOn: { event: 'mode-set', match: p => p === 'ttk' },
+    target: '[data-tour="expand-composition"]',
+    title: 'Считать КБЖУ из ингредиентов',
+    body: 'Соберём блюдо из ингредиентов — Plate сам посчитает КБЖУ. Нажмите карточку «Считать КБЖУ из ингредиентов».',
+    placement: 'top',
+    advanceOn: { event: 'mode-set', match: p => p === 'composition' || p === 'ttk' },
   },
 
   // ── Шаг 3: открыть пикер для яйца ─────────────────────────────────────────
@@ -90,6 +90,17 @@ export const CARBONARA_STEPS: TourStep[] = [
     body: 'Два яйца — это ~120 г.',
     placement: 'top',
     advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && (p.amount ?? 0) > 0 },
+  },
+
+  // ── Шаг 6.5: раскрыть ТТК (Уровень 3) ──────────────────────────────────────
+  {
+    id: 'expand-ttk',
+    page: '/dashboard/item/new',
+    target: '[data-tour="expand-ttk"]',
+    title: 'Учитывать обработку',
+    body: 'Включим ТТК — Plate учтёт жарку и потерю веса. Нажмите карточку «Учитывать обработку».',
+    placement: 'top',
+    advanceOn: { event: 'mode-set', match: p => p === 'ttk' },
   },
 
   // ── Шаг 7: открыть обработку яйца ─────────────────────────────────────────

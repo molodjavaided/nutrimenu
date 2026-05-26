@@ -6,17 +6,19 @@ interface ExpanderProps {
   title: string
   hint: string
   onExpand: () => void
+  dataTour?: string
 }
 
 /**
  * CTA-карточка между уровнями формы. Приглашает раскрыть следующий уровень.
  * Не аккордеон — это активное приглашение «хочу точнее».
  */
-export function LevelExpander({ title, hint, onExpand }: ExpanderProps) {
+export function LevelExpander({ title, hint, onExpand, dataTour }: ExpanderProps) {
   return (
     <button
       type="button"
       onClick={onExpand}
+      data-tour={dataTour}
       className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] flex items-center gap-3"
       style={{
         background: 'rgba(255,255,255,0.45)',

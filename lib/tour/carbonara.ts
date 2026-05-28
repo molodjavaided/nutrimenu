@@ -168,9 +168,10 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/item/new',
     target: `[data-tour="amount-${TOUR_REF.milk}"]`,
     title: 'Сколько молока',
-    body: 'Пара столовых ложек — ~30 г.',
+    body: 'Введите «30» — пара столовых ложек. Затем нажмите «Дальше».',
     placement: 'top',
-    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.milk && (p.amount ?? 0) > 0 },
+    showNext: true,
+    gateOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.milk && p.amount === 30 },
   },
 
   // ── Шаг 13: сохранить ──────────────────────────────────────────────────────

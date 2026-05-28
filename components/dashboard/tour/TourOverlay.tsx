@@ -150,6 +150,9 @@ export default function TourOverlay({
       {/* Тултип */}
       <div
         onClick={e => e.stopPropagation()}
+        onPointerDownCapture={e => e.stopPropagation()}
+        onMouseDownCapture={e => e.stopPropagation()}
+        onTouchStartCapture={e => e.stopPropagation()}
         style={{
           position: 'absolute', ...tipStyle,
           background: '#FEFEF2',

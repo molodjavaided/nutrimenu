@@ -60,6 +60,17 @@ export default function TourController() {
 
   const step = active && index < CARBONARA_STEPS.length ? CARBONARA_STEPS[index] : null
 
+  // Гейт для кнопки «Дальше» — активна только после корректного ввода
+  const [gateOpen, setGateOpen] = useState(false)
+  useEffect(() => {
+    setGateOpen(false)
+    if (!step?.gateOn) return
+    const { event, match } = step.gateOn
+    return tourBus.on(event, p => {
+      setGateOpen(!match || !!match(p))
+    })
+  }, [step])
+
   // Переход по событию реального действия
   useEffect(() => {
     if (!step?.advanceOn) return
@@ -93,6 +104,7 @@ export default function TourController() {
       body={step.body}
       placement={step.placement}
       showNext={step.showNext || isLast}
+      nextDisabled={!!step.gateOn && !gateOpen}
       onNext={isLast ? finish : advance}
       onSkip={finish}
       stepIndex={index}

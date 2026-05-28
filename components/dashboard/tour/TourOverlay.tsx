@@ -11,6 +11,7 @@ interface Props {
   body: string
   placement?: TourPlacement
   showNext?: boolean
+  nextDisabled?: boolean
   onNext?: () => void
   onSkip: () => void
   stepIndex: number
@@ -55,7 +56,7 @@ const TOOLTIP_W = 300
 
 export default function TourOverlay({
   targetSelector, revealSelector, title, body, placement = 'auto',
-  showNext, onNext, onSkip, stepIndex, totalSteps, soft = false,
+  showNext, nextDisabled, onNext, onSkip, stepIndex, totalSteps, soft = false,
 }: Props) {
   const [rect, setRect] = useState<Rect | null>(null)
   const vv = useVisualViewport()
@@ -195,11 +196,14 @@ export default function TourOverlay({
           <button
             type="button"
             onClick={onNext}
+            disabled={nextDisabled}
             style={{
               marginTop: 14, width: '100%', padding: '9px 16px',
-              background: '#8B5CF6', color: '#fff', border: 'none',
-              borderRadius: 12, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
+              background: nextDisabled ? '#C8C3F0' : '#8B5CF6', color: '#fff', border: 'none',
+              borderRadius: 12, fontSize: 13, fontWeight: 500,
+              cursor: nextDisabled ? 'not-allowed' : 'pointer',
+              boxShadow: nextDisabled ? 'none' : '0 4px 12px rgba(139,92,246,0.3)',
+              transition: 'background 0.2s, box-shadow 0.2s',
             }}
           >
             Дальше

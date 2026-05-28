@@ -16,6 +16,9 @@ export interface TourStep {
   soft?: boolean
   /** Событие из tourBus, по которому шаг считается выполненным. */
   advanceOn?: { event: TourEventName; match?: (p: unknown) => boolean }
+  /** Если задано, кнопка «Дальше» показывается всегда (showNext подразумевается),
+   *  но активна только после события с матчем. Не автопереход — юзер сам жмёт «Дальше». */
+  gateOn?: { event: TourEventName; match?: (p: unknown) => boolean }
 }
 
 export const TOUR_REF = {
@@ -87,9 +90,10 @@ export const CARBONARA_STEPS: TourStep[] = [
     page: '/dashboard/item/new',
     target: `[data-tour="amount-${TOUR_REF.egg}"]`,
     title: 'Сколько яиц',
-    body: 'Два яйца — это ~120 г.',
+    body: 'Введите «2» — омлет на двух яйцах. Затем нажмите «Дальше».',
     placement: 'top',
-    advanceOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && (p.amount ?? 0) > 0 },
+    showNext: true,
+    gateOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && p.amount === 2 },
   },
 
   // ── Шаг 6.5: раскрыть ТТК (Уровень 3) ──────────────────────────────────────

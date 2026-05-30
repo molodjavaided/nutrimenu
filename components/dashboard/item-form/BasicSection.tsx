@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ALLERGENS } from '@/lib/allergens'
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/form-fields'
 import { GlassButton, GlassCard, GlassDashedButton, NutriPill } from '@/components/ui-kit'
@@ -61,6 +62,9 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
   const kbjuSummary = hasKbju
     ? `${s.quickCalories} ккал · ${s.quickProtein}/${s.quickFat}/${s.quickCarbs} БЖУ`
     : 'не заполнено'
+  // Состояние сворачивания КБЖУ держим здесь (BasicSection всегда смонтирован),
+  // иначе оно теряется при размонтировании карточки на смене режима.
+  const [kbjuOpen, setKbjuOpen] = useState(true)
 
   return (
     <div className="space-y-4 mb-6">
@@ -330,6 +334,8 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
           tone="tinted"
           hint="Возьмите с упаковки или из рецепта · обязательно"
           summary={kbjuSummary}
+          open={kbjuOpen}
+          onToggle={() => setKbjuOpen(o => !o)}
         >
           <FormField label="Вес порции">
             <div className="flex gap-2">

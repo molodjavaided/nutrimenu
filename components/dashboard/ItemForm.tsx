@@ -175,6 +175,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             tourBus.emit('ingredient-picked', ref.id)
             if (tourActive) s.setPickerOpen(false)
           }}
+          onRemove={ref => {
+            const ing = s.ingredients.find(i => i.ingredientRefId === ref.id && !i.parentIngredientId)
+              ?? s.ingredients.find(i => i.ingredientRefId === ref.id)
+            if (ing) s.removeIngredient(ing.id)
+          }}
           onClose={() => s.setPickerOpen(false)}
           onIngredientCreated={_ref => {
             invalidateIngredients()

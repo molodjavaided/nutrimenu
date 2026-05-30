@@ -19,11 +19,13 @@ interface Props {
   onClose: () => void
   allRefs?: IngredientRef[]
   onIngredientCreated?: (ref: IngredientRef) => void
+  /** Повторный тап по уже добавленному ингредиенту — убрать из состава (toggle). */
+  onRemove?: (ref: IngredientRef) => void
 }
 
 const RECENT_SECTION = '__recent__'
 
-export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSelect, onClose, allRefs, onIngredientCreated }: Props) {
+export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSelect, onClose, allRefs, onIngredientCreated, onRemove }: Props) {
   const [activeLibId, setActiveLibId] = useState<string>(libraries[0]?.id ?? '')
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
@@ -233,12 +235,12 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                     <button
                       key={`${section.key}-${ref.id}`}
                       data-tour={`picker-result-${ref.id}`}
-                      onClick={() => !added && handleSelect(ref)}
-                      disabled={added}
+                      onClick={() => (added ? onRemove?.(ref) : handleSelect(ref))}
+                      title={added ? 'В составе — нажмите, чтобы убрать' : undefined}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors"
-                      style={{ color: added ? '#C8C3F0' : 'var(--color-text-primary)', cursor: added ? 'default' : 'pointer' }}
-                      onMouseEnter={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '#EAE7F8' }}
-                      onMouseLeave={e => { if (!added) (e.currentTarget as HTMLButtonElement).style.background = '' }}
+                      style={{ color: 'var(--color-text-primary)', cursor: 'pointer', background: added ? 'rgba(139,92,246,0.08)' : '' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = added ? 'rgba(226,75,74,0.10)' : '#EAE7F8' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = added ? 'rgba(139,92,246,0.08)' : '' }}
                     >
                       <span className="flex items-center gap-1.5 font-medium min-w-0">
                         {isComposite && (
@@ -261,12 +263,19 @@ export default function IngredientPickerModal({ libraries, alreadyAddedIds, onSe
                           </span>
                         )}
                       </span>
-                      <span className="flex items-center gap-3 text-xs shrink-0 ml-3" style={{ color: added ? '#C8C3F0' : 'var(--color-text-muted)' }}>
+                      <span className="flex items-center gap-3 text-xs shrink-0 ml-3" style={{ color: 'var(--color-text-muted)' }}>
                         <span>{resolved.caloriesPer100} ккал</span>
                         <span>Б {resolved.proteinPer100}г</span>
                         <span>Ж {resolved.fatPer100}г</span>
                         <span>У {resolved.carbsPer100}г</span>
-                        {added && <span style={{ color: '#B0A6DF' }}>✓</span>}
+                        {added && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md shrink-0 whitespace-nowrap"
+                            style={{ background: 'rgba(139,92,246,0.12)', color: '#7C3AED' }}
+                          >
+                            ✓ в составе
+                          </span>
+                        )}
                       </span>
                     </button>
                   )

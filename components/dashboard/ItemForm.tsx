@@ -9,7 +9,8 @@ import IngredientPickerModal from './IngredientPickerModal'
 import BasicSection from './item-form/BasicSection'
 import CompositionSection from './item-form/CompositionSection'
 import DishOptionsModal from './item-form/DishOptionsModal'
-import { LevelExpander, LevelPanelHeader } from './item-form/LevelCard'
+import { LevelToggleHeader } from './item-form/LevelCard'
+import { SMOOTH } from '@/lib/motion'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
 import DishSheet from '@/components/menu/DishSheet'
@@ -30,6 +31,9 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
   })
   const [previewOpen, setPreviewOpen] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  // overflow раскрытого состава: hidden во время анимации (чистый рост height),
+  // visible после — иначе обрезается tour-свечение и всплывающие панели внутри.
+  const [levelOverflow, setLevelOverflow] = useState(false)
 
   useEffect(() => {
     if (itemId || demoMode) return
@@ -82,95 +86,61 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
       {/* ── Уровень 1: основа ─────────────────────────────────────── */}
       <BasicSection s={s} />
 
-      {/* ── Уровень 2: состав (раскрытие по клику) ────────────────── */}
-      <AnimatePresence mode="wait" initial={false}>
-        {s.mode === 'quick' ? (
-          <motion.div
-            key="lvl2-cta"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="mb-6"
-          >
-            <LevelExpander
-              dataTour="expand-composition"
-              title="Считать КБЖУ из ингредиентов"
-              hint="Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента"
-              onExpand={() => {
-                const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
-                s.setMode('composition')
-                tourBus.emit('mode-set', 'composition')
-                if (hadManualNutri) {
-                  toast('КБЖУ теперь считается из состава', {
-                    description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
-                  })
-                }
-              }}
-            />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="lvl2-panel"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.24, ease: 'easeOut' }}
-            className="mb-6"
-          >
-            <LevelPanelHeader
-              title="Состав"
-              badge={s.mode === 'ttk' ? 'ТТК' : undefined}
-              onCollapse={() => { s.setMode('quick'); tourBus.emit('mode-set', 'quick') }}
-              collapseLabel="Свернуть, вводить КБЖУ вручную"
-            />
-            <CompositionSection s={s} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Уровень 3: ТТК (только когда состав раскрыт) ──────────── */}
-      <AnimatePresence mode="wait" initial={false}>
-        {s.mode === 'composition' && (
-          <motion.div
-            key="lvl3-cta"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="mb-6"
-          >
-            <LevelExpander
-              dataTour="expand-ttk"
-              title="Учитывать обработку (ТТК)"
-              hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
-              onExpand={() => { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }}
-            />
-          </motion.div>
-        )}
-        {s.mode === 'ttk' && (
-          <motion.div
-            key="lvl3-collapse"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="mb-6 -mt-3"
-          >
-            <button
-              type="button"
-              onClick={() => { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }}
-              className="text-xs inline-flex items-center gap-1 transition-colors"
-              style={{ color: 'var(--color-text-muted)' }}
+      {/* ── Уровень 2: состав — заголовок-переключатель, раскрытие ВНИЗ ── */}
+      <div className="mb-6">
+        <LevelToggleHeader
+          dataTour="expand-composition"
+          open={s.mode !== 'quick'}
+          title={s.mode === 'quick' ? 'Считать КБЖУ из ингредиентов' : 'Состав'}
+          hint={s.mode === 'quick' ? 'Точнее, нужно для ТТК, аллергенов и автообновления при изменении ингредиента' : undefined}
+          badge={s.mode === 'ttk' ? 'ТТК' : undefined}
+          onToggle={() => {
+            if (s.mode === 'quick') {
+              const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
+              s.setMode('composition')
+              tourBus.emit('mode-set', 'composition')
+              if (hadManualNutri) {
+                toast('КБЖУ теперь считается из состава', {
+                  description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
+                })
+              }
+            } else {
+              s.setMode('quick')
+              tourBus.emit('mode-set', 'quick')
+            }
+          }}
+        />
+        <AnimatePresence initial={false}>
+          {s.mode !== 'quick' && (
+            <motion.div
+              key="lvl2-body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={SMOOTH}
+              onAnimationStart={() => setLevelOverflow(false)}
+              onAnimationComplete={() => setLevelOverflow(true)}
+              style={{ overflow: levelOverflow ? 'visible' : 'hidden' }}
             >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path d="M3 8l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Скрыть ТТК-поля (обработка)
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className="pt-4 space-y-4">
+                <CompositionSection s={s} />
+
+                {/* Уровень 3: ТТК — тот же паттерн-переключатель */}
+                <LevelToggleHeader
+                  dataTour="expand-ttk"
+                  open={s.mode === 'ttk'}
+                  title="Учитывать обработку (ТТК)"
+                  hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
+                  onToggle={() => {
+                    if (s.mode === 'ttk') { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }
+                    else { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }
+                  }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* ── Опции для гостя ───────────────────────────────────────── */}
       {s.mode !== 'quick' && (

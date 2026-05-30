@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { ALLERGENS } from '@/lib/allergens'
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/form-fields'
 import { GlassButton, GlassCard, GlassDashedButton, NutriPill } from '@/components/ui-kit'
@@ -13,16 +12,6 @@ function pluralRu(n: number, one: string, few: string, many: string) {
   if (mod10 === 1 && mod100 !== 11) return one
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
   return many
-}
-
-/** Заголовок секции-карточки. Heading-шрифт наследуется от h2 в globals. */
-function SectionLabel({ children, hint }: { children: ReactNode; hint?: string }) {
-  return (
-    <div className="mb-4">
-      <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>{children}</h2>
-      {hint && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{hint}</p>}
-    </div>
-  )
 }
 
 function ComputedNutriSummary({ s }: { s: ItemFormState }) {
@@ -68,6 +57,10 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
   const detailsSummary = `${allergenCount
     ? `${allergenCount} ${pluralRu(allergenCount, 'аллерген', 'аллергена', 'аллергенов')}`
     : 'без аллергенов'} · ${s.isAvailable ? 'видно гостям' : 'скрыто'}`
+  const hasKbju = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
+  const kbjuSummary = hasKbju
+    ? `${s.quickCalories} ккал · ${s.quickProtein}/${s.quickFat}/${s.quickCarbs} БЖУ`
+    : 'не заполнено'
 
   return (
     <div className="space-y-4 mb-6">
@@ -332,9 +325,12 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
       {s.mode !== 'quick' && <ComputedNutriSummary s={s} />}
 
       {s.mode === 'quick' && (
-        <GlassCard tone="tinted" padding="lg" className="[&>*:last-child]:mb-0">
-          <SectionLabel hint="Возьмите с упаковки или из рецепта — на одну порцию">КБЖУ на порцию</SectionLabel>
-
+        <CollapsibleCard
+          title="КБЖУ на порцию"
+          tone="tinted"
+          hint="Возьмите с упаковки или из рецепта · обязательно"
+          summary={kbjuSummary}
+        >
           <FormField label="Вес порции">
             <div className="flex gap-2">
               <FormInput
@@ -357,31 +353,29 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
             </div>
           </FormField>
 
-          <FormField label="КБЖУ на порцию" required>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { label: 'Калории', value: s.quickCalories, set: s.setQuickCalories },
-                { label: 'Белки', value: s.quickProtein, set: s.setQuickProtein },
-                { label: 'Жиры', value: s.quickFat, set: s.setQuickFat },
-                { label: 'Углеводы', value: s.quickCarbs, set: s.setQuickCarbs },
-              ].map(({ label, value, set }) => (
-                <div key={label}>
-                  <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
-                  <FormInput
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    step={0.1}
-                    value={value || ''}
-                    onChange={e => set(Number(e.target.value))}
-                    placeholder="0"
-                    className="w-full tabular-nums"
-                  />
-                </div>
-              ))}
-            </div>
-          </FormField>
-        </GlassCard>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { label: 'Калории', value: s.quickCalories, set: s.setQuickCalories },
+              { label: 'Белки', value: s.quickProtein, set: s.setQuickProtein },
+              { label: 'Жиры', value: s.quickFat, set: s.setQuickFat },
+              { label: 'Углеводы', value: s.quickCarbs, set: s.setQuickCarbs },
+            ].map(({ label, value, set }) => (
+              <div key={label}>
+                <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>{label}</p>
+                <FormInput
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step={0.1}
+                  value={value || ''}
+                  onChange={e => set(Number(e.target.value))}
+                  placeholder="0"
+                  className="w-full tabular-nums"
+                />
+              </div>
+            ))}
+          </div>
+        </CollapsibleCard>
       )}
     </div>
   )

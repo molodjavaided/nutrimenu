@@ -3,16 +3,13 @@
 import { useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { GlassCard } from '@/components/ui-kit'
+import { SMOOTH } from '@/lib/motion'
 
 /**
  * Сворачиваемая секция-карточка: заголовок-кнопка раскрывает/сворачивает тело.
  * Заполнил поля → свернул, чтобы не мешалось; в свёрнутом виде показывает summary.
- *
- * Анимация — единая «плавная» кривая проекта (SMOOTH). По мере роста числа
- * раскрытий стоит вынести пресеты движения в общий каталог.
- * TODO(animation-system): каталог motion-пресетов (collapse / fade-slide / stagger / tap).
+ * Анимация — единая «плавная» кривая проекта (SMOOTH).
  */
-const SMOOTH = { duration: 0.28, ease: [0.4, 0, 0.2, 1] as const }
 
 interface CollapsibleCardProps {
   title: string
@@ -20,15 +17,16 @@ interface CollapsibleCardProps {
   hint?: string
   /** Компактная сводка под заголовком, когда свёрнуто. */
   summary?: ReactNode
+  tone?: 'solid' | 'tinted'
   defaultOpen?: boolean
   children: ReactNode
 }
 
-export default function CollapsibleCard({ title, hint, summary, defaultOpen = true, children }: CollapsibleCardProps) {
+export default function CollapsibleCard({ title, hint, summary, tone = 'solid', defaultOpen = true, children }: CollapsibleCardProps) {
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <GlassCard tone="solid" padding="lg">
+    <GlassCard tone={tone} padding="lg">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}

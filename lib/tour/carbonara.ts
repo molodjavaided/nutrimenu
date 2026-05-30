@@ -96,24 +96,13 @@ export const CARBONARA_STEPS: TourStep[] = [
     gateOn: { event: 'amount-set', match: p => isPayload(p) && p.refId === TOUR_REF.egg && p.amount === 2 },
   },
 
-  // ── Шаг 6.5: раскрыть ТТК (Уровень 3) ──────────────────────────────────────
-  {
-    id: 'expand-ttk',
-    page: '/dashboard/item/new',
-    target: '[data-tour="expand-ttk"]',
-    title: 'Учитывать обработку',
-    body: 'Включим ТТК — Plate учтёт жарку и потерю веса. Нажмите карточку «Учитывать обработку».',
-    placement: 'top',
-    advanceOn: { event: 'mode-set', match: p => p === 'ttk' },
-  },
-
   // ── Шаг 7: открыть обработку яйца ─────────────────────────────────────────
   {
     id: 'egg-processing-open',
     page: '/dashboard/item/new',
     target: `[data-tour="processing-${TOUR_REF.egg}"]`,
     title: 'Обработка: жарка',
-    body: 'Нажмите «+ обработка» под яйцом.',
+    body: 'Нажмите «Обработка» под яйцом.',
     placement: 'top',
     advanceOn: { event: 'processing-panel-opened', match: p => p === TOUR_REF.egg },
   },

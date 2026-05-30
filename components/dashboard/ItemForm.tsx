@@ -8,7 +8,6 @@ import IngredientPickerModal from './IngredientPickerModal'
 import BasicSection from './item-form/BasicSection'
 import CompositionSection from './item-form/CompositionSection'
 import DishOptionsModal from './item-form/DishOptionsModal'
-import { LevelToggleHeader } from './item-form/LevelCard'
 import CollapsibleCard from './item-form/CollapsibleCard'
 import { useItemFormState } from './item-form/useItemFormState'
 import { buildPreviewItem } from './item-form/buildPreviewItem'
@@ -88,13 +87,12 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
           title="Считать КБЖУ из ингредиентов"
           dataTour="expand-composition"
           summary="Точнее — для ТТК, аллергенов и автообновления при изменении ингредиента"
-          badge={s.mode === 'ttk' ? 'ТТК' : undefined}
           open={s.mode !== 'quick'}
           onToggle={() => {
             if (s.mode === 'quick') {
               const hadManualNutri = s.quickCalories > 0 || s.quickProtein > 0 || s.quickFat > 0 || s.quickCarbs > 0
-              s.setMode('composition')
-              tourBus.emit('mode-set', 'composition')
+              s.setMode('ttk')
+              tourBus.emit('mode-set', 'ttk')
               if (hadManualNutri) {
                 toast('КБЖУ теперь считается из состава', {
                   description: 'Прежние ручные значения сохранены — вернутся, если свернёшь этот блок.',
@@ -106,21 +104,7 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
             }
           }}
         >
-          <div className="space-y-4">
-            <CompositionSection s={s} />
-
-            {/* Уровень 3: ТТК — тот же паттерн-переключатель */}
-            <LevelToggleHeader
-              dataTour="expand-ttk"
-              open={s.mode === 'ttk'}
-              title="Учитывать обработку (ТТК)"
-              hint="Уварка/усушка, ловушка для масла, финальный вес, аллергены"
-              onToggle={() => {
-                if (s.mode === 'ttk') { s.setMode('composition'); tourBus.emit('mode-set', 'composition') }
-                else { s.setMode('ttk'); tourBus.emit('mode-set', 'ttk') }
-              }}
-            />
-          </div>
+          <CompositionSection s={s} />
         </CollapsibleCard>
       </div>
 

@@ -17,7 +17,6 @@ interface CollapsibleCardProps {
   hint?: string
   /** Компактная сводка под заголовком, когда свёрнуто. */
   summary?: ReactNode
-  badge?: string
   tone?: 'solid' | 'tinted'
   defaultOpen?: boolean
   /** Controlled: если задан, секция управляется снаружи через onToggle. */
@@ -31,7 +30,6 @@ export default function CollapsibleCard({
   title,
   hint,
   summary,
-  badge,
   tone = 'solid',
   defaultOpen = true,
   open: controlledOpen,
@@ -61,17 +59,7 @@ export default function CollapsibleCard({
         aria-expanded={open}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h2>
-            {badge && (
-              <span
-                className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0"
-                style={{ background: 'rgba(139,92,246,0.12)', color: '#7C3AED' }}
-              >
-                {badge}
-              </span>
-            )}
-          </div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>{title}</h2>
           {open
             ? hint && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{hint}</p>
             : summary != null && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--color-text-secondary)' }}>{summary}</p>}

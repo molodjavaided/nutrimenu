@@ -1,7 +1,8 @@
 'use client'
 
-import { PROCESSING_LABELS, PROCESSING_GROUPS, asCategory, getYieldCoef } from '@/lib/cooking-coefficients'
-import type { IngredientRef, ProcessingType } from '@/types'
+import { useState } from 'react'
+import { PROCESSING_LABELS, asCategory, getYieldCoef } from '@/lib/cooking-coefficients'
+import type { IngredientCategory, IngredientRef, ProcessingType } from '@/types'
 
 function computeCoefs(processing: ProcessingType | undefined, yieldOverride: number | undefined, ingredientRef?: IngredientRef) {
   const effective = processing ?? 'raw'
@@ -31,9 +32,8 @@ export function ProcessingAnchor({
   dataTour?: string
 }) {
   const { effective, currentCoef } = computeCoefs(processing, yieldOverride, ingredientRef)
-  const label = effective === 'raw'
-    ? '+ обработка'
-    : `${PROCESSING_LABELS[effective]} ×${currentCoef.toFixed(2)}`
+  const isRaw = effective === 'raw'
+  const label = isRaw ? 'Обработка' : `${PROCESSING_LABELS[effective]} ×${currentCoef.toFixed(2)}`
 
   return (
     <button
@@ -41,31 +41,44 @@ export function ProcessingAnchor({
       onClick={onToggle}
       aria-expanded={expanded}
       data-tour={dataTour}
-      className="text-xs px-3 py-1.5 rounded-lg transition-all active:scale-[0.97] whitespace-nowrap self-start"
+      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full transition-all active:scale-[0.97] whitespace-nowrap self-start"
       style={
-        effective === 'raw'
-          ? {
-            background: 'transparent',
-            border: '0.5px dashed rgba(139,92,246,0.40)',
-            color: 'var(--color-text-secondary)',
-          }
-          : {
-            background: 'rgba(255,255,255,0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
-            border: '0.5px solid rgba(139,92,246,0.30)',
-            color: 'var(--color-text-primary)',
-            boxShadow: '0 2px 6px rgba(139,92,246,0.10)',
-            fontWeight: 500,
-          }
+        isRaw
+          ? { background: 'rgba(139,92,246,0.06)', border: '0.5px solid rgba(139,92,246,0.18)', color: 'var(--color-text-muted)' }
+          : { background: 'rgba(176,166,223,0.22)', border: '0.5px solid rgba(139,92,246,0.35)', color: 'var(--color-text-primary)', fontWeight: 500 }
       }
     >
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+        {/* пламя */}
+        <path d="M6 1.5c1.2 1.6.4 2.6-.2 3.4-.5.7-.3 1.6.5 2 .8-.3 1.2-1 1.2-1 .7 1.2.2 3.1-1.5 3.6C4 10.6 2.5 9.2 2.5 7.3c0-2 1.9-3 2.4-4.4.2-.5.7-.9 1.1-1.4z"
+          stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
+      </svg>
       {label}
+      <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden
+        style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+        <path d="M3 4.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </button>
   )
 }
 
-// ─── Panel: лента вариантов + поле коэффициента, выезжает снизу ─────────────
+// ─── Panel: релевантные по категории чипы одним рядом, выезжает снизу ───────
+
+const KITCHEN: ProcessingType[] = ['boil', 'fry', 'stew', 'bake', 'steam', 'deep_fry']
+const COFFEE: ProcessingType[] = ['steam_foam']
+const BAR: ProcessingType[] = ['shake_ice', 'stir_ice']
+const ALL_PROCESSINGS: ProcessingType[] = [...KITCHEN, ...COFFEE, ...BAR]
+
+/** Показываем только обработки, осмысленные для категории ингредиента — меньше шума.
+ *  Полный набор доступен по «Ещё…». */
+function relevantProcessings(category: IngredientCategory | undefined): ProcessingType[] {
+  switch (category) {
+    case 'dairy': return [...KITCHEN, ...COFFEE] // молоко вспенивают, сыр жарят/запекают
+    case 'liquid': return ['boil', ...BAR]
+    case 'fruit': return ['boil', 'bake', ...BAR]
+    default: return KITCHEN
+  }
+}
 
 export function ProcessingPanel({
   processing,
@@ -83,58 +96,56 @@ export function ProcessingPanel({
   refId?: string
 }) {
   const { effective, gostCoef, isManual } = computeCoefs(processing, yieldOverride, ingredientRef)
+  const category = asCategory(ingredientRef?.category)
+  const [showAll, setShowAll] = useState(false)
+
+  const base = showAll ? ALL_PROCESSINGS : relevantProcessings(category)
+  // текущая выбранная обработка всегда видна, даже если не в релевантном наборе
+  const options = effective !== 'raw' && !base.includes(effective) ? [effective, ...base] : base
+
+  const chipStyle = (active: boolean): React.CSSProperties => active
+    ? { background: '#B0A6DF', color: 'var(--color-text-primary)', fontWeight: 500, border: '0.5px solid rgba(139,92,246,0.55)', boxShadow: 'var(--shadow-soft-xs)' }
+    : { background: 'var(--surface-2)', color: 'var(--color-text-secondary)', fontWeight: 400, border: '0.5px solid rgba(139,92,246,0.15)' }
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Лента вариантов с группировкой — горизонтальный скролл */}
-      <div className="flex flex-col gap-1.5">
-        {PROCESSING_GROUPS.map(group => (
-          <div key={group.label} className="flex items-center gap-1.5">
-            <span
-              className="text-[10px] shrink-0 w-10 text-right"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              {group.label}
-            </span>
-            <div className="flex gap-1 overflow-x-auto py-0.5" style={{ scrollbarWidth: 'none' }}>
-              {group.options.map(p => {
-                const isActive = p === effective
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => onChangeProcessing(p)}
-                    data-tour={refId && (p === 'boil' || p === 'fry') ? `${p}-${refId}` : undefined}
-                    className="text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all active:scale-95"
-                    style={isActive
-                      ? {
-                        background: '#B0A6DF',
-                        color: 'var(--color-text-primary)',
-                        fontWeight: 500,
-                        border: '0.5px solid rgba(139,92,246,0.6)',
-                        boxShadow: '0 2px 6px rgba(176,166,223,0.30)',
-                      }
-                      : {
-                        background: 'rgba(176,166,223,0.18)',
-                        color: 'var(--color-text-secondary)',
-                        fontWeight: 400,
-                        border: '0.5px solid rgba(139,92,246,0.12)',
-                      }
-                    }
-                  >
-                    {PROCESSING_LABELS[p]}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+    <div className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChangeProcessing(undefined)}
+          className="text-xs px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+          style={chipStyle(effective === 'raw')}
+        >
+          Без обработки
+        </button>
+        {options.map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onChangeProcessing(p)}
+            data-tour={refId && (p === 'boil' || p === 'fry') ? `${p}-${refId}` : undefined}
+            className="text-xs px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
+            style={chipStyle(p === effective)}
+          >
+            {PROCESSING_LABELS[p]}
+          </button>
         ))}
+        {!showAll && (
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="text-xs px-2.5 py-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--color-text-muted)', background: 'transparent' }}
+          >
+            Ещё…
+          </button>
+        )}
       </div>
 
-      {/* Коэффициент — всегда доступен для правки, цвет = ГОСТ / вручную */}
+      {/* Коэффициент выхода — только для приготовленных, цвет = ГОСТ / вручную */}
       {effective !== 'raw' && (
         <div className="flex items-center gap-2 text-[11px]">
-          <span style={{ color: 'var(--color-text-muted)' }}>Коэф.</span>
+          <span style={{ color: 'var(--color-text-muted)' }}>Коэффициент выхода</span>
           <input
             type="number"
             step={0.01}

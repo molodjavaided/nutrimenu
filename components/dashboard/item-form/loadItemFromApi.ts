@@ -151,7 +151,9 @@ export function buildLoadedItemState(item: ApiItem, ingredientRefs: IngredientRe
     }
   }
 
-  const mode: 'composition' | 'ttk' = item.creationMode === 'ttk' ? 'ttk' : 'composition'
+  // Обработка теперь всегда доступна в составе (нет отдельного режима ТТК),
+  // поэтому любое блюдо «по составу» грузим с включённой обработкой.
+  const mode = 'ttk' as const
 
   let ingredients: IngredientItem[] = []
   let amounts: AmountCell[] = []

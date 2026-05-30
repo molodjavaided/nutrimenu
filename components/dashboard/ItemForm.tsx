@@ -57,20 +57,27 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
 
   return (
     <div className="px-4 py-6 md:p-8 max-w-5xl mx-auto">
-      <button
-        onClick={() => router.back()}
-        className="mb-4 inline-flex items-center gap-1 text-sm transition-colors active:scale-[0.98]"
-        style={{ color: 'var(--color-text-secondary)' }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-          <path d="M9 3l-4 4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Назад
-      </button>
+      <div className="mb-6">
+        <button
+          onClick={() => router.back()}
+          className="mb-3 inline-flex items-center gap-1 text-sm transition-colors active:scale-[0.98]"
+          style={{ color: 'var(--color-text-secondary)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+            <path d="M9 3l-4 4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Назад
+        </button>
 
-      <h1 className="text-xl font-medium mb-6" style={{ color: 'var(--color-text-primary)' }}>
-        {s.isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
-      </h1>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          {s.isEdit ? 'Редактировать блюдо' : 'Новое блюдо'}
+        </h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--color-text-muted)' }}>
+          {s.isEdit
+            ? 'Изменения сразу попадут в гостевое меню'
+            : 'Заполните основное — состав и опции по желанию'}
+        </p>
+      </div>
 
       {/* ── Уровень 1: основа ─────────────────────────────────────── */}
       <BasicSection s={s} />
@@ -172,9 +179,11 @@ export default function ItemForm({ itemId, categoryId: initialCategoryId, redire
         </div>
       )}
 
-      {/* Footer: Preview / Cancel / Save */}
+      {/* Footer: Preview / Cancel / Save — sticky над мобильным bottom-nav, inline на десктопе */}
       <div
-        className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-4"
+        className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 -mx-4 px-4 py-3 bg-[rgba(254,254,242,0.82)] backdrop-blur-md
+                   sm:static sm:bottom-auto sm:mx-0 sm:px-0 sm:py-0 sm:pt-4 sm:bg-transparent sm:backdrop-blur-none
+                   flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"
         style={{ borderTop: '0.5px solid rgba(139,92,246,0.18)' }}
       >
         <GlassButton
@@ -306,8 +315,11 @@ function DishOptionsChip({ s, onOpen }: { s: ItemFormState; onOpen: () => void }
       onClick={onOpen}
       className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] flex items-center gap-3"
       style={{
-        background: hasAny ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.45)',
-        border: hasAny ? '0.5px solid rgba(139,92,246,0.28)' : '1px dashed rgba(139,92,246,0.35)',
+        background: hasAny
+          ? 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(176,166,223,0.14))'
+          : 'var(--surface-1)',
+        border: '0.5px solid rgba(139,92,246,0.22)',
+        boxShadow: 'var(--shadow-soft-sm)',
       }}
     >
       <div

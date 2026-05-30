@@ -19,10 +19,11 @@ export function LevelExpander({ title, hint, onExpand, dataTour }: ExpanderProps
       type="button"
       onClick={onExpand}
       data-tour={dataTour}
-      className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] flex items-center gap-3"
+      className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] hover:border-[rgba(139,92,246,0.5)] flex items-center gap-3"
       style={{
-        background: 'rgba(255,255,255,0.45)',
+        background: 'var(--surface-2)',
         border: '1px dashed rgba(139,92,246,0.35)',
+        boxShadow: 'var(--shadow-soft-xs)',
       }}
     >
       <div

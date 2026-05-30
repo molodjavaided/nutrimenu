@@ -4,7 +4,16 @@ import type { ReactNode } from 'react'
 import { ALLERGENS } from '@/lib/allergens'
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/form-fields'
 import { GlassButton, GlassCard, GlassDashedButton, NutriPill } from '@/components/ui-kit'
+import CollapsibleCard from './CollapsibleCard'
 import type { ItemFormState } from './useItemFormState'
+
+function pluralRu(n: number, one: string, few: string, many: string) {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few
+  return many
+}
 
 /** Заголовок секции-карточки. Heading-шрифт наследуется от h2 в globals. */
 function SectionLabel({ children, hint }: { children: ReactNode; hint?: string }) {
@@ -51,11 +60,19 @@ function ComputedNutriSummary({ s }: { s: ItemFormState }) {
 }
 
 export default function BasicSection({ s }: { s: ItemFormState }) {
+  const priceNum = Number(s.price)
+  const dishSummary = [s.name.trim() || 'Без названия', priceNum > 0 ? `${s.price} ₽` : null]
+    .filter(Boolean)
+    .join(' · ')
+  const allergenCount = s.allergens.length
+  const detailsSummary = `${allergenCount
+    ? `${allergenCount} ${pluralRu(allergenCount, 'аллерген', 'аллергена', 'аллергенов')}`
+    : 'без аллергенов'} · ${s.isAvailable ? 'видно гостям' : 'скрыто'}`
+
   return (
     <div className="space-y-4 mb-6">
       {/* ── Карточка «Блюдо» — лицо позиции: фото, категория, название, цена ── */}
-      <GlassCard tone="solid" padding="lg" className="[&>*:last-child]:mb-0">
-        <SectionLabel>Блюдо</SectionLabel>
+      <CollapsibleCard title="Блюдо" summary={dishSummary}>
 
         <FormField label="Фото (необязательно)">
           <div className="flex items-center gap-3">
@@ -246,11 +263,10 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
             </span>
           </div>
         </FormField>
-      </GlassCard>
+      </CollapsibleCard>
 
       {/* ── Карточка «Детали» — описание, аллергены, видимость ── */}
-      <GlassCard tone="solid" padding="lg" className="[&>*:last-child]:mb-0">
-        <SectionLabel>Детали</SectionLabel>
+      <CollapsibleCard title="Детали" summary={detailsSummary}>
 
         <FormField label="Описание (необязательно)">
           <FormTextarea
@@ -310,7 +326,7 @@ export default function BasicSection({ s }: { s: ItemFormState }) {
             />
           </button>
         </div>
-      </GlassCard>
+      </CollapsibleCard>
 
       {/* ── КБЖУ ── */}
       {s.mode !== 'quick' && <ComputedNutriSummary s={s} />}

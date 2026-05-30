@@ -103,7 +103,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
         <p><b>🔥 Обработка</b> {isTTK ? '— ' : '(появляется в режиме ТТК) — '}способ приготовления (жарка/варка/тушение). КБЖУ автоматически пересчитывается с учётом потери или прибавки веса. Например: жарка добавляет масло (поглощается), варка убирает воду.</p>
       </HelpHint>
 
-      <FormField label="Состав" required>
+      <div className="mb-5">
         {s.ingredients.length === 0 ? (
           <EmptyComposition onAdd={() => { s.setPickerOpen(true); tourBus.emit('picker-opened') }} />
         ) : (
@@ -132,7 +132,7 @@ export default function CompositionSection({ s }: { s: ItemFormState }) {
             Брутто — что закупаете. Выход — что в тарелке после обработки. КБЖУ считается от сырья (ГОСТ).
           </p>
         )}
-      </FormField>
+      </div>
 
       {s.sizes.length > 0 && s.ingredients.length > 0 && <FinalNutriCard s={s} />}
     </>

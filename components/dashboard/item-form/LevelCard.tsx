@@ -27,7 +27,7 @@ export function LevelToggleHeader({ title, hint, badge, open, onToggle, dataTour
       className="w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] hover:border-[rgba(139,92,246,0.5)] flex items-center gap-3"
       style={{
         background: 'var(--surface-2)',
-        border: open ? '0.5px solid rgba(139,92,246,0.22)' : '1px dashed rgba(139,92,246,0.35)',
+        border: '0.5px solid rgba(139,92,246,0.22)',
         boxShadow: 'var(--shadow-soft-xs)',
       }}
     >

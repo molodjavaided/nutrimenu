@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PROCESSING_LABELS, asCategory, getYieldCoef } from '@/lib/cooking-coefficients'
 import type { IngredientCategory, IngredientRef, ProcessingType } from '@/types'
 
@@ -146,24 +146,11 @@ export function ProcessingPanel({
       {effective !== 'raw' && (
         <div className="flex items-center gap-2 text-[11px]">
           <span style={{ color: 'var(--color-text-muted)' }}>Коэффициент выхода</span>
-          <input
-            type="number"
-            step={0.01}
-            min={0}
-            value={yieldOverride ?? gostCoef}
-            onChange={e => {
-              const v = e.target.value === '' ? undefined : parseFloat(e.target.value)
-              onChangeYieldOverride(v === undefined || Number.isNaN(v) ? undefined : v)
-            }}
-            className="w-16 h-8 px-2 rounded-md outline-none text-center"
-            style={{
-              fontSize: 16,
-              background: isManual ? 'rgba(242,217,101,0.18)' : 'rgba(255,255,255,0.6)',
-              border: isManual
-                ? '0.5px solid rgba(242,217,101,0.65)'
-                : '0.5px solid rgba(139,92,246,0.25)',
-              color: 'var(--color-text-primary)',
-            }}
+          <CoefInput
+            yieldOverride={yieldOverride}
+            gostCoef={gostCoef}
+            isManual={isManual}
+            onChange={onChangeYieldOverride}
           />
           {isManual && (
             <button
@@ -182,5 +169,63 @@ export function ProcessingPanel({
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Editable coefficient field ────────────────────────────────────────────
+// Локальный текст, чтобы поле можно было свободно очистить и набрать своё
+// (управляемый number-input снапается к gostCoef и не даёт стереть «1»).
+// С внешним значением синхронизируемся только когда поле не в фокусе.
+function CoefInput({
+  yieldOverride,
+  gostCoef,
+  isManual,
+  onChange,
+}: {
+  yieldOverride: number | undefined
+  gostCoef: number
+  isManual: boolean
+  onChange: (v: number | undefined) => void
+}) {
+  const [text, setText] = useState(() => String(yieldOverride ?? gostCoef))
+  const [focused, setFocused] = useState(false)
+
+  useEffect(() => {
+    if (!focused) setText(String(yieldOverride ?? gostCoef))
+  }, [yieldOverride, gostCoef, focused])
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={e => {
+        const raw = e.target.value
+        setText(raw)
+        const v = parseFloat(raw.replace(',', '.'))
+        if (raw.trim() === '' || Number.isNaN(v)) onChange(undefined)
+        else onChange(v)
+      }}
+      onBlur={() => {
+        setFocused(false)
+        const v = parseFloat(text.replace(',', '.'))
+        if (text.trim() === '' || Number.isNaN(v)) {
+          onChange(undefined)
+          setText(String(gostCoef))
+        } else {
+          setText(String(v))
+        }
+      }}
+      className="w-16 h-8 px-2 rounded-md outline-none text-center"
+      style={{
+        fontSize: 16,
+        background: isManual ? 'rgba(242,217,101,0.18)' : 'rgba(255,255,255,0.6)',
+        border: isManual
+          ? '0.5px solid rgba(242,217,101,0.65)'
+          : '0.5px solid rgba(139,92,246,0.25)',
+        color: 'var(--color-text-primary)',
+      }}
+    />
   )
 }

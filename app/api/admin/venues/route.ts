@@ -13,7 +13,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       include: {
         owner: { select: { email: true, plan: true, trialEndsAt: true, paidUntil: true } },
-        _count: { select: { categories: true } },
+        _count: { select: { categories: true, menuItems: true } },
       },
     }),
     db.venue.groupBy({

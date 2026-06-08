@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   useSortable,
@@ -40,7 +40,23 @@ export default function SortableCategory({
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(category.name)
+  // Default expanded; restored from localStorage after mount to avoid SSR hydration mismatch.
   const [expanded, setExpanded] = useState(true)
+
+  const collapseKey = `nm-cat-collapsed:${category.id}`
+
+  useEffect(() => {
+    if (localStorage.getItem(collapseKey) === '1') setExpanded(false)
+  }, [collapseKey])
+
+  function toggleExpanded() {
+    setExpanded(prev => {
+      const next = !prev
+      if (next) localStorage.removeItem(collapseKey)
+      else localStorage.setItem(collapseKey, '1')
+      return next
+    })
+  }
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -120,7 +136,7 @@ export default function SortableCategory({
           ) : (
             <button
               type="button"
-              onClick={() => setExpanded(e => !e)}
+              onClick={toggleExpanded}
               className="flex-1 flex items-center gap-2 text-left min-w-0"
             >
               <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>
@@ -147,7 +163,7 @@ export default function SortableCategory({
             <ConfirmDeleteButton onConfirm={() => onDelete(category.id)} title="Удалить категорию" />
 
             <button
-              onClick={() => setExpanded(e => !e)}
+              onClick={toggleExpanded}
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ color: 'var(--color-text-muted)' }}
               aria-label={expanded ? 'Свернуть' : 'Развернуть'}

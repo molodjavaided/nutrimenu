@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Category, IngredientRef, MenuItem, TrackerItem, Venue } from '@/types'
 import { SelectedModifiers, SelectedVariants } from '@/types'
@@ -45,6 +45,25 @@ export default function MenuView({ venue, categories, isOwner = false, ingredien
   }, [categories, activeCategory, search])
 
   const nutri = useMemo(() => calcNutriTotal(trackerItems), [trackerItems])
+
+  // Bottom-sheet ↔ history sync: opening the dish sheet pushes a history entry so the
+  // mobile back-gesture (or hardware Back) closes the sheet instead of leaving the menu.
+  useEffect(() => {
+    if (!sheetOpen) return
+    window.history.pushState({ ...window.history.state, dishSheet: true }, '')
+    const onPop = () => setSheetOpen(false)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [sheetOpen])
+
+  function closeSheet() {
+    // Pop our pushed entry (fires popstate → setSheetOpen(false)) so no dangling history state.
+    if (typeof window !== 'undefined' && window.history.state?.dishSheet) {
+      window.history.back()
+    } else {
+      setSheetOpen(false)
+    }
+  }
 
   function handleAddToTracker(
   item: MenuItem,
@@ -130,7 +149,7 @@ const resolved = {
       variantLabel,
     }]
   })
-  setSheetOpen(false)
+  closeSheet()
 }
 
   function handleRemoveOne(itemId: string) {
@@ -253,7 +272,7 @@ const resolved = {
       <DishSheet
         item={selectedDish}
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={closeSheet}
         onAdd={handleAddToTracker}
         venueIngredientRefs={ingredientRefs}
       />

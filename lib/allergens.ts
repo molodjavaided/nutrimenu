@@ -19,6 +19,8 @@ export const ALLERGENS: AllergenDef[] = [
   { id: 'sulphites',  label: 'Сульфиты',       emoji: '🍷' },
   { id: 'lupin',      label: 'Люпин',          emoji: '🌸' },
   { id: 'crustaceans',label: 'Ракообразные',   emoji: '🦐' },
+  { id: 'honey',      label: 'Мёд',            emoji: '🍯' },
+  { id: 'citrus',     label: 'Цитрус',         emoji: '🍊' },
 ]
 
 export function getAllergenById(id: string): AllergenDef | undefined {

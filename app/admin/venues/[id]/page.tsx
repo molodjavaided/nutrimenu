@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronDown, ChevronRight, Eye, EyeOff, Copy, Check } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Eye, EyeOff, Copy, Check, Pencil, Lock } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi, adminKeys, VenueStatus, PlanId, getSubscriptionState, daysUntil } from '@/lib/admin-api'
+import { PLANS } from '@/lib/plans'
 import { BonusGrants } from '@/components/admin/BonusGrants'
 import { VenueFiles } from '@/components/admin/VenueFiles'
 import { PlanSwitchModal } from '@/components/admin/PlanSwitchModal'
@@ -91,6 +92,12 @@ export default function AdminVenueMenuPage() {
     },
   })
 
+  const impersonateMutation = useMutation({
+    mutationFn: () => adminApi.impersonate(id),
+    // Full reload so the new impersonation cookie is picked up by the dashboard SSR/layout.
+    onSuccess: () => { window.location.href = '/dashboard/menu' },
+  })
+
   async function copyLink() {
     if (!resetLink) return
     await navigator.clipboard.writeText(resetLink)
@@ -124,6 +131,11 @@ export default function AdminVenueMenuPage() {
   const location = [venue.city, venue.country].filter(Boolean).join(', ')
   const deleting = deleteMutation.isPending
   const canDelete = deleteConfirm.trim() === venue.name
+
+  const totalItems = venue.categories.reduce((s, c) => s + c.items.length, 0)
+  const maxItems = PLANS[venue.owner.plan].maxItems + (venue.owner.bonusItems ?? 0)
+  const maxItemsLabel = Number.isFinite(maxItems) ? String(maxItems) : '∞'
+  const nearLimit = Number.isFinite(maxItems) && totalItems >= maxItems * 0.8
 
   return (
     <div className="space-y-5">
@@ -235,12 +247,36 @@ export default function AdminVenueMenuPage() {
             >
               <Eye size={13} /> Открыть меню
             </a>
+            {venue.allowAdminEdit ? (
+              <button
+                onClick={() => impersonateMutation.mutate()}
+                disabled={impersonateMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 disabled:opacity-60"
+                style={{ background: '#7C3AED', color: '#fff' }}
+                title="Войти в дашборд от имени владельца и редактировать меню"
+              >
+                <Pencil size={13} /> {impersonateMutation.isPending ? '…' : 'Редактировать меню'}
+              </button>
+            ) : (
+              <span
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium"
+                style={{ background: 'rgba(157,153,184,0.12)', color: '#9D99B8' }}
+                title="Владелец не разрешил редактирование. Включается в настройках заведения владельцем."
+              >
+                <Lock size={12} /> Правка запрещена
+              </span>
+            )}
             <button
               onClick={() => setShowDelete(true)}
               className="px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95"
               style={{ background: 'rgba(220,38,38,0.08)', color: '#DC2626' }}
             >Удалить</button>
           </div>
+          {impersonateMutation.isError && (
+            <p className="text-xs w-full" style={{ color: '#DC2626' }}>
+              {(impersonateMutation.error as Error)?.message || 'Не удалось войти от имени владельца'}
+            </p>
+          )}
         </div>
       </div>
 
@@ -416,7 +452,19 @@ export default function AdminVenueMenuPage() {
 
       {/* Menu */}
       <div>
-        <p className="text-xs font-semibold mb-3" style={{ color: '#9D99B8' }}>МЕНЮ</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold" style={{ color: '#9D99B8' }}>МЕНЮ</p>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{
+              background: nearLimit ? 'rgba(180,83,9,0.12)' : 'rgba(176,166,223,0.25)',
+              color: nearLimit ? '#B45309' : '#7a748f',
+            }}
+            title={nearLimit ? 'Заведение близко к лимиту блюд на тарифе' : 'Блюд / лимит тарифа'}
+          >
+            {totalItems} / {maxItemsLabel} блюд
+          </span>
+        </div>
         {venue.categories.length === 0 ? (
           <div className="rounded-2xl p-8 text-center" style={{ background: '#EAE7F8' }}>
             <p className="text-sm" style={{ color: '#9D99B8' }}>Меню пустое — владелец ещё не добавил категории</p>

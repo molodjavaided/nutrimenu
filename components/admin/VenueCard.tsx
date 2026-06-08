@@ -64,8 +64,10 @@ export function VenueCard({ venue, selected, onToggleSelect, showCheckbox }: Pro
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate" style={{ color: '#2C2950' }}>{venue.name}</p>
         <p className="text-xs mt-0.5 truncate" style={{ color: '#9D99B8' }}>{location}</p>
-        <p className="text-xs mt-0.5" style={{ color: '#B0A6DF' }}>
-          {new Date(venue.createdAt).toLocaleDateString('ru-RU')}
+        <p className="text-xs mt-0.5 flex items-center gap-2" style={{ color: '#B0A6DF' }}>
+          <span>{new Date(venue.createdAt).toLocaleDateString('ru-RU')}</span>
+          <span>·</span>
+          <span>🍽 {venue._count?.menuItems ?? 0}</span>
         </p>
       </div>
 

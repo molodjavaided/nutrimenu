@@ -14,6 +14,7 @@ export interface AdminVenue {
   allowAdminEdit: boolean
   createdAt: string
   owner: { email: string; plan: PlanId; trialEndsAt: string | null; paidUntil: string | null }
+  _count?: { categories: number; menuItems: number }
 }
 
 export type SubscriptionState = 'trial' | 'awaiting_plan' | 'paid' | 'grace' | 'expired'
@@ -83,6 +84,7 @@ export interface AdminVenueDetail {
   address: string | null
   description: string | null
   status: VenueStatus
+  allowAdminEdit: boolean
   adminNote: string | null
   createdAt: string
   updatedAt: string

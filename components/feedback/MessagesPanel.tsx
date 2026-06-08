@@ -61,13 +61,24 @@ export default function MessagesPanel({ open, onClose, initialCategory }: Props)
 
   const { data: threads = [], isLoading } = useQuery({
     queryKey: threadsKey,
-    queryFn: () => fetch('/api/feedback/threads').then(r => r.json() as Promise<ThreadSummary[]>),
+    // Guard: a non-OK response (e.g. 401) returns an error object, not an array —
+    // never let it reach `.map` and crash the whole dashboard.
+    queryFn: async () => {
+      const r = await fetch('/api/feedback/threads')
+      if (!r.ok) return [] as ThreadSummary[]
+      const data = await r.json().catch(() => null)
+      return Array.isArray(data) ? (data as ThreadSummary[]) : []
+    },
     enabled: open,
   })
 
   const { data: thread } = useQuery({
     queryKey: threadKey(activeId ?? ''),
-    queryFn: () => fetch(`/api/feedback/${activeId}`).then(r => r.json() as Promise<ThreadDetail>),
+    queryFn: async () => {
+      const r = await fetch(`/api/feedback/${activeId}`)
+      if (!r.ok) return null
+      return (await r.json().catch(() => null)) as ThreadDetail | null
+    },
     enabled: open && !!activeId,
   })
 

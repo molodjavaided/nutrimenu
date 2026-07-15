@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
 import { getSession } from '@/lib/auth'
+import { captureException } from '@/lib/observability'
+import { logger } from '@/lib/logger'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
   const filename = `dishes/${session.venueId}/${Date.now()}.${ext}`
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error('BLOB_READ_WRITE_TOKEN is not set in environment')
+    logger.error('blob_token_missing', { venueId: session.venueId })
     return NextResponse.json(
       { error: 'Vercel Blob не настроен. Добавьте BLOB_READ_WRITE_TOKEN в переменные окружения.' },
       { status: 500 }
@@ -33,11 +35,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const blob = await put(filename, file, { access: 'public', addRandomSuffix: true })
-    console.log('Blob uploaded:', blob.url)
     return NextResponse.json({ url: blob.url })
   } catch (err) {
+    captureException('blob_upload_failed', err, { venueId: session.venueId })
     const message = err instanceof Error ? err.message : String(err)
-    console.error('Blob upload error:', message, err)
     return NextResponse.json({ error: `Не удалось загрузить: ${message}` }, { status: 500 })
   }
 }

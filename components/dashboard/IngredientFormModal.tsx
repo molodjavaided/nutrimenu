@@ -68,6 +68,11 @@ export default function IngredientFormModal({ editing, libraries, allRefs, selfI
         setScanError(data.error ?? 'AI временно недоступен, попробуйте ещё раз')
         return
       }
+      if (res.status === 429 || data.reason === 'quota') {
+        setBarcode(code)
+        setScanError('Месячная квота AI-подсказок исчерпана — заполните данные вручную, штрих-код сохранится')
+        return
+      }
       if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache' || data.source === 'local') && (data.prefill || data.ref)) {
         const p = data.ref ?? data.prefill
         setName(p.name ?? '')

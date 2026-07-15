@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateTTKDishes, type SheetInput } from '@/lib/gemini-ttk'
 import type { TTKExample } from '@/lib/ttk-examples'
+import { requireAiImport, enforceRateLimit } from '@/lib/api-guard'
+import { aiRatelimit } from '@/lib/ratelimit'
 
 export async function POST(req: NextRequest) {
+  const guard = await requireAiImport()
+  if (!guard.ok) return guard.response
+  const limited = await enforceRateLimit(aiRatelimit, `ai:${guard.session.userId}`)
+  if (limited) return limited
+
   let body: { sheets: SheetInput[]; examples?: TTKExample[] }
   try {
     body = await req.json()

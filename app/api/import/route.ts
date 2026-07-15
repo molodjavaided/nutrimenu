@@ -4,6 +4,8 @@ import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 import { getEffectiveLimits } from '@/lib/plans'
 import { resolveCategory } from '@/lib/cooking-coefficients'
+import { enforceRateLimit } from '@/lib/api-guard'
+import { aiRatelimit } from '@/lib/ratelimit'
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 
@@ -57,6 +59,8 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceRateLimit(aiRatelimit, `ai:${session.userId}`)
+  if (limited) return limited
   const venueId = getEffectiveVenueId(session)
 
   // Check import limit (skip for admins)

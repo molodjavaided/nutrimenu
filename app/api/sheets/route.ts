@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAiImport, enforceRateLimit } from '@/lib/api-guard'
+import { aiRatelimit } from '@/lib/ratelimit'
 
 const SHEET_ID_RE = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/
 
 export async function GET(req: NextRequest) {
+  const guard = await requireAiImport()
+  if (!guard.ok) return guard.response
+  const limited = await enforceRateLimit(aiRatelimit, `ai:${guard.session.userId}`)
+  if (limited) return limited
+
   const url = req.nextUrl.searchParams.get('url')
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
 

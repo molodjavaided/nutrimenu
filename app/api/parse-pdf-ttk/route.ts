@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { parsePDFTTK, parsePDFTextTTK } from '@/lib/gemini-ttk'
 import { extractPDFText } from '@/lib/pdf-extract'
 import type { TTKExample } from '@/lib/ttk-examples'
+import { requireAiImport, enforceRateLimit } from '@/lib/api-guard'
+import { aiRatelimit } from '@/lib/ratelimit'
 
 const SUPPORTED_TYPES = new Set([
   'application/pdf',
@@ -13,6 +15,11 @@ const SUPPORTED_TYPES = new Set([
 ])
 
 export async function POST(req: NextRequest) {
+  const guard = await requireAiImport()
+  if (!guard.ok) return guard.response
+  const limited = await enforceRateLimit(aiRatelimit, `ai:${guard.session.userId}`)
+  if (limited) return limited
+
   let body: { fileData?: string; mimeType?: string; examples?: TTKExample[] }
   try {
     body = await req.json()
@@ -30,6 +37,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: `Неподдерживаемый тип: ${mimeType}` },
       { status: 400 },
+    )
+  }
+
+  // Cap payload before decoding/Vision so an oversized upload can't burn a full expensive call.
+  // base64 is ~1.37× the raw bytes; 10 MB base64 ≈ 7.3 MB file.
+  const MAX_FILE_DATA_CHARS = 10 * 1024 * 1024
+  if (fileData.length > MAX_FILE_DATA_CHARS) {
+    return NextResponse.json(
+      { error: 'Файл слишком большой (макс. ~7 МБ)' },
+      { status: 413 },
     )
   }
 

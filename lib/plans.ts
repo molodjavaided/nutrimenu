@@ -7,6 +7,7 @@ export const PLANS = {
     maxItems: 50,
     aiImportPerMonth: 0,
     aiEnrichPerMonth: 0,
+    aiLookupPerMonth: 10,
     ttkExportPerMonth: null as null | number,
   },
   START: {
@@ -15,6 +16,7 @@ export const PLANS = {
     maxItems: 50,
     aiImportPerMonth: 5,
     aiEnrichPerMonth: 50,
+    aiLookupPerMonth: 60,
     ttkExportPerMonth: null as null | number,
   },
   STANDARD: {
@@ -23,6 +25,7 @@ export const PLANS = {
     maxItems: 200,
     aiImportPerMonth: 15,
     aiEnrichPerMonth: 200,
+    aiLookupPerMonth: 300,
     ttkExportPerMonth: Infinity,
   },
   CUSTOM: {
@@ -31,6 +34,7 @@ export const PLANS = {
     maxItems: Infinity,
     aiImportPerMonth: Infinity,
     aiEnrichPerMonth: Infinity,
+    aiLookupPerMonth: Infinity,
     ttkExportPerMonth: Infinity,
   },
 } as const
@@ -100,10 +104,12 @@ export interface EffectiveLimits {
   maxItems: number
   aiImportPerMonth: number
   aiEnrichPerMonth: number
+  aiLookupPerMonth: number
   ttkExportPerMonth: number | null
   canAddItems: boolean
   canImportAi: boolean
   canEnrichAi: boolean
+  canLookupAi: boolean
   menuPublic: boolean // показывать ли публичное меню гостям
 }
 
@@ -111,6 +117,7 @@ export interface BonusInput {
   bonusItems?: number
   bonusAiImports?: number
   bonusAiEnriches?: number
+  bonusAiLookups?: number
   bonusTtkExports?: number
 }
 
@@ -138,6 +145,7 @@ export function getEffectiveLimits(
   const bItems = user.bonusItems ?? 0
   const bAi = user.bonusAiImports ?? 0
   const bEnrich = user.bonusAiEnriches ?? 0
+  const bLookup = user.bonusAiLookups ?? 0
   const bTtk = user.bonusTtkExports ?? 0
 
   if (state === 'paid') {
@@ -146,24 +154,29 @@ export function getEffectiveLimits(
       maxItems: addBonus(planDef.maxItems, bItems),
       aiImportPerMonth: addBonus(planDef.aiImportPerMonth, bAi),
       aiEnrichPerMonth: addBonus(planDef.aiEnrichPerMonth, bEnrich),
+      aiLookupPerMonth: addBonus(planDef.aiLookupPerMonth, bLookup),
       ttkExportPerMonth: planDef.ttkExportPerMonth == null ? (bTtk > 0 ? bTtk : null) : addBonus(planDef.ttkExportPerMonth, bTtk),
       canAddItems: true,
       canImportAi: true,
       canEnrichAi: addBonus(planDef.aiEnrichPerMonth, bEnrich) > 0,
+      canLookupAi: addBonus(planDef.aiLookupPerMonth, bLookup) > 0,
       menuPublic: true,
     }
   }
   if (state === 'trial') {
-    // Тариф TEST: ограничения как Старт без AI (импорт И enrich недоступны без бонуса)
+    // Тариф TEST: как Старт без импорта/enrich, но AI-lookup (штрихкод/мета) разрешён как acquisition.
+    const trialLookup = addBonus(PLANS.TEST.aiLookupPerMonth, bLookup)
     return {
       state,
       maxItems: addBonus(PLANS.TEST.maxItems, bItems),
       aiImportPerMonth: bAi, // план = 0, бонус действует
       aiEnrichPerMonth: bEnrich,
+      aiLookupPerMonth: trialLookup,
       ttkExportPerMonth: bTtk > 0 ? bTtk : null,
       canAddItems: true,
       canImportAi: bAi > 0,
       canEnrichAi: bEnrich > 0,
+      canLookupAi: trialLookup > 0,
       menuPublic: true,
     }
   }
@@ -175,10 +188,12 @@ export function getEffectiveLimits(
       maxItems: addBonus(PLANS.TEST.maxItems, bItems),
       aiImportPerMonth: 0,
       aiEnrichPerMonth: 0,
+      aiLookupPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: false,
       canImportAi: false,
       canEnrichAi: false,
+      canLookupAi: false,
       menuPublic: false,
     }
   }
@@ -188,10 +203,12 @@ export function getEffectiveLimits(
       maxItems: addBonus(planDef.maxItems, bItems),
       aiImportPerMonth: 0,
       aiEnrichPerMonth: 0,
+      aiLookupPerMonth: 0,
       ttkExportPerMonth: null,
       canAddItems: true,
       canImportAi: false,
       canEnrichAi: false,
+      canLookupAi: false,
       menuPublic: false,
     }
   }
@@ -201,10 +218,12 @@ export function getEffectiveLimits(
     maxItems: 0,
     aiImportPerMonth: 0,
     aiEnrichPerMonth: 0,
+    aiLookupPerMonth: 0,
     ttkExportPerMonth: null,
     canAddItems: false,
     canImportAi: false,
     canEnrichAi: false,
+    canLookupAi: false,
     menuPublic: false,
   }
 }

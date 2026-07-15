@@ -19,3 +19,17 @@ export const feedbackRatelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(5, '1 h'),
   prefix: 'nm_feedback',
 })
+
+// Heavy paid-AI calls (TTK/PDF/Sheets parse + import): 20 per hour per user
+export const aiRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(20, '1 h'),
+  prefix: 'nm_ai',
+})
+
+// Light paid-AI lookups (barcode / ingredient meta / enrich): 30 per minute per user
+export const aiLookupRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, '1 m'),
+  prefix: 'nm_ai_lookup',
+})

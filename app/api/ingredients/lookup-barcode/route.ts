@@ -4,6 +4,9 @@ import { getEffectiveVenueId, getSession } from '@/lib/auth'
 import { lookupBarcodeViaSonar } from '@/lib/sonar-barcode'
 import { lookupBarcodeViaOFF } from '@/lib/openfoodfacts'
 import { isValidBarcodeChecksum, isNutritionSuspicious } from '@/lib/barcode-validate'
+import { enforceRateLimit } from '@/lib/api-guard'
+import { aiLookupRatelimit } from '@/lib/ratelimit'
+import { getLookupQuota, bumpLookupCount } from '@/lib/ai-lookup-quota'
 
 const CACHE_TTL_POSITIVE_MS = 1000 * 60 * 60 * 24 * 30
 const CACHE_TTL_NEGATIVE_MS = 1000 * 60 * 60 * 24
@@ -11,6 +14,8 @@ const CACHE_TTL_NEGATIVE_MS = 1000 * 60 * 60 * 24
 export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceRateLimit(aiLookupRatelimit, `ailookup:${session.userId}`)
+  if (limited) return limited
   const venueId = getEffectiveVenueId(session)
 
   const code = (req.nextUrl.searchParams.get('code') ?? '').trim()
@@ -50,12 +55,22 @@ export async function GET(req: NextRequest) {
   let result = await lookupBarcodeViaOFF(code)
   let usedSource: 'off' | 'sonar' = 'off'
 
-  // Level 3b: Sonar Pro fallback if OFF didn't find a usable record
+  // Level 3b: Sonar Pro fallback if OFF didn't find a usable record.
+  // Только эта ветка стоит платного AI-вызова — гейтим месячной квотой lookup'ов.
   if (result.status !== 'found') {
+    const quota = await getLookupQuota(session)
+    if (quota.remaining <= 0) {
+      // Квота исчерпана — не дёргаем платный Sonar, отправляем на ручной ввод.
+      return NextResponse.json(
+        { source: 'quota', barcode: code, reason: 'quota', error: 'Месячная квота AI-подсказок исчерпана', used: quota.used, limit: quota.limit },
+        { status: 429 },
+      )
+    }
     const sonar = await lookupBarcodeViaSonar(code)
     if (sonar.status === 'found' || sonar.status === 'not_found') {
       result = sonar
       usedSource = 'sonar'
+      if (!quota.isAdmin) await bumpLookupCount(session.userId) // реальный оплаченный ответ
     } else if (result.status === 'transient' && sonar.status === 'transient') {
       console.error('[lookup-barcode] both OFF + Sonar transient-failed for', code)
       return NextResponse.json(
@@ -63,7 +78,7 @@ export async function GET(req: NextRequest) {
         { status: 503 },
       )
     } else if (sonar.status === 'transient') {
-      // OFF said not_found, Sonar blew up — treat as not_found
+      // OFF said not_found, Sonar blew up — treat as not_found (без биллинга → не считаем)
       result = { status: 'not_found' }
       usedSource = 'sonar'
     }

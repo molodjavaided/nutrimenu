@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { getSession, getEffectiveVenueId } from '@/lib/auth'
 import { getEffectiveLimits } from '@/lib/plans'
 import { lookupIngredientMeta } from '@/lib/gemini-ingredient-meta'
+import { enforceRateLimit } from '@/lib/api-guard'
+import { aiLookupRatelimit } from '@/lib/ratelimit'
 
 /**
  * Обогащает ОДИН ингредиент через AI: meta (category, coldLossPercent, yieldCoefficients)
@@ -14,6 +16,8 @@ import { lookupIngredientMeta } from '@/lib/gemini-ingredient-meta'
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = await enforceRateLimit(aiLookupRatelimit, `ailookup:${session.userId}`)
+  if (limited) return limited
   const venueId = getEffectiveVenueId(session)
   if (!venueId) return NextResponse.json({ error: 'No venue' }, { status: 400 })
 

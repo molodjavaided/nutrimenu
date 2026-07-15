@@ -29,6 +29,7 @@ model User {
   id                  String               @id @default(cuid())
   email               String               @unique
   passwordHash        String
+  tokenVersion        Int                  @default(0)
   role                UserRole             @default(OWNER)
   plan                Plan                 @default(START)
   trialEndsAt         DateTime?
@@ -38,9 +39,12 @@ model User {
   ttkImportMonth      Int?
   aiEnrichCount       Int                  @default(0)
   aiEnrichMonth       Int?
+  aiLookupCount       Int                  @default(0)
+  aiLookupMonth       Int?
   bonusItems          Int                  @default(0)
   bonusAiImports      Int                  @default(0)
   bonusAiEnriches     Int                  @default(0)
+  bonusAiLookups      Int                  @default(0)
   bonusTtkExports     Int                  @default(0)
   onboardingStep      Int                  @default(0)
   onboardingCompletedAt DateTime?
@@ -268,39 +272,4 @@ model IngredientRef {
   @@index([venueId])
   @@index([isSystem])
   @@index([barcode])
-}
-
-model BotConversationLog {
-  id              String   @id @default(cuid())
-  telegramChatId  String
-  userMessage     String
-  botResponse     String
-  createdAt       DateTime @default(now())
-
-  @@index([createdAt])
-}
-
-model BotKnowledge {
-  id          String   @id @default(cuid())
-  question    String
-  answer      String
-  frequency   Int      @default(1)
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
-}
-
-model SalesLead {
-  id              String   @id @default(cuid())
-  telegramChatId  String   @unique
-  telegramUsername String?
-  telegramName    String?
-  answers         Json     @default("{}")
-  intent          String?  // hot | warm | cold
-  reasoning       String?
-  notified        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([intent])
-  @@index([createdAt])
 }

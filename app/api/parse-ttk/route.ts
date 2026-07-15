@@ -21,6 +21,8 @@ import { detectAndParse, CONFIDENCE_THRESHOLD, type StrategyResult } from '@/lib
 import { validateTTKDishes } from '@/lib/gemini-ttk'
 import type { ParsedDish } from '@/lib/ttk-types'
 import type { TTKExample } from '@/lib/ttk-examples'
+import { requireAiImport, enforceRateLimit } from '@/lib/api-guard'
+import { aiRatelimit } from '@/lib/ratelimit'
 
 const SHEET_ID_RE = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/
 
@@ -79,6 +81,11 @@ function worksheetToRows(ws: XLSX.WorkSheet): string[][] {
 // ─── Main handler ──────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const guard = await requireAiImport()
+  if (!guard.ok) return guard.response
+  const limited = await enforceRateLimit(aiRatelimit, `ai:${guard.session.userId}`)
+  if (limited) return limited
+
   let body: { url?: string; examples?: TTKExample[] }
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 

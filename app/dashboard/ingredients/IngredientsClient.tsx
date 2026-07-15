@@ -211,6 +211,12 @@ export default function IngredientsClient({ initialPersonalIngredients }: { init
         return
       }
 
+      if (res.status === 429 || data.reason === 'quota') {
+        setBarcodeStatus('error')
+        toast.error('Месячная квота AI-подсказок исчерпана')
+        return
+      }
+
       if (res.ok && (data.source === 'off' || data.source === 'sonar' || data.source === 'cache') && data.prefill) {
         const p = data.prefill
         const hasFullNutri = p.caloriesPer100 != null && p.proteinPer100 != null && p.fatPer100 != null && p.carbsPer100 != null

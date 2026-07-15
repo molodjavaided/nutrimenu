@@ -19,6 +19,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     userId: session.userId,
     venueId: session.venueId,
     role: 'ADMIN',
+    tokenVersion: session.tokenVersion,
     impersonatingVenueId: id,
     impersonationExpiresAt: Date.now() + IMPERSONATION_TTL_MS,
   })

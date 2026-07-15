@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hashPassword(password)
 
   await db.$transaction([
-    db.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    // Bump tokenVersion → every session issued before this reset is invalidated.
+    db.user.update({ where: { id: record.userId }, data: { passwordHash, tokenVersion: { increment: 1 } } }),
     db.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
   ])
 

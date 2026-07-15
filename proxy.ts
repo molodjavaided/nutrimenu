@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
-import { SESSION_COOKIE } from '@/lib/auth'
+
+// Inlined (not imported from lib/auth) so the proxy bundle stays free of the
+// Prisma/bcrypt deps that module pulls in. Keep in sync with SESSION_COOKIE there.
+const SESSION_COOKIE = 'nm_session'
 
 const rawSecret = process.env.AUTH_SECRET
 if (!rawSecret) throw new Error('AUTH_SECRET environment variable is not set')

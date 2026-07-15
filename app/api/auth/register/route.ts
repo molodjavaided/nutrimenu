@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     `Slug: /menu/${escapeHtml(venue.slug)}`
   )
 
-  const token = await createSessionToken({ email: user.email, userId: user.id, venueId: venue.id, role: 'OWNER' })
+  const token = await createSessionToken({ email: user.email, userId: user.id, venueId: venue.id, role: 'OWNER', tokenVersion: user.tokenVersion })
 
   const res = NextResponse.json({ ok: true, venueId: venue.id }, { status: 201 })
   res.cookies.set(SESSION_COOKIE, token, {

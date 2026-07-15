@@ -4,8 +4,10 @@ import crypto from 'crypto'
 import { db } from '@/lib/db'
 import { authRatelimit } from '@/lib/ratelimit'
 import { Resend } from 'resend'
+import { captureException } from '@/lib/observability'
 
 const resend = new Resend(process.env.RESEND_API)
+const FROM = process.env.RESEND_FROM ?? 'Plate <noreply@nutrimenu.ru>'
 
 const schema = z.object({
   email: z.string().email(),
@@ -41,17 +43,23 @@ export async function POST(req: NextRequest) {
 
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/reset-password/${token}`
 
-  await resend.emails.send({
-    from: 'Plate <noreply@nutrimenu.ru>',
-    to: email,
-    subject: 'Сброс пароля Plate',
-    html: `
-      <p>Вы запросили сброс пароля.</p>
-      <p><a href="${resetUrl}">Нажмите здесь для сброса пароля</a></p>
-      <p>Ссылка действительна 1 час.</p>
-      <p>Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>
-    `,
-  })
+  // A failing email provider must NOT 500 the route — that would leak that the
+  // email exists (enumeration). Log it and still return ok.
+  try {
+    await resend.emails.send({
+      from: FROM,
+      to: email,
+      subject: 'Сброс пароля Plate',
+      html: `
+        <p>Вы запросили сброс пароля.</p>
+        <p><a href="${resetUrl}">Нажмите здесь для сброса пароля</a></p>
+        <p>Ссылка действительна 1 час.</p>
+        <p>Если вы не запрашивали сброс — просто проигнорируйте это письмо.</p>
+      `,
+    })
+  } catch (err) {
+    captureException('password_reset_email_failed', err, { userId: user.id })
+  }
 
   return NextResponse.json({ ok: true })
 }

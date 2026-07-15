@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     userId: user.id,
     venueId: user.venue?.id ?? '',
     role: user.role as 'OWNER' | 'ADMIN',
+    tokenVersion: user.tokenVersion,
   })
 
   const redirectTo = user.role === 'ADMIN' ? '/admin' : '/dashboard'

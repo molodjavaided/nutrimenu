@@ -13,6 +13,7 @@ export async function POST() {
     userId: session.userId,
     venueId: session.venueId,
     role: 'ADMIN',
+    tokenVersion: session.tokenVersion,
   })
 
   const res = NextResponse.json({ ok: true })

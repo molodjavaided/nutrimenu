@@ -51,3 +51,6 @@ next-env.d.ts
 
 .vercel
 .obsidian
+
+# graphify code graph (regenerated via `graphify update .`)
+/graphify-out
